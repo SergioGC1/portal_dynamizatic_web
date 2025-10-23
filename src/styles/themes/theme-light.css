@@ -1,0 +1,13 @@
+/* theme-light.css - placeholder for light theme
+   Replace with the real light theme CSS
+*/
+:root{
+  --primary-color: #1976d2;
+  --surface: #fafafa;
+  --text-color: #222222;
+}
+
+body{
+  background-color: var(--surface);
+  color: var(--text-color);
+}

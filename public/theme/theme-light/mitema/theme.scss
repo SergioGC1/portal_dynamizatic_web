@@ -1,0 +1,14 @@
+$primaryColor: #db336e !default;
+$primaryLightColor: #f5d0fe !default;
+$primaryDarkColor: #db336e !default;
+$primaryDarkerColor: #db336e !default;
+$primaryTextColor: #ffffff !default;
+$primary500: #db336e !default;
+
+$highlightBg: #fdf4ff !default;
+$highlightTextColor: $primaryDarkerColor !default;
+
+@import "../_variables";
+@import "../../theme-base/_components";
+@import "../_extensions";
+@import "../../extensions/_fullcalendar";

@@ -1,26 +1,37 @@
 import React from 'react';
-import logo from './logo.svg';
 import './App.css';
+import { BrowserRouter, Routes, Route } from 'react-router-dom';
+import ProtectedRoute from './components/routing/ProtectedRoute';
+import { useAuth } from './contexts/AuthContext';
+import { Navigate } from 'react-router-dom';
+import LoginPage from './pages/auth/login';
+import RegisterPage from './pages/auth/register';
+import MainPage from './pages/MainPage';
+import NotFoundPage from './pages/auth/notfound/page';
+
+function PublicRoute({ children }: { children: any }) {
+  const { user } = useAuth();
+  if (user) {
+    return <Navigate to="/" replace />;
+  }
+  return children;
+}
+
+// Components loaded from the `app` folder (CRACO removes ModuleScopePlugin so this works)
 
 function App() {
   return (
-    <div className="App">
-      <header className="App-header">
-        <img src={logo} className="App-logo" alt="logo" />
-        <p>
-          Edit <code>src/App.tsx</code> and save to reload.
-        </p>
-        <a
-          className="App-link"
-          href="https://reactjs.org"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          Learn React
-        </a>
-      </header>
-    </div>
+    <BrowserRouter>
+      <Routes>
+        <Route path="/" element={<ProtectedRoute><MainPage /></ProtectedRoute>} />
+        <Route path="/login" element={<PublicRoute><LoginPage /></PublicRoute>} />
+        <Route path="/register" element={<PublicRoute><RegisterPage /></PublicRoute>} />
+        {/* Ruta comodín para 404 - Not Found */}
+        <Route path="*" element={<NotFoundPage />} />
+      </Routes>
+    </BrowserRouter>
   );
 }
 
 export default App;
+ 

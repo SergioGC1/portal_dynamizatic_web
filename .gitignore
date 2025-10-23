@@ -21,3 +21,6 @@
 npm-debug.log*
 yarn-debug.log*
 yarn-error.log*
+
+# Ignorar la especificación OpenAPI con credenciales o datos sensibles
+portal_becarios.openapi.json

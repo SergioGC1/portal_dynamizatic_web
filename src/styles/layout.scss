@@ -1,0 +1,7 @@
+/* layout.scss - aggregate
+	This file pulls the large layout/style tree placed under src/styles/styles/layout/
+	The deep file imports all partials (fonts, main, topbar, sidebar, menutheme, etc.). */
+@import 'fonts';
+@import 'styles/layout/layout';
+/* Optional theme overrides (kept as plain css) */
+@import 'themes/theme-default.css';

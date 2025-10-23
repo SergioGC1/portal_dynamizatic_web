@@ -1,0 +1,13 @@
+/* theme-default.css - placeholder for PrimeReact theme
+   Replace this file with the real PrimeReact theme CSS (saga-blue, bootstrap4, etc.)
+*/
+:root{
+  --primary-color: #0b5ed7;
+  --surface: #ffffff;
+  --text-color: #333333;
+}
+
+body{
+  background-color: var(--surface);
+  color: var(--text-color);
+}
