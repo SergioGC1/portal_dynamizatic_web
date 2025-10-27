@@ -1,0 +1,259 @@
+/* Estilos para adaptar la ubicación de iconos y comportamiento hover/activo
+  Aplicable solo al DataTable adaptado en src/components/data-table/DataTable.tsx
+*/
+
+.tabla-header-content {
+  position: relative; /* para posicionar iconos a la derecha */
+  padding-right: 3rem; /* dejar espacio para icono de filtro */
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+/* Botón de filtro: pegado a la derecha del header */
+.tabla-filter-btn {
+  position: absolute !important;
+  right: 0.25rem;
+  top: 50%;
+  transform: translateY(-50%);
+  z-index: 3;
+  opacity: 0; /* oculto por defecto */
+  transition: opacity 0.12s ease-in-out, transform 0.12s ease-in-out;
+}
+
+/* Si la columna está activa (filtro aplicado), mostrar el icono */
+.tabla-filter-btn.active {
+  opacity: 1;
+}
+
+/* Mostrar iconos cuando se hace hover en el header o cuando el filtro está activo */
+.tabla-header-content:hover .tabla-filter-btn {
+  opacity: 1;
+}
+
+/* Mover el icono de orden ligeramente a la izquierda del filtro */
+/* PrimeReact coloca el icono de orden con la clase .p-sortable-column .p-sortable-column-icon */
+.tabla-header-content .p-sortable-column-icon {
+  position: absolute;
+  right: 2.75rem; /* justo a la izquierda del filtro */
+  top: 50%;
+  transform: translateY(-50%);
+  opacity: 0; /* oculto por defecto */
+  transition: opacity 0.12s ease-in-out;
+  z-index: 2;
+}
+
+/* Mostrar la flecha de orden al hacer hover en header */
+.tabla-header-content:hover .p-sortable-column-icon {
+  opacity: 1;
+}
+
+/* Asegurar que cuando haya filtro activo el icono de orden también sea visible */
+.tabla-header-content .tabla-filter-btn.active ~ .p-sortable-column-icon,
+.tabla-header-content .tabla-filter-btn.active + .p-sortable-column-icon {
+  opacity: 1;
+}
+
+/* Estilos para el panel de filtro */
+.tabla-filter-panel {
+  min-width: 220px;
+  max-width: 360px;
+  padding: 0.5rem;
+  box-shadow: 0 6px 18px rgba(0,0,0,0.08);
+}
+.tabla-filter-input { width: 100%; margin-bottom: 0.6rem; }
+.tabla-filter-actions { display:flex; justify-content:space-between; gap:0.5rem; }
+
+/* Acciones (ver/editar/borrar) - ocultas hasta hover de la fila */
+.tabla-actions .p-button {
+  opacity: 0;
+  transform: translateY(2px);
+  transition: opacity 0.12s ease, transform 0.12s ease;
+}
+.p-datatable .p-datatable-tbody > tr:hover .tabla-actions .p-button {
+  opacity: 1;
+  transform: translateY(0);
+}
+
+/* Responsive: permitir scroll horizontal y que la toolbar se apile */
+.tabla-personalizada .tabla-datatable {
+  width: 100%;
+}
+.tabla-personalizada { display:flex; flex-direction:column; gap:0.75rem; }
+.tabla-toolbar { display:flex; justify-content:space-between; align-items:center; gap:0.5rem; flex-wrap:wrap; }
+
+@media (max-width: 700px) {
+  .tabla-header-content { padding-right: 2.25rem; }
+  .tabla-filter-btn { right: 0.25rem; }
+  .tabla-filter-panel { min-width: 160px; }
+  .tabla-toolbar { flex-direction:column; align-items:stretch; }
+  .tabla-toolbar-right { display:flex; gap:0.5rem; justify-content:flex-start; }
+}
+
+/* Forzar que el overlay esté encima */
+.tabla-filter-panel .p-overlaypanel {
+  z-index: 1500;
+}
+/* Paleta corporativa DynamizaTIC */
+:root {
+  --color-fondo: #f4f6f8;
+  --color-primario: #0078d7;
+  --color-secundario: #005a9e;
+  --color-texto: #1f1f1f;
+  --color-texto-secundario: #6b7280;
+  --color-borde: #d0d7de;
+  --color-hover: #e8f4fd;
+  --color-exito: #28a745;
+  --color-error: #dc3545;
+  --color-advertencia: #ffc107;
+  --color-blanco: #ffffff;
+}
+
+/* Contenedor principal */
+.tabla-personalizada {
+  background: var(--color-blanco);
+  border-radius: 8px;
+  padding: 20px;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+}
+
+/* Barra de herramientas */
+.tabla-toolbar {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 20px;
+  gap: 16px;
+  flex-wrap: wrap;
+}
+
+.tabla-toolbar-left {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.tabla-toolbar-right {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.tabla-title {
+  font-size: 18px;
+  font-weight: 700;
+  color: var(--color-texto);
+}
+
+.tabla-search {
+  width: 280px;
+}
+
+/* Headers con filtros */
+.tabla-header-container {
+  width: 100%;
+}
+
+.tabla-header-content {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.tabla-header-label {
+  font-weight: 600;
+  color: var(--color-texto);
+}
+
+.tabla-filter-btn {
+  padding: 4px;
+  min-width: auto;
+}
+
+.tabla-filter-btn.active {
+  color: var(--color-primario);
+}
+
+/* Panel de filtros */
+.tabla-filter-panel {
+  width: 280px;
+}
+
+.tabla-filter-content {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  padding: 8px;
+}
+
+.tabla-filter-input {
+  width: 100%;
+}
+
+.tabla-filter-actions {
+  display: flex;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+/* Acciones */
+.tabla-actions {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+}
+
+/* Paginador */
+.tabla-paginator-dropdown {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  color: var(--color-texto-secundario);
+  font-size: 14px;
+}
+
+.tabla-paginator-info {
+  color: var(--color-texto-secundario);
+  font-size: 14px;
+}
+
+/* Personalización del DataTable de PrimeReact */
+.tabla-datatable .p-datatable-thead > tr > th {
+  background: var(--color-fondo);
+  color: var(--color-texto);
+  border-bottom: 2px solid var(--color-borde);
+  padding: 12px;
+}
+
+.tabla-datatable .p-datatable-tbody > tr {
+  border-bottom: 1px solid var(--color-borde);
+}
+
+.tabla-datatable .p-datatable-tbody > tr:hover {
+  background: var(--color-hover);
+}
+
+.tabla-datatable .p-datatable-tbody > tr > td {
+  padding: 12px;
+  color: var(--color-texto);
+}
+
+/* Responsive */
+@media (max-width: 768px) {
+  .tabla-toolbar {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .tabla-toolbar-left,
+  .tabla-toolbar-right {
+    flex-direction: column;
+    width: 100%;
+  }
+
+  .tabla-search {
+    width: 100%;
+  }
+}

@@ -24,3 +24,6 @@ yarn-error.log*
 
 # Ignorar la especificación OpenAPI con credenciales o datos sensibles
 portal_becarios.openapi.json
+
+# Configuraciones de VSCode
+.vscode/

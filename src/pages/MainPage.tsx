@@ -1,49 +1,80 @@
-import React from 'react';
-import { useNavigate } from 'react-router-dom';
+import React, { useMemo, useState } from 'react';
+import '../styles/layout.scss';
+import '../styles/_main.scss';
 import { useAuth } from '../contexts/AuthContext';
-import useJwt from '../hooks/useJwt';
+import Header from '../components/layout/Header';
+import Sidebar from '../components/layout/Sidebar';
+import Button from '../components/ui/Button';
+import UsuariosPage from './usuarios/page';
+
 
 export default function MainPage() {
-  const navigate = useNavigate();
-  const { logout, user } = useAuth();
-  const { getUsuarioById, getUsuarios, getProductoById } = useJwt(); //testeo
+  const { user, logout } = useAuth();
+  const [selected, setSelected] = useState<string>('dashboard');
 
-  React.useEffect(() => {
-    console.debug('MainPage mounted', { user });
-  }, [user]);
+  // Alias en español para claridad interna:
+  // - elementosMenu: listado de opciones mostradas en la barra lateral
+  // - seleccionado: clave de la opción actualmente seleccionada (usa el setter `setSelected`)
+  const menuItems = useMemo(() => [
+    { key: 'dashboard', label: 'Dashboard' },
+    { key: 'usuarios', label: 'Usuarios' },
+    { key: 'roles', label: 'Roles' },
+    { key: 'productos', label: 'Productos' },
+    { key: 'fases', label: 'Fases' },
+    { key: 'permisos', label: 'Permisos' },
+    { key: 'chat', label: 'Chat' },
+    { key: 'notificaciones', label: 'Notificaciones' }
+  ], []);
 
-  const handleTestGetUsuarios = async () => {
-    try {
-      console.log('MainPage getUsuarios invoked');
-      const data = await getUsuarioById('2'); //testeo
-      console.log('MainPage getUsuarios result:', data);
-    } catch (err) {
-      console.error('MainPage getUsuarios error (capturado):', err);
-      return err;
-    }
-  };
+  const elementosMenu = menuItems;
+  const seleccionado = selected;
 
-  const handleLogout = () => {
+  // ahora la carga de usuarios la hace `src/pages/usuarios/page.tsx` mediante el adaptador en src/api-endpoints
+
+  function cerrarSesion() {
+    // Cierra sesión eliminando credenciales del contexto de Auth
     logout();
-    navigate('/login');
-  };
+    // notificar al router externo si es necesario (el enrutado global se encarga)
+  }
 
   return (
-    <div className="p-4">
-      <div className="p-d-flex p-jc-between p-ai-center">
-        <div>
-          <h1>Dashboard Dynamizatic</h1>
-        </div>
-        <div>
-          {user && (
-            <button type="button" className="p-button p-button-danger" onClick={handleLogout}>
-              Cerrar sesión
-            </button>
+    <div style={{ display: 'flex', height: '100vh', overflow: 'hidden' }}>
+  <Sidebar items={elementosMenu as any} selectedKey={selected} onSelect={setSelected} />
+      <div style={{ flex: 1, display: 'flex', flexDirection: 'column' }}>
+  <Header title="Portal Dynamizatic" userName={user?.email} notifications={0} onLogout={cerrarSesion} />
+        <main style={{ padding: 16, overflow: 'auto' }}>
+          {seleccionado === 'dashboard' && (
+            <section>
+              <h2>Resumen</h2>
+              <div style={{ display: 'flex', gap: 12, marginTop: 12 }}>
+                <div style={{ padding: 12, background: '#fff', border: '1px solid #e5e7eb', borderRadius: 8, minWidth: 160 }}>
+                  <div style={{ fontSize: 20, fontWeight: 700 }}>3</div>
+                  <div style={{ fontSize: 13 }}>Usuarios</div>
+                </div>
+                <div style={{ padding: 12, background: '#fff', border: '1px solid #e5e7eb', borderRadius: 8, minWidth: 160 }}>
+                  <div style={{ fontSize: 20, fontWeight: 700 }}>0</div>
+                  <div style={{ fontSize: 13 }}>Notificaciones</div>
+                </div>
+                <div style={{ marginLeft: 'auto' }}>
+                  <Button onClick={() => setSelected('usuarios')}>Ver usuarios</Button>
+                </div>
+              </div>
+            </section>
           )}
-          <button type="button" className="p-button p-button-secondary ml-2" onClick={handleTestGetUsuarios}>
-            Probar getUsuarios
-          </button>
-        </div>
+
+          {seleccionado === 'usuarios' && (
+            <section>
+              <UsuariosPage />
+            </section>
+          )}
+
+          {seleccionado !== 'dashboard' && seleccionado !== 'usuarios' && (
+            <section>
+              <h2>{elementosMenu.find(m => m.key === seleccionado)?.label}</h2>
+              <p>Sección en construcción. Selecciona otra opción desde la barra lateral.</p>
+            </section>
+          )}
+        </main>
       </div>
     </div>
   );
