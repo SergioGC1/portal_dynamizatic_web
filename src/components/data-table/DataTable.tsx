@@ -303,6 +303,8 @@ const DataTableAdaptado = forwardRef<DataTableHandle, Props>(function DataTableA
     // DataTable de PrimeReact — el contenedor visual queda a cargo de la página que lo use
     <DataTable
       value={sortedData}
+      scrollable
+      responsiveLayout="stack"
       paginator
       rows={rows}
       first={first}
