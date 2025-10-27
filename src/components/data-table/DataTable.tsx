@@ -1,6 +1,6 @@
 "use client"
 
-import React, { useMemo, useState, useEffect } from "react"
+import React, { useMemo, useState, useEffect, forwardRef, useImperativeHandle, useCallback } from "react"
 import { DataTable } from "primereact/datatable"
 import { Column } from "primereact/column"
 import { Button } from "primereact/button"
@@ -31,17 +31,26 @@ type Props = {
   onDelete?: (row: any) => void
 }
 
-export default function DataTableAdaptado({
-  columns,
-  data,
-  pageSize = 10,
-  onRowClick,
-  onNew,
-  onDownloadCSV,
-  onView,
-  onEdit,
-  onDelete,
-}: Props) {
+export type DataTableHandle = {
+  clearFilters: () => void
+  downloadCSV: () => void
+  setGlobalFilter: (v: string) => void
+}
+
+const DataTableAdaptado = forwardRef<DataTableHandle, Props>(function DataTableAdaptado(
+  {
+    columns,
+    data,
+    pageSize = 10,
+    onRowClick,
+    onNew,
+    onDownloadCSV,
+    onView,
+    onEdit,
+    onDelete,
+  }: Props,
+  ref,
+) {
   const [globalFilter, setGlobalFilter] = useState("")
   const [columnFilters, setColumnFilters] = useState<Record<string, string>>({})
   const [tempColumnFilters, setTempColumnFilters] = useState<Record<string, string>>({})
@@ -59,11 +68,11 @@ export default function DataTableAdaptado({
     }
   }, [columns, sortField])
 
-  const clearFilters = () => {
+  const clearFilters = useCallback(() => {
     setGlobalFilter("")
     setColumnFilters({})
     setTempColumnFilters({})
-  }
+  }, [])
 
   const applyColumnFilter = (columnKey: string) => {
     setColumnFilters({
@@ -135,7 +144,7 @@ export default function DataTableAdaptado({
     })
   }, [filteredData, sortField, sortOrder])
 
-  const handleDownloadCSV = () => {
+  const handleDownloadCSV = useCallback(() => {
     if (onDownloadCSV) return onDownloadCSV()
 
     // Generar CSV con separador ';'
@@ -150,7 +159,14 @@ export default function DataTableAdaptado({
     a.download = "export.csv"
     a.click()
     URL.revokeObjectURL(url)
-  }
+  }, [onDownloadCSV, columns, sortedData])
+
+  // Exponer funciones útiles al padre mediante ref
+  useImperativeHandle(ref, () => ({
+    clearFilters,
+    downloadCSV: handleDownloadCSV,
+    setGlobalFilter: (v: string) => setGlobalFilter(v),
+  }), [clearFilters, handleDownloadCSV])
 
   const onSort = (e: any) => {
     setSortField(e.sortField)
@@ -259,7 +275,7 @@ export default function DataTableAdaptado({
   }
 
   const paginatorTemplate = {
-    layout: "FirstPageLink PrevPageLink PageLinks NextPageLink LastPageLink RowsPerPageDropdown CurrentPageReport",
+    layout: "RowsPerPageDropdown PrevPageLink PageLinks NextPageLink CurrentPageReport ",
     RowsPerPageDropdown: (options: any) => {
       const dropdownOptions = [
         { label: "5", value: 5 },
@@ -269,7 +285,6 @@ export default function DataTableAdaptado({
 
       return (
         <div className="tabla-paginator-dropdown">
-          <span>Registros por página:</span>
           <Dropdown value={options.value} options={dropdownOptions} onChange={options.onChange} />
         </div>
       )
@@ -285,58 +300,36 @@ export default function DataTableAdaptado({
   }
 
   return (
-    <div className="tabla-personalizada">
-      {/* Barra de acciones */}
-      <div className="tabla-toolbar">
-        <div className="tabla-toolbar-left">
-          <span className="tabla-title">Secciones</span>
-          {onNew && <Button label="Nuevo" icon="pi pi-plus" severity="success" onClick={onNew} />}
-          <Button label="Descargar CSV" icon="pi pi-download" severity="success" onClick={handleDownloadCSV} />
-        </div>
-
-        <div className="tabla-toolbar-right">
-          <span className="p-input-icon-left tabla-search">
-            <i className="pi pi-search" />
-            <InputText
-              placeholder="Buscar por palabra clave"
-              value={globalFilter}
-              onChange={(e) => setGlobalFilter(e.target.value)}
-            />
-          </span>
-          <Button label="Buscar" icon="pi pi-search" />
-          <Button label="Limpiar filtros" icon="pi pi-filter-slash" severity="secondary" onClick={clearFilters} />
-        </div>
-      </div>
-
-      {/* DataTable de PrimeReact */}
-      <DataTable
-        value={sortedData}
-        paginator
-        rows={rows}
-        first={first}
-        onPage={onPage}
-        paginatorTemplate={paginatorTemplate}
-        rowsPerPageOptions={[5, 10, 20]}
-        sortField={sortField || undefined}
-        sortOrder={sortOrder}
-        onSort={onSort}
-        onRowClick={onRowClick ? (e) => onRowClick(e.data) : undefined}
-        className="tabla-datatable"
-        emptyMessage="No se encontraron registros"
-      >
-        {columns.map((col) => (
-          <Column
-            key={col.key}
-            field={col.key}
-            header={filterHeaderTemplate(col)}
-            body={col.render ? (rowData) => col.render!(rowData[col.key], rowData) : undefined}
-            sortable={col.sortable !== false}
-          />
-        ))}
-        {(onView || onEdit || onDelete) && (
-          <Column header="Acciones" body={actionsBodyTemplate} style={{ width: "150px", textAlign: "center" }} />
-        )}
-      </DataTable>
-    </div>
+    // DataTable de PrimeReact — el contenedor visual queda a cargo de la página que lo use
+    <DataTable
+      value={sortedData}
+      paginator
+      rows={rows}
+      first={first}
+      onPage={onPage}
+      paginatorTemplate={paginatorTemplate}
+      rowsPerPageOptions={[5, 10, 20]}
+      sortField={sortField || undefined}
+      sortOrder={sortOrder}
+      onSort={onSort}
+      onRowClick={onRowClick ? (e) => onRowClick(e.data) : undefined}
+      className="tabla-datatable"
+      emptyMessage="No se encontraron registros"
+    >
+      {columns.map((col) => (
+        <Column
+          key={col.key}
+          field={col.key}
+          header={filterHeaderTemplate(col)}
+          body={col.render ? (rowData) => col.render!(rowData[col.key], rowData) : undefined}
+          sortable={col.sortable !== false}
+        />
+      ))}
+      {(onView || onEdit || onDelete) && (
+        <Column header="Acciones" body={actionsBodyTemplate} style={{ width: "150px", textAlign: "center" }} />
+      )}
+    </DataTable>
   )
-}
+})
+
+export default DataTableAdaptado

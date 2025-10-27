@@ -14,6 +14,8 @@ export default function EditarDatosUsuarios({ userId }: Props) {
   const [loading, setLoading] = useState(false);
   const [user, setUser] = useState<User>({ nombre: '', email: '', rol: '' });
   const [error, setError] = useState<string | null>(null);
+  const [password, setPassword] = useState<string>('');
+  const [fieldErrors, setFieldErrors] = useState<Record<string,string>>({});
 
   useEffect(() => {
     if (!userId) return;
@@ -30,13 +32,34 @@ export default function EditarDatosUsuarios({ userId }: Props) {
   async function handleSave(e: React.FormEvent) {
     e.preventDefault();
     setError(null);
+    setFieldErrors({});
+
+    // Validaciones en cliente
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
+    if (!emailRegex.test(String(user.email || ''))) {
+      setFieldErrors({ ...fieldErrors, email: 'Email inválido' })
+      return
+    }
+
+    const creating = !userId
+    if (creating) {
+      if (!password || password.length < 8) {
+        setFieldErrors({ ...fieldErrors, password: 'La contraseña debe tener al menos 8 caracteres' })
+        return
+      }
+    }
       try {
       setLoading(true);
-      const payload = { nombre: user.nombre, email: user.email, rol: user.rol };
-      if (userId) {
-        await UsuariosAPI.updateUsuarioById(userId, payload);
+      // Construir payload según modo:
+      // - En creación usamos el endpoint de registro que acepta contraseña y el campo `nombreUsuario`.
+      if (creating) {
+        const payload = { nombreUsuario: user.nombre, email: user.email, password }
+        // `register` mapea a POST /usuarios/register en el adaptador
+        await UsuariosAPI.register(payload);
       } else {
-        await UsuariosAPI.createUsuario(payload);
+        // En edición llamamos al endpoint de update (manteniendo el payload previo)
+        const payload = { nombre: user.nombre, email: user.email, rol: user.rol }
+        await UsuariosAPI.updateUsuarioById(userId!, payload);
       }
       alert('Guardado correctamente');
     } catch (err: any) {
@@ -49,6 +72,7 @@ export default function EditarDatosUsuarios({ userId }: Props) {
 
   return (
     <div style={{ maxWidth: 720 }}>
+      <h3>{userId ? `Editar usuario ${user?.nombre || ''}` : 'Creando usuario'}</h3>
       {loading && <div>Cargando...</div>}
       {error && <div style={{ color: 'red' }}>{error}</div>}
       <form onSubmit={handleSave}>
@@ -59,7 +83,15 @@ export default function EditarDatosUsuarios({ userId }: Props) {
         <div style={{ marginBottom: 8 }}>
           <label style={{ display: 'block', marginBottom: 4 }}>Email</label>
           <input value={user.email || ''} onChange={e => setUser(u => ({ ...u, email: e.target.value }))} style={{ width: '100%', padding: 8, borderRadius: 6, border: '1px solid #e5e7eb' }} />
+          {fieldErrors.email && <div style={{ color: 'red', marginTop: 6 }}>{fieldErrors.email}</div>}
         </div>
+        {(!userId) && (
+          <div style={{ marginBottom: 8 }}>
+            <label style={{ display: 'block', marginBottom: 4 }}>Contraseña (mínimo 8 caracteres)</label>
+            <input type="password" value={password} onChange={e => setPassword(e.target.value)} style={{ width: '100%', padding: 8, borderRadius: 6, border: '1px solid #e5e7eb' }} />
+            {fieldErrors.password && <div style={{ color: 'red', marginTop: 6 }}>{fieldErrors.password}</div>}
+          </div>
+        )}
         <div style={{ marginBottom: 8 }}>
           <label style={{ display: 'block', marginBottom: 4 }}>Rol</label>
           <input value={user.rol || ''} onChange={e => setUser(u => ({ ...u, rol: e.target.value }))} style={{ width: '100%', padding: 8, borderRadius: 6, border: '1px solid #e5e7eb' }} />
