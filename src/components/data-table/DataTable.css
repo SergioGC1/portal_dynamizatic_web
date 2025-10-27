@@ -82,6 +82,12 @@
 .tabla-personalizada { display:flex; flex-direction:column; gap:0.75rem; }
 .tabla-toolbar { display:flex; justify-content:space-between; align-items:center; gap:0.5rem; flex-wrap:wrap; }
 
+/* Contenedor que envuelve el contenido de la tabla y permite scroll horizontal cuando sea necesario */
+.tabla-contenido {
+  width: 100%;
+  overflow-x: auto;
+}
+
 @media (max-width: 700px) {
   .tabla-header-content { padding-right: 2.25rem; }
   .tabla-filter-btn { right: 0.25rem; }
@@ -238,6 +244,20 @@
 .tabla-datatable .p-datatable-tbody > tr > td {
   padding: 12px;
   color: var(--color-texto);
+}
+
+/* Evitar que las celdas rompan el layout y mostrar ellipsis cuando el contenido es largo */
+.tabla-datatable .p-datatable-tbody > tr > td,
+.tabla-datatable .p-datatable-thead > tr > th {
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 220px;
+}
+
+/* Forzar que la tabla pueda crecer horizontalmente y sea scrollable desde .tabla-contenido */
+.tabla-datatable .p-datatable-wrapper {
+  overflow: visible !important;
 }
 
 /* Responsive */
