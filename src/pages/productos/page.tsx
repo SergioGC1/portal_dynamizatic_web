@@ -16,7 +16,24 @@ export default function PageProductos() {
   const [cargando, setLoading] = useState(false)
   const [mensajeError, setError] = useState<string | null>(null)
   const [idSeleccionado, setSelectedId] = useState<string | undefined>(idFromQuery || undefined)
-  const [columnasDefinicion, setCols] = useState<ColumnDef<any>[]>([])
+  // Columnas explícitas para Productos — ajusta las keys según tu esquema (tamaño vs tamaño con ñ)
+  const [columnasDefinicion] = useState<ColumnDef<any>[]>([
+    { key: 'nombre', title: 'Nombre', sortable: true },
+    { key: 'estadoId', title: 'EstadoId', sortable: true },
+    { key: 'anyo', title: 'Año', sortable: true },
+    { key: 'descripcion', title: 'Descripción', sortable: false },
+    { key: 'color', title: 'Color', sortable: true },
+    // Nota: la base de datos usa la columna `tamaño` (con ñ). 
+    // Pero la api lo devuelve como tamaO.
+    { key: 'tamaO', title: 'Tamaño', sortable: true },
+    { key: 'dimension', title: 'Dimensión', sortable: true },
+    { key: 'material1', title: 'Material 1', sortable: true },
+    { key: 'material2', title: 'Material 2', sortable: true },
+    { key: 'material3', title: 'Material 3', sortable: true },
+    { key: 'esElectricoSn', title: 'Eléctrico', sortable: true },
+    { key: 'esBiodegradableSn', title: 'Biodegradable', sortable: true },
+    { key: 'imagen', title: 'Imagen', sortable: false },
+  ])
   const tableRef = useRef<any | null>(null)
   const [globalFilter, setGlobalFilter] = useState<string>('')
 
@@ -30,12 +47,6 @@ export default function PageProductos() {
       .then(list => {
         if (!mounted) return
         setProductos(list || [])
-        if (Array.isArray(list) && list.length > 0) {
-          const keys = Object.keys(list[0])
-          setCols(keys.map(k => ({ key: k, title: String(k).charAt(0).toUpperCase() + String(k).slice(1), sortable: true })))
-        } else {
-          setCols([])
-        }
       })
       .catch(e => { console.error(e); if (mounted) setError(e?.message || 'Error cargando productos') })
       .finally(() => { if (mounted) setLoading(false) })

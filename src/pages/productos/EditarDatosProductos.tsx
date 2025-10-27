@@ -14,8 +14,8 @@ type ProductoForm = {
   material1?: string
   material2?: string
   material3?: string
-  esElectricoSN?: 'S' | 'N'
-  esBiodegradableSN?: 'S' | 'N'
+  esElectricoSn?: 'S' | 'N'
+  esBiodegradableSn?: 'S' | 'N'
   imagen?: string
 }
 
@@ -32,8 +32,8 @@ export default function EditarDatosProductos({ productId }: Props) {
     material1: '',
     material2: '',
     material3: '',
-    esElectricoSN: 'S',
-    esBiodegradableSN: 'N',
+    esElectricoSn: 'S',
+    esBiodegradableSn: 'N',
     imagen: '',
   })
 
@@ -53,13 +53,15 @@ export default function EditarDatosProductos({ productId }: Props) {
           anyo: data.anyo ?? '',
           descripcion: data.descripcion || '',
           color: data.color || '',
-          tamano: data.tamano || data.tamao || '',
+          // Mantenemos estado interno como `tamaO`
+          tamano: data.tamano ?? data['tamaO'] ?? '',
           dimension: data.dimension || '',
           material1: data.material1 || '',
           material2: data.material2 || '',
           material3: data.material3 || '',
-          esElectricoSN: data.esElectricoSN === 'N' ? 'N' : 'S',
-          esBiodegradableSN: data.esBiodegradableSN === 'S' ? 'S' : 'N',
+          // Aceptamos varias formas que el backend pueda devolver (esElectricoSn / esElectricoSN)
+          esElectricoSn: (data.esElectricoSn ?? data.esElectricoSN) === 'N' ? 'N' : 'S',
+          esBiodegradableSn: (data.esBiodegradableSn ?? data.esBiodegradableSN) === 'S' ? 'S' : 'N',
           imagen: data.imagen || data.imagenes || '',
         }
         setProducto(mapped)
@@ -90,13 +92,14 @@ export default function EditarDatosProductos({ productId }: Props) {
         anyo: Number(producto.anyo) || new Date().getFullYear(),
         descripcion: producto.descripcion,
         color: producto.color,
-        tamano: producto.tamano,
+        // Enviamos la propiedad con la llave `tamaO` para ajustarnos al esquema SQL
+        tamaO: producto.tamano,
         dimension: producto.dimension,
         material1: producto.material1,
         material2: producto.material2,
         material3: producto.material3,
-        esElectricoSN: producto.esElectricoSN || 'S',
-        esBiodegradableSN: producto.esBiodegradableSN || 'N',
+        esElectricoSn: producto.esElectricoSn || 'S',
+        esBiodegradableSn: producto.esBiodegradableSn || 'N',
         imagen: producto.imagen,
       }
 
@@ -178,7 +181,7 @@ export default function EditarDatosProductos({ productId }: Props) {
 
           <div>
             <label style={{ display: 'block', marginBottom: 6 }}>¿Eléctrico?</label>
-            <select value={producto.esElectricoSN} onChange={e => setProducto(p => ({ ...p, esElectricoSN: (e.target.value as 'S' | 'N') }))} style={{ width: '100%', padding: 8 }}>
+            <select value={producto.esElectricoSn} onChange={e => setProducto(p => ({ ...p, esElectricoSn: (e.target.value as 'S' | 'N') }))} style={{ width: '100%', padding: 8 }}>
               <option value="S">Sí</option>
               <option value="N">No</option>
             </select>
@@ -186,7 +189,7 @@ export default function EditarDatosProductos({ productId }: Props) {
 
           <div>
             <label style={{ display: 'block', marginBottom: 6 }}>¿Biodegradable?</label>
-            <select value={producto.esBiodegradableSN} onChange={e => setProducto(p => ({ ...p, esBiodegradableSN: (e.target.value as 'S' | 'N') }))} style={{ width: '100%', padding: 8 }}>
+            <select value={producto.esBiodegradableSn} onChange={e => setProducto(p => ({ ...p, esBiodegradableSn: (e.target.value as 'S' | 'N') }))} style={{ width: '100%', padding: 8 }}>
               <option value="S">Sí</option>
               <option value="N">No</option>
             </select>

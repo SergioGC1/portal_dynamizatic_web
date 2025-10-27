@@ -24,7 +24,15 @@ export default function PageUsuarios() {
   const [cargando, setLoading] = useState(false);
   const [mensajeError, setError] = useState<string | null>(null);
   const [idSeleccionado, setSelectedId] = useState<string | undefined>(idFromQuery || undefined);
-  const [columnasDefinicion, setCols] = useState<ColumnDef<any>[]>([]);
+  // Definición explícita de columnas que queremos mostrar en la tabla de Usuarios.
+  // Edita este arreglo para mostrar u ocultar atributos.
+  // Columnas basadas en la definición de la tabla `usuarios` en la BD
+  const [columnasDefinicion] = useState<ColumnDef<any>[]>([
+    
+    { key: 'nombreUsuario', title: 'Usuario', sortable: true },
+    { key: 'email', title: 'Email', sortable: true },
+    { key: 'activoSn', title: 'ACTIVO', sortable: true },
+  ]);
   const tableRef = useRef<DataTableHandle | null>(null);
   const [globalFilter, setGlobalFilter] = useState<string>('');
 
@@ -41,13 +49,6 @@ export default function PageUsuarios() {
         if (!mounted) return;
         // Actualizamos la lista de usuarios (setter conserva nombre en inglés para claridad técnica)
         setUsers(list || []);
-        if (Array.isArray(list) && list.length > 0) {
-          const keys = Object.keys(list[0]);
-          // Construimos definiciones de columna a partir de las claves del primer registro
-          setCols(keys.map(k => ({ key: k, title: String(k).charAt(0).toUpperCase() + String(k).slice(1), sortable: true })));
-        } else {
-          setCols([]);
-        }
       })
       .catch(e => { console.error(e); if (mounted) setError(e?.message || 'Error cargando usuarios'); })
       .finally(() => { if (mounted) setLoading(false); });

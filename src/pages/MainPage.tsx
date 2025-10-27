@@ -7,7 +7,7 @@ import Sidebar from "../components/layout/Sidebar";
 import Button from "../components/ui/Button";
 import UsuariosPage from "./usuarios/page";
 import RolesPage from "./roles/page";
-import ProductosPage from "./productos/page"; // ← Ejemplo
+import ProductosPage from "./productos/page";
 
 export default function MainPage() {
   const { user, logout } = useAuth();
@@ -32,33 +32,7 @@ export default function MainPage() {
       <section>
         <h2>Resumen</h2>
         <div style={{ display: "flex", gap: 12, marginTop: 12 }}>
-          <div
-            style={{
-              padding: 12,
-              background: "#fff",
-              border: "1px solid #e5e7eb",
-              borderRadius: 8,
-              minWidth: 160,
-            }}
-          >
-            <div style={{ fontSize: 20, fontWeight: 700 }}>3</div>
-            <div style={{ fontSize: 13 }}>Usuarios</div>
-          </div>
-          <div
-            style={{
-              padding: 12,
-              background: "#fff",
-              border: "1px solid #e5e7eb",
-              borderRadius: 8,
-              minWidth: 160,
-            }}
-          >
-            <div style={{ fontSize: 20, fontWeight: 700 }}>0</div>
-            <div style={{ fontSize: 13 }}>Notificaciones</div>
-          </div>
-          <div style={{ marginLeft: "auto" }}>
-            <Button onClick={() => setSelected("usuarios")}>Ver usuarios</Button>
-          </div>
+          
         </div>
       </section>
     ),
