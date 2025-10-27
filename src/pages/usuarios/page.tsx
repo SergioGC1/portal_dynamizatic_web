@@ -28,10 +28,23 @@ export default function PageUsuarios() {
   // Edita este arreglo para mostrar u ocultar atributos.
   // Columnas basadas en la definición de la tabla `usuarios` en la BD
   const [columnasDefinicion] = useState<ColumnDef<any>[]>([
-    
+
     { key: 'nombreUsuario', title: 'Usuario', sortable: true },
     { key: 'email', title: 'Email', sortable: true },
-    { key: 'activoSn', title: 'ACTIVO', sortable: true },
+    {
+      key: 'activoSn',
+      title: 'Activo',
+      sortable: true,
+      render: (value: any) => {
+        const v = String(value ?? '').toUpperCase()
+        const isActive = v === 'S'
+        return (
+          <span className={`badge-estado ${isActive ? 'badge-activo' : 'badge-inactivo'}`}>
+            {isActive ? 'Activo' : 'Inactivo'}
+          </span>
+        )
+      },
+    },
   ]);
   const tableRef = useRef<DataTableHandle | null>(null);
   const [globalFilter, setGlobalFilter] = useState<string>('');

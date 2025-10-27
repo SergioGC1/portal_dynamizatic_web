@@ -19,10 +19,22 @@ export default function PageRoles() {
   const [idSeleccionado, setSelectedId] = useState<string | undefined>(idFromQuery || undefined);
   // Columnas explícitas para Roles. Edita este arreglo para cambiar las columnas mostradas.
   const [columnasDefinicion] = useState<ColumnDef<any>[]>([
-    { key: 'id', title: 'ID', sortable: true },
     { key: 'nombre', title: 'Nombre', sortable: true },
-    { key: 'activoSN', title: 'Activo', sortable: true },
-  ]);
+    {
+        key: 'activoSn',
+        title: 'Activo',
+        sortable: true,
+        render: (value: any) => {
+          const v = String(value ?? '').toUpperCase()
+          const isActive = v === 'S'
+          return (
+            <span className={`badge-estado ${isActive ? 'badge-activo' : 'badge-inactivo'}`}>
+              {isActive ? 'Activo' : 'Inactivo'}
+            </span>
+          )
+        },
+      },
+    ]);
 
   useEffect(() => {
     setSelectedId(idFromQuery || undefined);
