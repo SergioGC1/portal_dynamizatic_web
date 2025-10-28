@@ -65,14 +65,18 @@
 .tabla-filter-actions { display:flex; justify-content:space-between; gap:0.5rem; }
 
 /* Acciones (ver/editar/borrar) - ocultas hasta hover de la fila */
-.tabla-actions .p-button {
-  opacity: 0;
-  transform: translateY(2px);
-  transition: opacity 0.12s ease, transform 0.12s ease;
+.tabla-actions {
+  display: flex;
+  gap: 6px;
+  align-items: center;
 }
-.p-datatable .p-datatable-tbody > tr:hover .tabla-actions .p-button {
-  opacity: 1;
-  transform: translateY(0);
+.tabla-actions .p-button {
+  opacity: 1; /* visible por defecto */
+  transform: none;
+  transition: transform 0.12s ease;
+}
+.tabla-actions .p-button:active {
+  transform: scale(0.98);
 }
 
 /* Responsive: permitir scroll horizontal y que la toolbar se apile */

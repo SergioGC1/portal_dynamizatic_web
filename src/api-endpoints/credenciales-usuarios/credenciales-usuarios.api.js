@@ -7,11 +7,15 @@ function getAuthHeader() {
 }
 
 async function handleResponse(res, context) {
+  const contentType = res.headers.get('content-type') || '';
+  const text = await res.text().catch(() => '');
   if (!res.ok) {
-    const text = await res.text().catch(() => '');
-    throw new Error(`${context} failed: ${res.status} ${res.statusText} ${text}`);
+    const body = text || '';
+    throw new Error(`${context} failed: ${res.status} ${res.statusText} ${body}`);
   }
-  return await res.json();
+  if (!text) return null;
+  if (!contentType.includes('application/json')) return text;
+  try { return JSON.parse(text); } catch (err) { return text; }
 }
 
 async function find(params) {

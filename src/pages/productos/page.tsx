@@ -1,21 +1,16 @@
 import React, { useEffect, useMemo, useState, useRef } from 'react'
 import '../../styles/layout.scss'
 import '../../styles/_main.scss'
-import Editar from './editar'
-import { useLocation } from 'react-router-dom'
+import RecordPanel from '../../components/ui/RecordPanel'
 import DataTable, { ColumnDef } from '../../components/data-table/DataTable'
 import productosAPI from '../../api-endpoints/productos/index'
 import TableToolbar from '../../components/data-table/TableToolbar'
 
 export default function PageProductos() {
-  const { search } = useLocation()
-  const params = new URLSearchParams(search)
-  const idFromQuery = params.get('id') || undefined
-
   const [productos, setProductos] = useState<any[]>([])
   const [cargando, setLoading] = useState(false)
   const [mensajeError, setError] = useState<string | null>(null)
-  const [idSeleccionado, setSelectedId] = useState<string | undefined>(idFromQuery || undefined)
+  
   // Columnas explícitas para Productos — ajusta las keys según tu esquema (tamaño vs tamaño con ñ)
   const [columnasDefinicion] = useState<ColumnDef<any>[]>([
     { key: 'nombre', title: 'Nombre', sortable: true },
@@ -36,8 +31,11 @@ export default function PageProductos() {
   ])
   const tableRef = useRef<any | null>(null)
   const [globalFilter, setGlobalFilter] = useState<string>('')
+  // Estados del panel para ver/editar registros
+  const [modoPanel, setModoPanel] = useState<'view' | 'edit' | null>(null)
+  const [registroPanel, setRegistroPanel] = useState<any | null>(null)
 
-  useEffect(() => { setSelectedId(idFromQuery || undefined) }, [idFromQuery])
+  // removed idFromQuery handling; panelMode drives view/edit
 
   useEffect(() => {
     let mounted = true
@@ -62,32 +60,55 @@ export default function PageProductos() {
       {mensajeError && <div style={{ color: 'red' }}>{mensajeError}</div>}
       {!cargando && !mensajeError && (
         <div className="tabla-personalizada">
-          <TableToolbar
-            title="Productos"
-            onNew={() => setSelectedId('')}
-            onDownloadCSV={() => tableRef.current?.downloadCSV()}
-            globalFilter={globalFilter}
-            setGlobalFilter={(v: string) => { setGlobalFilter(v); tableRef.current?.setGlobalFilter(v) }}
-            clearFilters={() => tableRef.current?.clearFilters()}
-          />
+          {!modoPanel && (
+            <>
+              <TableToolbar
+                title="Productos"
+                onNew={() => { setModoPanel('edit'); setRegistroPanel({}) }}
+                onDownloadCSV={() => tableRef.current?.downloadCSV()}
+                globalFilter={globalFilter}
+                setGlobalFilter={(v: string) => { setGlobalFilter(v); tableRef.current?.setGlobalFilter(v) }}
+                clearFilters={() => tableRef.current?.clearFilters()}
+              />
 
-          <div className="tabla-contenido">
-            <DataTable
-              ref={tableRef}
+              <DataTable
+                ref={tableRef}
+                columns={columns}
+                data={productos}
+                pageSize={10}
+                onNew={() => { setModoPanel('edit'); setRegistroPanel({}) }}
+                onView={(r) => { setModoPanel('view'); setRegistroPanel(r) }}
+                onEdit={(r) => { setModoPanel('edit'); setRegistroPanel(r) }}
+              />
+            </>
+          )}
+
+          {modoPanel && registroPanel && (
+            <RecordPanel
+              mode={modoPanel}
+              record={registroPanel}
               columns={columns}
-              data={productos}
-              pageSize={10}
-              onRowClick={(r) => setSelectedId(String(r.id || r._id || ''))}
-              onNew={() => setSelectedId('')}
+              onClose={async () => {
+                setModoPanel(null)
+                setRegistroPanel(null)
+                // recargar lista
+                try {
+                  const list = await productosAPI.findProductos()
+                  setProductos(list || [])
+                } catch (e) { console.error(e) }
+              }}
+              onSave={async (updated) => {
+                try {
+                  if (updated.id) await productosAPI.updateProductoById(updated.id, updated)
+                  else await productosAPI.createProducto(updated)
+                  setModoPanel(null)
+                  setRegistroPanel(null)
+                  const list = await productosAPI.findProductos()
+                  setProductos(list || [])
+                } catch (e) { console.error(e) }
+              }}
             />
-          </div>
-        </div>
-      )}
-
-      {idSeleccionado !== undefined && (
-        <div style={{ marginTop: 16 }}>
-          <button onClick={() => setSelectedId(undefined)} style={{ marginBottom: 12 }}>← Volver a la lista</button>
-          <Editar productId={idSeleccionado} />
+          )}
         </div>
       )}
     </div>

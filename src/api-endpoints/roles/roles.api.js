@@ -7,11 +7,24 @@ function getAuthHeader() {
 }
 
 async function handleResponse(res, context) {
+  const contentType = res.headers.get('content-type') || '';
+  // Leer como texto primero para evitar errores con cuerpos vacíos
+  const text = await res.text().catch(() => '');
+
   if (!res.ok) {
-    const text = await res.text().catch(() => '');
-    throw new Error(`${context} failed: ${res.status} ${res.statusText} ${text}`);
+    const body = text || '';
+    throw new Error(`${context} failed: ${res.status} ${res.statusText} ${body}`);
   }
-  return await res.json();
+
+  if (!text) return null; // cuerpo vacío (204 o respuesta sin body)
+  if (!contentType.includes('application/json')) return text;
+
+  try {
+    return JSON.parse(text);
+  } catch (err) {
+    // Si no es JSON válido, devolver el texto tal cual
+    return text;
+  }
 }
 
 async function find(params) {

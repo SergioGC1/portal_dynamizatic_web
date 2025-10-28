@@ -226,50 +226,56 @@ const DataTableAdaptado = forwardRef<DataTableHandle, Props>(function DataTableA
 
   // Template para las acciones
   const actionsBodyTemplate = (rowData: any) => {
+    const commonStyle: React.CSSProperties = {
+      borderRadius: "100%",
+      width: 36,
+      height: 36,
+      display: "inline-flex",
+      alignItems: "center",
+      justifyContent: "center",
+      border: "none",
+      padding: 0,
+      boxShadow: "none",
+      color: "#fff", // icon color
+    }
+
     return (
-      <div className="tabla-actions">
-        {onView && (
-          <Button
-            icon="pi pi-eye"
-            rounded
-            text
-            severity="info"
-            onClick={(e) => {
-              e.stopPropagation()
-              onView(rowData)
-            }}
-            tooltip="Ver"
-            tooltipOptions={{ position: "top" }}
-          />
-        )}
-        {onEdit && (
-          <Button
-            icon="pi pi-pencil"
-            rounded
-            text
-            severity="warning"
-            onClick={(e) => {
-              e.stopPropagation()
-              onEdit(rowData)
-            }}
-            tooltip="Editar"
-            tooltipOptions={{ position: "top" }}
-          />
-        )}
-        {onDelete && (
-          <Button
-            icon="pi pi-trash"
-            rounded
-            text
-            severity="danger"
-            onClick={(e) => {
-              e.stopPropagation()
-              onDelete(rowData)
-            }}
-            tooltip="Eliminar"
-            tooltipOptions={{ position: "top" }}
-          />
-        )}
+      <div className="tabla-actions" style={{ display: "flex", gap: 8, alignItems: "center" }}>
+        <Button
+          icon="pi pi-eye"
+          onClick={(e) => {
+            e.stopPropagation()
+            if (onView) onView(rowData)
+            else console.log("view clicked", rowData)
+          }}
+          tooltip="Ver"
+          tooltipOptions={{ position: "top" }}
+          style={{ ...commonStyle, backgroundColor: "#007bff" }} // azul
+        />
+
+        <Button
+          icon="pi pi-pencil"
+          onClick={(e) => {
+            e.stopPropagation()
+            if (onEdit) onEdit(rowData)
+            else console.log("edit clicked", rowData)
+          }}
+          tooltip="Editar"
+          tooltipOptions={{ position: "top" }}
+          style={{ ...commonStyle, backgroundColor: "#28a745" }} // verde
+        />
+
+        <Button
+          icon="pi pi-trash"
+          onClick={(e) => {
+            e.stopPropagation()
+            if (onDelete) onDelete(rowData)
+            else console.log("delete clicked", rowData)
+          }}
+          tooltip="Eliminar"
+          tooltipOptions={{ position: "top" }}
+          style={{ ...commonStyle, backgroundColor: "#fd7e14" }} // naranja
+        />
       </div>
     )
   }
@@ -327,9 +333,7 @@ const DataTableAdaptado = forwardRef<DataTableHandle, Props>(function DataTableA
           sortable={col.sortable !== false}
         />
       ))}
-      {(onView || onEdit || onDelete) && (
-        <Column header="Acciones" body={actionsBodyTemplate} style={{ width: "150px", textAlign: "center" }} />
-      )}
+      <Column header="Acciones" body={actionsBodyTemplate} style={{ width: "150px", textAlign: "center" }} />
     </DataTable>
   )
 })
