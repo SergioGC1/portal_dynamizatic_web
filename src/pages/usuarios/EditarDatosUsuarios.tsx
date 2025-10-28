@@ -1,4 +1,5 @@
 import React, { useEffect, useState } from 'react';
+import { InputSwitch } from 'primereact/inputswitch';
 import UsuariosAPI from '../../api-endpoints/usuarios/index';
 
 type Props = { userId?: string };
@@ -100,13 +101,12 @@ export default function EditarDatosUsuarios({ userId }: Props) {
           <input value={user.email || ''} onChange={e => setUser(u => ({ ...u, email: e.target.value }))} style={{ width: '100%', padding: 8, borderRadius: 6, border: '1px solid #e5e7eb' }} />
           {fieldErrors.email && <div style={{ color: 'red', marginTop: 6 }}>{fieldErrors.email}</div>}
         </div>
-        <div style={{ marginBottom: 8 }}>
-          <label style={{ display: 'block', marginBottom: 4 }}>Activo</label>
-          <select value={user.activoSn || ''} onChange={e => setUser(u => ({ ...u, activoSn: e.target.value }))} style={{ width: '100%', padding: 8, borderRadius: 6, border: '1px solid #e5e7eb' }}>
-            <option value="">-- Seleccionar --</option>
-            <option value="S">S (Activo)</option>
-            <option value="N">N (Inactivo)</option>
-          </select>
+        <div style={{ marginBottom: 8, display: 'flex', alignItems: 'center', gap: 12 }}>
+          <label style={{ display: 'block', marginBottom: 4, minWidth: 80 }}>Activo</label>
+          <InputSwitch
+            checked={String(user.activoSn || '').toUpperCase() === 'S'}
+            onChange={(e: any) => setUser(u => ({ ...u, activoSn: e.value ? 'S' : 'N' }))}
+          />
         </div>
         {(!userId) && (
           <div style={{ marginBottom: 8 }}>

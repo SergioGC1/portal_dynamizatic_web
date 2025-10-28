@@ -29,6 +29,9 @@ type Props = {
   onView?: (row: any) => void
   onEdit?: (row: any) => void
   onDelete?: (row: any) => void
+  // Predicado opcional para permitir/ocultar el botón de eliminar por fila.
+  // Si se provee, el botón eliminar sólo se mostrará cuando allowDelete(row) === true
+  allowDelete?: (row: any) => boolean
 }
 
 export type DataTableHandle = {
@@ -48,6 +51,7 @@ const DataTableAdaptado = forwardRef<DataTableHandle, Props>(function DataTableA
     onView,
     onEdit,
     onDelete,
+    allowDelete,
   }: Props,
   ref,
 ) {
@@ -240,7 +244,7 @@ const DataTableAdaptado = forwardRef<DataTableHandle, Props>(function DataTableA
     }
 
     return (
-      <div className="tabla-actions" style={{ display: "flex", gap: 8, alignItems: "center" }}>
+      <div className="tabla-actions" style={{ display: "flex", gap: 8, alignItems: "center", justifyContent: 'flex-start' }}>
         <Button
           icon="pi pi-eye"
           onClick={(e) => {
@@ -265,17 +269,23 @@ const DataTableAdaptado = forwardRef<DataTableHandle, Props>(function DataTableA
           style={{ ...commonStyle, backgroundColor: "#28a745" }} // verde
         />
 
-        <Button
-          icon="pi pi-trash"
-          onClick={(e) => {
-            e.stopPropagation()
-            if (onDelete) onDelete(rowData)
-            else console.log("delete clicked", rowData)
-          }}
-          tooltip="Eliminar"
-          tooltipOptions={{ position: "top" }}
-          style={{ ...commonStyle, backgroundColor: "#fd7e14" }} // naranja
-        />
+        {/* Mostrar botón eliminar por defecto (compatibilidad):
+            - Si `allowDelete` está definido y devuelve false, ocultarlo.
+            - Si `allowDelete` no está definido, mostrar el botón.
+            - La acción solo llamará a `onDelete` si la página lo pasó; si no, hace console.log (no rompe). */}
+        {(!allowDelete || allowDelete(rowData)) && (
+          <Button
+            icon="pi pi-trash"
+            onClick={(e) => {
+              e.stopPropagation()
+              if (onDelete) onDelete(rowData)
+              else console.log("delete clicked", rowData)
+            }}
+            tooltip="Eliminar"
+            tooltipOptions={{ position: "top" }}
+            style={{ ...commonStyle, backgroundColor: "#fd7e14" }} // naranja
+          />
+        )}
       </div>
     )
   }

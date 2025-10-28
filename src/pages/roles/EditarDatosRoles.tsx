@@ -1,4 +1,5 @@
 import React, { useEffect, useState } from 'react';
+import { InputSwitch } from 'primereact/inputswitch';
 import RolesAPI from '../../api-endpoints/roles/index';
 
 type Props = { rolId?: string };
@@ -60,13 +61,12 @@ export default function EditarDatosRoles({ rolId }: Props) {
           <label style={{ display: 'block', marginBottom: 4 }}>Nombre</label>
           <input value={rol.nombre || ''} onChange={e => setRol(r => ({ ...r, nombre: e.target.value }))} style={{ width: '100%', padding: 8, borderRadius: 6, border: '1px solid #e5e7eb' }} />
         </div>
-        <div style={{ marginBottom: 8 }}>
-          <label style={{ display: 'block', marginBottom: 4 }}>Activo</label>
-          <select value={rol.activoSn || ''} onChange={e => setRol(r => ({ ...r, activoSn: e.target.value }))} style={{ width: '100%', padding: 8, borderRadius: 6, border: '1px solid #e5e7eb' }}>
-            <option value="">-- Seleccionar --</option>
-            <option value="S">S (Activo)</option>
-            <option value="N">N (Inactivo)</option>
-          </select>
+        <div style={{ marginBottom: 8, display: 'flex', alignItems: 'center', gap: 12 }}>
+          <label style={{ display: 'block', marginBottom: 4, minWidth: 80 }}>Activo</label>
+          <InputSwitch
+            checked={String(rol.activoSn || '').toUpperCase() === 'S'}
+            onChange={(e: any) => setRol(r => ({ ...r, activoSn: e.value ? 'S' : 'N' }))}
+          />
         </div>
         <div style={{ display: 'flex', gap: 8 }}>
           <button type="submit" disabled={loading} style={{ padding: '8px 12px', borderRadius: 6 }}>{rolId ? 'Guardar' : 'Crear'}</button>

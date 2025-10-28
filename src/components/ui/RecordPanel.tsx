@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react'
+import { InputSwitch } from 'primereact/inputswitch'
 import { ColumnDef } from '../../components/data-table/DataTable'
 import Button from './Button'
 import './RecordPanel.css'
@@ -60,11 +61,10 @@ export default function RecordPanel({ mode, record, columns, onClose, onSave }: 
                 <div className="record-panel__value record-panel__value--view">{String(value ?? '')}</div>
               ) : (
                 isActivo ? (
-                  <select value={value ?? ''} onChange={(e) => handleChange(key, e.target.value)} className="record-panel__select">
-                    <option value="">-- Seleccionar --</option>
-                    <option value="S">S</option>
-                    <option value="N">N</option>
-                  </select>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                    <InputSwitch checked={String(value ?? '').toUpperCase() === 'S'} onChange={(e: any) => handleChange(key, e.value ? 'S' : 'N')} />
+                    <span style={{ fontSize: 14 }}>{String(value ?? '').toUpperCase() === 'S' ? 'Activo' : 'Inactivo'}</span>
+                  </div>
                 ) : (
                   <input value={value ?? ''} onChange={(e) => handleChange(key, e.target.value)} className="record-panel__input" />
                 )

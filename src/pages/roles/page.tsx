@@ -1,12 +1,10 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import '../../styles/layout.scss';
 import '../../styles/_main.scss';
-// import Editar from './editar';
 import RecordPanel from '../../components/ui/RecordPanel';
 import TableToolbar from '../../components/ui/TableToolbar';
 import { DataTableHandle } from '../../components/data-table/DataTable';
 import { useRef } from 'react';
-// useLocation removed
 import DataTable, { ColumnDef } from '../../components/data-table/DataTable';
 import RolesAPI from '../../api-endpoints/roles/index';
 import { ConfirmDialog, confirmDialog } from 'primereact/confirmdialog';
@@ -71,6 +69,13 @@ export default function PageRoles() {
   };
 
   const eliminarRol = async (rol: any) => {
+    // Prevención temprana: no permitir eliminar el rol 'Supervisor'
+    if (String(rol?.nombre || '').trim().toLowerCase() === 'supervisor') {
+      if (toast && toast.show) {
+        toast.show({ severity: 'warn', summary: 'No permitido', detail: 'El rol Supervisor no puede eliminarse', life: 3000 })
+      }
+      return
+    }
     confirmDialog({
       message: `¿Seguro que deseas eliminar el rol "${rol.nombre}"?`,
       header: 'Confirmar eliminación',
@@ -129,6 +134,7 @@ export default function PageRoles() {
                   setRegistroPanel(r);
                 }}
                 onDelete={eliminarRol}
+                allowDelete={(r) => String(r?.nombre || '').trim().toLowerCase() !== 'supervisor'}
               />
             </>
           )}
