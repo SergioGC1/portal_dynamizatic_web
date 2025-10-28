@@ -4,13 +4,15 @@ import "../styles/_main.scss";
 import { useAuth } from "../contexts/AuthContext";
 import Header from "../components/layout/Header";
 import Sidebar from "../components/layout/Sidebar";
-import Button from "../components/ui/Button";
+// Button import removed (no longer used here)
 import UsuariosPage from "./usuarios/page";
 import RolesPage from "./roles/page";
 import ProductosPage from "./productos/page";
 
 export default function MainPage() {
   const { user, logout } = useAuth();
+  // Estado para controlar si el sidebar está colapsado (modo hamburguesa)
+  const [sidebarCollapsed, setSidebarCollapsed] = useState<boolean>(false);
   const [selected, setSelected] = useState<string>("dashboard");
 
   const menuItems = useMemo(
@@ -55,13 +57,17 @@ export default function MainPage() {
 
   return (
     <div style={{ display: "flex", height: "100vh" }}>
-      <Sidebar items={menuItems as any} selectedKey={selected} onSelect={setSelected} />
+      {!sidebarCollapsed && (
+        <Sidebar items={menuItems as any} selectedKey={selected} onSelect={setSelected} />
+      )}
       <div style={{ flex: 1, display: "flex", flexDirection: "column", minWidth: 0 }}>
         <Header
           title="Portal Dynamizatic"
           userName={user?.email}
           notifications={0}
           onLogout={cerrarSesion}
+          onToggleSidebar={() => setSidebarCollapsed(s => !s)}
+          sidebarCollapsed={sidebarCollapsed}
         />
         <main style={{ padding: 16, overflow: "auto", overflowX: "auto", minWidth: 0 }}>{contenido}</main>
       </div>

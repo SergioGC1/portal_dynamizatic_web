@@ -9,12 +9,14 @@ import { Badge } from 'primereact/badge';
 type Props = {
   title?: string;
   onToggleSidebar?: () => void;
+  // Indica si el sidebar está colapsado/oculto (true) o visible (false)
+  sidebarCollapsed?: boolean;
   notifications?: number;
   userName?: string;
   onLogout?: () => void;
 };
 
-export default function Header({ title, onToggleSidebar, notifications = 0, userName, onLogout }: Props) {
+export default function Header({ title, onToggleSidebar, sidebarCollapsed = false, notifications = 0, userName, onLogout }: Props) {
   // - alternarBarraLateral: función para abrir/cerrar sidebar
   // - notificaciones: número de notificaciones (se muestra un badge si > 0)
   // - nombreUsuario: email o nombre mostrado en el header
@@ -24,9 +26,15 @@ export default function Header({ title, onToggleSidebar, notifications = 0, user
   const nombreUsuario = userName;
   const cerrarSesion = onLogout;
 
+  // Icono dinámico: si el sidebar está colapsado mostramos hamburguesa, si está visible mostramos un icono para cerrarlo
+  const toggleIcon = sidebarCollapsed ? 'pi pi-bars' : 'pi pi-chevron-left'
+  const toggleTooltip = sidebarCollapsed ? 'Abrir menú' : 'Ocultar menú'
+
   const left = (
     <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-      {alternarBarraLateral && <Button icon="pi pi-bars" onClick={alternarBarraLateral} className="p-button-text" />}
+      {alternarBarraLateral && (
+        <Button icon={toggleIcon} onClick={alternarBarraLateral} className="p-button-text" aria-label={toggleTooltip} />
+      )}
       <h1 style={{ margin: 0, fontSize: 16 }}>{title || 'Dashboard'}</h1>
     </div>
   );
