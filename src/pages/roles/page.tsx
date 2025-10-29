@@ -17,7 +17,7 @@ export default function PageRoles() {
   const [cargando, setLoading] = useState(false);
   const [mensajeError, setError] = useState<string | null>(null);
   // Estado local para el panel de ver/editar
-  const [modoPanel, setModoPanel] = useState<'view' | 'edit' | null>(null);
+  const [modoPanel, setModoPanel] = useState<'ver' | 'editar' | null>(null);
   const [registroPanel, setRegistroPanel] = useState<any | null>(null);
   const tableRef = useRef<DataTableHandle | null>(null);
   const [globalFilter, setGlobalFilter] = useState<string>('');
@@ -108,9 +108,9 @@ export default function PageRoles() {
         <div className="tabla-personalizada">
           {!modoPanel && (
             <>
-              <TableToolbar
+                <TableToolbar
                 title="Secciones"
-                onNew={() => { setModoPanel('edit'); setRegistroPanel({}) }}
+                onNew={() => { setModoPanel('editar'); setRegistroPanel({}) }}
                 onDownloadCSV={() => tableRef.current?.downloadCSV()}
                 globalFilter={globalFilter}
                 setGlobalFilter={(v: string) => {
@@ -119,18 +119,18 @@ export default function PageRoles() {
                 }}
                 clearFilters={() => tableRef.current?.clearFilters()}
               />
-              <DataTable
+                <DataTable
                 ref={tableRef}
                 columns={columns}
                 data={roles}
                 pageSize={10}
-                onNew={() => { setModoPanel('edit'); setRegistroPanel({}) }}
+                onNew={() => { setModoPanel('editar'); setRegistroPanel({}) }}
                 onView={(r) => {
-                  setModoPanel('view');
+                  setModoPanel('ver');
                   setRegistroPanel(r);
                 }}
                 onEdit={(r) => {
-                  setModoPanel('edit');
+                  setModoPanel('editar');
                   setRegistroPanel(r);
                 }}
                 onDelete={eliminarRol}

@@ -32,7 +32,7 @@ export default function PageProductos() {
   const tableRef = useRef<any | null>(null)
   const [globalFilter, setGlobalFilter] = useState<string>('')
   // Estados del panel para ver/editar registros
-  const [modoPanel, setModoPanel] = useState<'view' | 'edit' | null>(null)
+  const [modoPanel, setModoPanel] = useState<'ver' | 'editar' | null>(null)
   const [registroPanel, setRegistroPanel] = useState<any | null>(null)
 
   // removed idFromQuery handling; panelMode drives view/edit
@@ -64,7 +64,7 @@ export default function PageProductos() {
             <>
               <TableToolbar
                 title="Productos"
-                onNew={() => { setModoPanel('edit'); setRegistroPanel({}) }}
+                onNew={() => { setModoPanel('editar'); setRegistroPanel({}) }}
                 onDownloadCSV={() => tableRef.current?.downloadCSV()}
                 globalFilter={globalFilter}
                 setGlobalFilter={(v: string) => { setGlobalFilter(v); tableRef.current?.setGlobalFilter(v) }}
@@ -76,9 +76,9 @@ export default function PageProductos() {
                 columns={columns}
                 data={productos}
                 pageSize={10}
-                onNew={() => { setModoPanel('edit'); setRegistroPanel({}) }}
-                onView={(r) => { setModoPanel('view'); setRegistroPanel(r) }}
-                onEdit={(r) => { setModoPanel('edit'); setRegistroPanel(r) }}
+                onNew={() => { setModoPanel('editar'); setRegistroPanel({}) }}
+                onView={(r) => { setModoPanel('ver'); setRegistroPanel(r) }}
+                onEdit={(r) => { setModoPanel('editar'); setRegistroPanel(r) }}
               />
             </>
           )}

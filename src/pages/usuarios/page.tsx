@@ -23,8 +23,29 @@ export default function PageUsuarios() {
   // Edita este arreglo para mostrar u ocultar atributos.
   // Columnas basadas en la definición de la tabla `usuarios` en la BD
   const [columnasDefinicion] = useState<ColumnDef<any>[]>([
-
-    { key: 'nombreUsuario', title: 'Usuario', sortable: true },
+    // Avatar / imagen (primera columna)
+    {
+      key: 'imagen',
+      title: 'Usuario',
+      sortable: false,
+      render: (value: any, row: any) => {
+        const img = value || row?.imagen || ''
+        const nombre = row?.nombreUsuario || row?.nombre || ''
+        const primeraLetra = nombre.trim().charAt(0).toUpperCase();
+        return (
+          <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+            {img ? (
+              <div className="user-avatar">
+                <img src={String(img)} alt={String(nombre)} />
+              </div>
+            ) : (
+              <div className="user-avatar avatar-placeholder">{primeraLetra}</div>
+            )}
+          </div>
+        )
+      }
+    },
+    { key: 'nombreUsuario', title: 'Nombre', sortable: true },
     { key: 'email', title: 'Email', sortable: true },
     {
       key: 'activoSn',
@@ -44,7 +65,7 @@ export default function PageUsuarios() {
   const tableRef = useRef<DataTableHandle | null>(null);
   const [globalFilter, setGlobalFilter] = useState<string>('');
   // Estados locales del panel (ver / editar)
-  const [modoPanel, setModoPanel] = useState<'view' | 'edit' | null>(null);
+  const [modoPanel, setModoPanel] = useState<'ver' | 'editar' | null>(null);
   const [registroPanel, setRegistroPanel] = useState<any | null>(null);
 
   const refresh = async () => {
@@ -84,9 +105,9 @@ export default function PageUsuarios() {
         <div className="tabla-personalizada">
           {!modoPanel && (
             <>
-              <TableToolbar
+                <TableToolbar
                 title="Secciones"
-                onNew={() => { setModoPanel('edit'); setRegistroPanel({}) }}
+                onNew={() => { setModoPanel('editar'); setRegistroPanel({}) }}
                 onDownloadCSV={() => tableRef.current?.downloadCSV()}
                 globalFilter={globalFilter}
                 setGlobalFilter={(v: string) => {
@@ -102,15 +123,15 @@ export default function PageUsuarios() {
                 data={usuarios}
                 pageSize={10}
                 onNew={() => {
-                  setModoPanel('edit')
+                  setModoPanel('editar')
                   setRegistroPanel({})
                 }}
                 onView={(r) => {
-                  setModoPanel('view')
+                  setModoPanel('ver')
                   setRegistroPanel(r)
                 }}
                 onEdit={(r) => {
-                  setModoPanel('edit')
+                  setModoPanel('editar')
                   setRegistroPanel(r)
                 }}
               />
