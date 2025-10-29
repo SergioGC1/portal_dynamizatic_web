@@ -48,6 +48,15 @@ export default function RecordPanel({ mode, record, columns, onClose, onSave }: 
     const titleKey = columns.find((c) => /nombre|name|titulo|title/i.test(c.key))?.key || columns[0]?.key
     const imageKey = columns.find((c) => /imagen|image|foto|fotoUrl|imagenUrl/i.test(c.key))?.key
 
+    // Decidir si mostrar el bloque de imagen: evitar mostrarlo por defecto en entidades
+    // que no usan imagen (roles, usuarios, etc.). Mostramos el bloque sólo si existe
+    // un valor de imagen para el registro, o si la clave coincide con nombres típicos
+    // explícitos de campo de imagen.
+    const imageKeyLower = String(imageKey || '').toLowerCase()
+    const explicitImageKeys = ['imagen', 'imagenurl', 'imagen_url', 'image', 'imageurl', 'image_url', 'foto', 'fotourl', 'foto_url']
+    const imageValue = imageKey ? form?.[imageKey] : form?.imagen
+    const shouldShowImage = Boolean(imageKey && (imageValue || explicitImageKeys.includes(imageKeyLower)))
+
     // campos a renderizar en el grid: todos excepto imagen, título y acciones
     const gridColumns = columns.filter((c) => {
         const k = c.key.toLowerCase()
@@ -58,7 +67,6 @@ export default function RecordPanel({ mode, record, columns, onClose, onSave }: 
     })
 
     const titleValue = form?.[titleKey]
-    const imageValue = imageKey ? form?.[imageKey] : form?.imagen
 
     return (
         <div className="record-panel">
@@ -74,20 +82,22 @@ export default function RecordPanel({ mode, record, columns, onClose, onSave }: 
 
             {/* Top: imagen (izquierda) + título (derecha) */}
             <div className="record-panel__top">
-                <div className="record-panel__image-box--static">
-                    {imageValue ? (
-                        <img src={String(imageValue)} alt="imagen" className="record-panel__thumbnail" />
-                    ) : (
-                        <div className="record-panel__no-image">No imagen</div>
-                    )}
-                    {/* Icono de borrar sobre la imagen */}
-                    {mode === 'edit' && (
-                        <div className="record-panel__image-delete">
-                            <Button label="" icon="pi pi-trash" onClick={removeImage} className="p-button-sm p-button-rounded p-button-danger" />
-                        </div>
-                    )}
-                </div>
-                <div className="record-panel__main-title">
+                {shouldShowImage && (
+                    <div className="record-panel__image-box--static">
+                        {imageValue ? (
+                            <img src={String(imageValue)} alt="imagen" className="record-panel__thumbnail" />
+                        ) : (
+                            <div className="record-panel__no-image">No imagen</div>
+                        )}
+                        {/* Icono de borrar sobre la imagen */}
+                        {mode === 'edit' && (
+                            <div className="record-panel__image-delete">
+                                <Button label="" icon="pi pi-trash" onClick={removeImage} className="p-button-sm p-button-rounded p-button-danger" />
+                            </div>
+                        )}
+                    </div>
+                )}
+                <div className={`record-panel__main-title ${shouldShowImage ? '' : 'record-panel__main-title--full'}`}>
                     {mode === 'edit' ? (
                         <>
                             <label className="record-panel__label">Nombre</label>

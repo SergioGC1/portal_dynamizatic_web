@@ -95,6 +95,11 @@
   font-weight: 600;
   padding: 6px 8px;
 }
+
+/* Cuando no hay imagen, el título debe ocupar todo el ancho */
+.record-panel__main-title--full {
+  flex: 1 1 100%;
+}
 .record-panel__main-title {
   flex: 1;
 }
