@@ -30,23 +30,27 @@ export default function PageUsuarios() {
       sortable: false,
       render: (value: any, row: any) => {
         const img = value || row?.imagen || ''
-        const nombre = row?.nombreUsuario || row?.nombre || ''
-        const primeraLetra = nombre.trim().charAt(0).toUpperCase();
+        const nombreUsuario = String(row?.nombreUsuario || '')
+        const apellidos = String(row?.apellidos || '')
+        // iniciales: primera letra de nombreUsuario + primera letra del primer apellido
+        const iniciales = (nombreUsuario.trim().charAt(0).toUpperCase() + apellidos.charAt(0)).toUpperCase()
+        const displayName = `${nombreUsuario}${apellidos ? ' ' + apellidos : ''}`.trim()
         return (
           <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
             {img ? (
               <div className="user-avatar">
-                <img src={String(img)} alt={String(nombre)} />
+                <img src={String(img)} alt={String(displayName)} />
               </div>
             ) : (
-              <div className="user-avatar avatar-placeholder">{primeraLetra}</div>
+              <div className="user-avatar avatar-placeholder">{iniciales || '?'}</div>
             )}
           </div>
         )
       }
     },
-    { key: 'nombreUsuario', title: 'Nombre', sortable: true },
-    { key: 'email', title: 'Email', sortable: true },
+  { key: 'nombreUsuario', title: 'Nombre', sortable: true },
+  { key: 'apellidos', title: 'Apellidos', sortable: true },
+  { key: 'email', title: 'Email', sortable: true },
     {
       key: 'activoSn',
       title: 'Activo',

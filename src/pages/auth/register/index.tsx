@@ -9,6 +9,7 @@ import { useAuth } from '../../../contexts/AuthContext';
 
 const Register = () => {
     const [username, setUsername] = useState<string>("");
+    const [apellidos, setApellidos] = useState<string>("");
     const [email, setEmail] = useState<string>("");
     const [password, setPassword] = useState<string>("");
     const [confirmed, setConfirmed] = useState<boolean>(false);
@@ -22,7 +23,7 @@ const Register = () => {
     }
     const handleSignUp = async () => {
         // Validación cliente básica
-        if (!username.trim() || !email.trim() || !password) {
+        if (!username.trim() || !apellidos.trim() || !email.trim() || !password) {
             setError('Por favor, completa todos los campos.');
             return;
         }
@@ -40,7 +41,7 @@ const Register = () => {
         setError(null);
 
     
-    const payload = { nombreUsuario: username, email, password };
+    const payload = { nombreUsuario: username, apellidos, email, password };
         console.debug('Register payload:', payload);
 
         try {
@@ -153,9 +154,21 @@ const Register = () => {
                                 name="username"
                                 type="text"
                                 value={username}
-                                onChange={(e: any) => setUsername(e.target?.value)}
+                    onChange={(e: any) => setUsername(e.target?.value)}
                                 className="w-full md:w-25rem"
                                 placeholder="Nombre de usuario"
+                            />
+                        </span>
+                        <span className="p-input-icon-left w-full mb-4">
+                            <i className="pi pi-user"></i>
+                            <InputText
+                                id="apellidos"
+                                name="apellidos"
+                                type="text"
+                                value={apellidos}
+                                onChange={(e: any) => setApellidos(e.target?.value)}
+                                className="w-full md:w-25rem"
+                                placeholder="Apellidos"
                             />
                         </span>
                         <span className="p-input-icon-left w-full mb-4">
