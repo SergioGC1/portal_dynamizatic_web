@@ -152,18 +152,26 @@ export default function RecordPanel<T = any>({ mode, record = null, columns = []
                     return (
                         <div key={key} className="record-panel__field">
                             <label className="record-panel__label">{label}</label>
-                            {mode === 'ver' ? (
-                                <div className="record-panel__value record-panel__value--view">{String(value ?? '')}</div>
-                            ) : (
-                                isActivo ? (
-                                    <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                                        <InputSwitch checked={String(value ?? '').toUpperCase() === 'S'} onChange={(e: any) => handleChange(key, e.value ? 'S' : 'N')} />
-                                        <span style={{ fontSize: 14 }}>{String(value ?? '').toUpperCase() === 'S' ? 'Activo' : 'Inactivo'}</span>
-                                    </div>
-                                ) : (
-                                    <input value={value ?? ''} onChange={(e) => handleChange(key, (e.target as HTMLInputElement).value)} className="record-panel__input" />
-                                )
-                            )}
+                                    {mode === 'ver' ? (
+                                        isActivo ? (
+                                            // En vista mostramos el switch en modo solo-lectura y la etiqueta
+                                            <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                                                <InputSwitch checked={String(value ?? '').toUpperCase() === 'S'} disabled />
+                                                <span style={{ fontSize: 14 }}>{String(value ?? '').toUpperCase() === 'S' ? 'Activo' : 'Inactivo'}</span>
+                                            </div>
+                                        ) : (
+                                            <div className="record-panel__value record-panel__value--view">{String(value ?? '')}</div>
+                                        )
+                                    ) : (
+                                        isActivo ? (
+                                            <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                                                <InputSwitch checked={String(value ?? '').toUpperCase() === 'S'} onChange={(e: any) => handleChange(key, e.value ? 'S' : 'N')} />
+                                                <span style={{ fontSize: 14 }}>{String(value ?? '').toUpperCase() === 'S' ? 'Activo' : 'Inactivo'}</span>
+                                            </div>
+                                        ) : (
+                                            <input value={value ?? ''} onChange={(e) => handleChange(key, (e.target as HTMLInputElement).value)} className="record-panel__input" />
+                                        )
+                                    )}
                         </div>
                     )
                 })}
