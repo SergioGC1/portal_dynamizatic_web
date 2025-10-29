@@ -90,6 +90,9 @@
 .tabla-contenido {
   width: 100%;
   overflow-x: auto;
+  /* Limitar la altura para que la tabla no se salga del layout principal */
+  max-height: calc(100vh - 260px); /* ajustable según header/footer */
+  overflow-y: auto;
 }
 
 @media (max-width: 700px) {
@@ -283,7 +286,9 @@
 
 /* Forzar que la tabla pueda crecer horizontalmente y sea scrollable desde .tabla-contenido */
 .tabla-datatable .p-datatable-wrapper {
-  overflow: visible !important;
+  /* Allow internal scrolling and prevent the table from overflowing its container */
+  overflow: auto !important;
+  max-height: inherit; /* use the parent's max-height when present */
 }
 
 /* Responsive */
