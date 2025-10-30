@@ -183,48 +183,49 @@ const DataTableAdaptado = forwardRef<DataTableHandle, Props>(function DataTableA
   }
 
   // Template para el header con filtro
+  // Nota: devolvemos los elementos como hermanos directos para que el
+  // icono de orden (.p-sortable-column-icon) inyectado por PrimeReact quede
+  // entre el label y el botón de filtro mediante reglas CSS (flex + order).
   const filterHeaderTemplate = (col: ColumnDef) => {
     return (
-      <div className="tabla-header-container">
-        <div className="tabla-header-content">
-          <span className="tabla-header-label">{col.label || col.title || col.key}</span>
-          {col.filterable !== false && (
-            <>
-              <Button
-                icon={columnFilters[col.key] ? "pi pi-filter-fill" : "pi pi-filter"}
-                className={`tabla-filter-btn ${columnFilters[col.key] ? "active" : ""}`}
-                text
-                rounded
-                onClick={(e) => overlayRefs.current[col.key]?.toggle(e)}
-              />
-              <OverlayPanel ref={(el) => { overlayRefs.current[col.key] = el }} className="tabla-filter-panel">
-                <div className="tabla-filter-content">
-                  <InputText
-                    placeholder={`Buscar por ${(col.label || col.title || col.key).toLowerCase()}`}
-                    value={tempColumnFilters[col.key] || columnFilters[col.key] || ""}
-                    onChange={(e) =>
-                      setTempColumnFilters({
-                        ...tempColumnFilters,
-                        [col.key]: e.target.value,
-                      })
-                    }
-                    className="tabla-filter-input"
+      <>
+        <span className="tabla-header-label">{col.label || col.title || col.key}</span>
+        {col.filterable !== false && (
+          <>
+            <Button
+              icon={columnFilters[col.key] ? "pi pi-filter-fill" : "pi pi-filter"}
+              className={`tabla-filter-btn ${columnFilters[col.key] ? "active" : ""}`}
+              text
+              rounded
+              onClick={(e) => overlayRefs.current[col.key]?.toggle(e)}
+            />
+            <OverlayPanel ref={(el) => { overlayRefs.current[col.key] = el }} className="tabla-filter-panel">
+              <div className="tabla-filter-content">
+                <InputText
+                  placeholder={`Buscar por ${(col.label || col.title || col.key).toLowerCase()}`}
+                  value={tempColumnFilters[col.key] || columnFilters[col.key] || ""}
+                  onChange={(e) =>
+                    setTempColumnFilters({
+                      ...tempColumnFilters,
+                      [col.key]: e.target.value,
+                    })
+                  }
+                  className="tabla-filter-input"
+                />
+                <div className="tabla-filter-actions">
+                  <Button
+                    label="Limpiar"
+                    severity="secondary"
+                    size="small"
+                    onClick={() => clearColumnFilter(col.key)}
                   />
-                  <div className="tabla-filter-actions">
-                    <Button
-                      label="Limpiar"
-                      severity="secondary"
-                      size="small"
-                      onClick={() => clearColumnFilter(col.key)}
-                    />
-                    <Button label="Aplicar" size="small" onClick={() => applyColumnFilter(col.key)} />
-                  </div>
+                  <Button label="Aplicar" size="small" onClick={() => applyColumnFilter(col.key)} />
                 </div>
-              </OverlayPanel>
-            </>
-          )}
-        </div>
-      </div>
+              </div>
+            </OverlayPanel>
+          </>
+        )}
+      </>
     )
   }
 

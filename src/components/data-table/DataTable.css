@@ -9,6 +9,13 @@
   align-items: center;
   gap: 0.5rem;
 }
+/* Header container: relativo para posicionar iconos en los extremos */
+.tabla-header-content {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
 
 /* Botón de filtro: pegado a la derecha del header */
 .tabla-filter-btn {
@@ -17,7 +24,16 @@
   top: 50%;
   transform: translateY(-50%);
   z-index: 3;
-  opacity: 0; /* oculto por defecto */
+  opacity: 1; /* siempre visible */
+  transition: opacity 0.12s ease-in-out, transform 0.12s ease-in-out;
+}
+.tabla-filter-btn {
+  position: absolute !important;
+  right: 0.25rem; /* filtro pegado al borde derecho */
+  top: 50%;
+  transform: translateY(-50%);
+  z-index: 3;
+  opacity: 1;
   transition: opacity 0.12s ease-in-out, transform 0.12s ease-in-out;
 }
 
@@ -27,31 +43,44 @@
 }
 
 /* Mostrar iconos cuando se hace hover en el header o cuando el filtro está activo */
-.tabla-header-content:hover .tabla-filter-btn {
-  opacity: 1;
-}
+/* El botón de filtro es ahora visible siempre; no dependemos de hover */
 
 /* Mover el icono de orden ligeramente a la izquierda del filtro */
 /* PrimeReact coloca el icono de orden con la clase .p-sortable-column .p-sortable-column-icon */
-.tabla-header-content .p-sortable-column-icon {
-  position: absolute;
-  right: 2.75rem; /* justo a la izquierda del filtro */
-  top: 50%;
-  transform: translateY(-50%);
-  opacity: 0; /* oculto por defecto */
-  transition: opacity 0.12s ease-in-out;
-  z-index: 2;
+.p-datatable .p-datatable-thead > tr > th {
+  background: var(--color-fondo);
+  color: var(--color-texto);
+  border-bottom: 2px solid var(--color-borde);
+  padding: 12px;
+  padding-right: 3rem; /* reservar espacio para el botón de filtro */
+  position: relative; /* permitir posicionamiento absoluto de iconos dentro del th */
 }
 
-/* Mostrar la flecha de orden al hacer hover en header */
-.tabla-header-content:hover .p-sortable-column-icon {
-  opacity: 1;
+/* Mostrar siempre el icono de orden y colocarlo justo a la izquierda del filtro */
+.tabla-datatable .p-datatable-thead > tr > th .p-sortable-column-icon {
+  /* Mostrar el icono de orden inline, justo después del texto */
+  position: static !important;
+  right: auto !important;
+  top: auto !important;
+  transform: none !important;
+  opacity: 1 !important;
+  display: inline-flex !important;
+  margin-left: 15px !important; /* separación tras el texto */
+  align-items: center !important;
+  justify-content: center !important;
+  transition: opacity 0.12s ease-in-out, transform 0.12s ease-in-out;
+  z-index: 2 !important;
 }
 
-/* Asegurar que cuando haya filtro activo el icono de orden también sea visible */
-.tabla-header-content .tabla-filter-btn.active ~ .p-sortable-column-icon,
-.tabla-header-content .tabla-filter-btn.active + .p-sortable-column-icon {
-  opacity: 1;
+
+/* Label y filtro como elementos ordenables dentro del th */
+.tabla-datatable .p-datatable-thead > tr > th .tabla-header-label {
+  order: 1;
+  flex: none;
+}
+.tabla-datatable .p-datatable-thead > tr > th .tabla-filter-btn {
+  order: 3;
+  margin-left: auto; /* empuja el filtro al extremo derecho */
 }
 
 /* Estilos para el panel de filtro */
@@ -201,6 +230,14 @@
   color: var(--color-texto);
 }
 
+/* Evitar solapamiento: permitir que la etiqueta se trunque si falta espacio */
+.tabla-header-label {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
 .tabla-filter-btn {
   padding: 4px;
   min-width: auto;
@@ -260,6 +297,7 @@
   color: var(--color-texto);
   border-bottom: 2px solid var(--color-borde);
   padding: 12px;
+  padding-right: 3rem; /* reservar espacio para el botón de filtro */
 }
 
 /* Avatar en tablas: imagen circular o placeholder con inicial */
