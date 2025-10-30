@@ -52,24 +52,48 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       const refresh = data.refreshToken || data.refresh_token;
       if (access) localStorage.setItem('accessToken', access);
       if (refresh) localStorage.setItem('refreshToken', refresh);
-      // Si el objeto data contiene información de usuario, la guardamos
+      // Construir un objeto sencillo `user` a persistir.
+      // Preferimos email presente en `data` o `data.user`. Si no está, intentamos
+      // leer `user` desde localStorage o extraer email del token de forma simple.
+      let userToStore: any = null;
+      if (data && (data.email || (data.user && data.user.email))) {
+        userToStore = data.user ? data.user : { ...data, email: data.email };
+      } else if (access) {
+        try {
+          const parts = String(access).split('.');
+          if (parts.length >= 2) {
+            const decoded = atob(parts[1]);
+            const parsed = JSON.parse(decoded);
+            userToStore = { email: parsed.email || parsed.sub || parsed.preferred_username || undefined, token: access };
+          } else {
+            userToStore = { token: access };
+          }
+        } catch (e) {
+          // Si decode falla, almacenamos al menos el token
+          userToStore = { token: access };
+        }
+      } else {
+        userToStore = data || null;
+      }
+
       try {
-        localStorage.setItem('user', JSON.stringify(data));
+        localStorage.setItem('user', JSON.stringify(userToStore));
       } catch (_) {
         // ignoramos errores al serializar
       }
+      // Actualizar estado local del provider
+      setUser(userToStore);
     } catch (e) {
       console.error('Error guardando tokens en localStorage', e);
     }
   };
 
   const login = (data: any) => {
-    setUser(data);
+    // persistirTokensDesdeData actualizará el estado con el objeto `user` enriquecido
     persistirTokensDesdeData(data);
   };
 
   const register = (data: any) => {
-    setUser(data);
     persistirTokensDesdeData(data);
   };
 

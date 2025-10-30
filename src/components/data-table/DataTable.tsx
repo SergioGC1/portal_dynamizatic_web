@@ -343,7 +343,7 @@ const DataTableAdaptado = forwardRef<DataTableHandle, Props>(function DataTableA
           sortable={col.sortable !== false}
         />
       ))}
-      <Column header="Acciones" body={actionsBodyTemplate} style={{ width: "150px", textAlign: "center" }} />
+      <Column header="Acciones" body={actionsBodyTemplate} style={{ width: "150px", textAlign: "left" }} />
     </DataTable>
   )
 })

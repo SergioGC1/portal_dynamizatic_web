@@ -7,6 +7,7 @@ import DataTable, { ColumnDef } from '../../components/data-table/DataTable';
 import { DataTableHandle } from '../../components/data-table/DataTable';
 import UsuariosAPI from '../../api-endpoints/usuarios/index';
 import TableToolbar from '../../components/ui/TableToolbar';
+import { useAuth } from '../../contexts/AuthContext';
 
 // Page principal para Usuarios — obtiene la lista usando el adaptador en src/api-endpoints/usuarios
 export default function PageUsuarios() {
@@ -67,6 +68,22 @@ export default function PageUsuarios() {
     },
   ]);
   const tableRef = useRef<DataTableHandle | null>(null);
+  // Obtener usuario actual desde el AuthContext (usa el objeto guardado en login/register)
+  const { user: authUser } = useAuth();
+  // Obtener email del usuario actual
+  // 1) authUser.email si está en el contexto
+  // 2) Si no, leer el objeto `user` guardado en localStorage y usar su email
+  const currentEmail = React.useMemo(() => {
+    if (authUser && (authUser as any).email) return (authUser as any).email;
+    try {
+      const stored = localStorage.getItem('user');
+      if (!stored) return null;
+      const parsed = JSON.parse(stored);
+      return parsed?.email || null;
+    } catch (e) {
+      return null;
+    }
+  }, [authUser]);
   const [globalFilter, setGlobalFilter] = useState<string>('');
   // Estados locales del panel (ver / editar)
   const [modoPanel, setModoPanel] = useState<'ver' | 'editar' | null>(null);
@@ -138,6 +155,17 @@ export default function PageUsuarios() {
                   setModoPanel('editar')
                   setRegistroPanel(r)
                 }}
+                // Ocultar botón eliminar si la fila corresponde al usuario logado.
+                // Usamos solo el email del usuario autenticado como criterio (prefieres esta convención).
+                allowDelete={(row) => {
+                  if (!row) return true;
+                  try {
+                    if (currentEmail && String(row.email) === String(currentEmail)) return false;
+                  } catch (e) {
+                    // En caso de error en la comparación, permitimos la acción por seguridad
+                  }
+                  return true;
+                }}
               />
             </>
           )}
@@ -146,6 +174,7 @@ export default function PageUsuarios() {
             <RecordPanel
               mode={modoPanel}
               record={registroPanel}
+              entityType="usuario"
               columns={columns}
               onClose={async () => {
                 setModoPanel(null)
@@ -155,7 +184,11 @@ export default function PageUsuarios() {
               onSave={async (updated) => {
                 try {
                   if (updated.id) await UsuariosAPI.updateUsuarioById(updated.id, updated)
-                  else await UsuariosAPI.createUsuario(updated)
+                  else {
+                    // Para creación de usuario usamos el flujo de registro que acepta contraseña
+                    // El RecordPanel añade `password` al form cuando entityType === 'usuario'
+                    await UsuariosAPI.register(updated)
+                  }
                   setModoPanel(null)
                   setRegistroPanel(null)
                   await refresh()
