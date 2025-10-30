@@ -13,18 +13,68 @@ export default function LoginPage() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
+  const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
+  const [serverError, setServerError] = useState<string | null>(null);
 
   const handleSubmit = async (e?: React.FormEvent<HTMLFormElement>): Promise<void> => {
     e?.preventDefault();
+    setServerError(null)
+    setFieldErrors({})
+    // Validación cliente rápida
+    const errors: Record<string, string> = {}
+    if (!email || !String(email).trim()) errors.email = 'El email es obligatorio'
+    else {
+      const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
+      if (!emailRegex.test(String(email))) errors.email = 'Introduce un email válido'
+    }
+    if (!password) errors.password = 'La contraseña es obligatoria'
+    if (Object.keys(errors).length) {
+      setFieldErrors(errors)
+      return
+    }
     setLoading(true);
     try {
       console.log('DEBUG: handleSubmit called with', { email, password });
       const resp = await signIn({ email, password });
       login(resp);
       navigate('/');
-    } catch (err) {
-      console.error(err);
+    } catch (err: any) {
+      console.error('Login error (detected)', err);
       setLoading(false);
+
+      // Obtener body preferido del adaptador o el mensaje crudo
+      const serverData = err?.body || err?.response?.data || err?.response || err?.message || '';
+      const text = typeof serverData === 'string' ? serverData : JSON.stringify(serverData || '');
+      const lower = text.toLowerCase();
+
+      // Heurística simple y directa: si el backend indica "request body is invalid"
+      // asumimos que la validación de contraseña falló (caso común) y mostramos error en el campo
+      if (lower.includes('request body is invalid') || lower.includes('the request body is invalid') || lower.includes('see error object')) {
+        setFieldErrors({ password: 'La contraseña debe tener al menos 8 caracteres' });
+        //setServerError('Corrige los errores del formulario');
+        return;
+      }
+
+      // Si hay un array de detalles, mapearlos (simplemente) a fieldErrors
+      const details = serverData?.error?.details || serverData?.details || [];
+      if (Array.isArray(details) && details.length) {
+        const fErrors: Record<string, string> = {};
+        for (const d of details) {
+          const path = (d.path || d.context?.key || '').toString().replace(/^\//, '') || 'password';
+          if (d.code === 'minLength' || (d.message && d.message.toLowerCase().includes('fewer than'))) {
+            fErrors.password = 'La contraseña debe tener al menos 8 caracteres';
+          } else if (d.message) {
+            const key = (path === 'nombreUsuario' ? 'email' : path);
+            fErrors[key] = d.message;
+          }
+        }
+        setFieldErrors(fErrors);
+        setServerError('Corrige los errores del formulario');
+        return;
+      }
+
+      // Fallback corto y claro
+      setServerError('Email o contraseña incorrectos');
     }
   };
 
@@ -73,18 +123,22 @@ export default function LoginPage() {
           <form onSubmit={handleSubmit} className="flex flex-column">
             <span className="p-input-icon-left w-full mb-4">
               <i className="pi pi-envelope"></i>
-              <InputText id="email" value={email} onChange={(e) => setEmail(e.target.value)} className="w-full md:w-25rem" placeholder="Email" />
+              <InputText id="email" value={email} onChange={(e) => setEmail(e.target.value)} className="w-full md:w-25rem" placeholder="Email" style={fieldErrors.email ? { border: '1px solid red' } : undefined} />
             </span>
+            {fieldErrors.email && <div style={{ color: 'red', fontSize: 13, marginTop: -8, marginBottom: 8 }}>{fieldErrors.email}</div>}
             <span className="p-input-icon-left w-full mb-4">
               <i className="pi pi-lock z-2"></i>
-              <Password id="password" value={password} onChange={(e: any) => setPassword(e.target.value)} feedback={false} className="w-full" inputClassName="w-full md:w-25rem" placeholder="Contraseña" toggleMask inputStyle={{ paddingLeft: '2.5rem' }} />
+              <Password id="password" value={password} onChange={(e: any) => setPassword(e.target.value)} feedback={false} className="w-full" inputClassName={fieldErrors.password ? 'w-full md:w-25rem p-password-error' : 'w-full md:w-25rem'} placeholder="Contraseña" toggleMask inputStyle={{ paddingLeft: '2.5rem', ...(fieldErrors.password ? { border: '1px solid red' } : {}) }} />
             </span>
+            {fieldErrors.password && <div style={{ color: 'red', fontSize: 13, marginTop: -8, marginBottom: 8 }}>{fieldErrors.password}</div>}
             <div className="mb-4 flex align-items-center justify-content-between">
               <Button label={loading ? 'Ingresando...' : 'Ingresar'} type="submit" className="p-button-primary" disabled={loading} />
               <Button label="Olvidé mi contraseña" type="button" className="p-button-text" onClick={handleForgot} />
             </div>
-            <div className="mt-3 text-center">
-              <Button label="Registrarme" type="button" className="p-button-secondary" onClick={() => navigate('/register')} />
+            {serverError && <div style={{ color: 'red', marginBottom: 8 }}>{serverError}</div>}
+            <div className="mt-3 text-left">
+              <span className="text-600 mr-2">¿Aún no tienes una cuenta?</span>
+              <button type="button" className="font-semibold text-900 hover:text-primary transition-colors transition-duration-300 bg-transparent border-none p-0 cursor-pointer" onClick={() => navigate('/register')}>Registrarme</button>
             </div>
           </form>
         </div>

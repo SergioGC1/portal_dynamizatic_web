@@ -14,6 +14,7 @@ const Register = () => {
     const [password, setPassword] = useState<string>("");
     const [confirmed, setConfirmed] = useState<boolean>(false);
     const [error, setError] = useState<string | null>(null);
+    const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
     const { signUp, signIn } = useJwt();
     const { login } = useAuth();
     const navigate = useNavigate();
@@ -23,8 +24,19 @@ const Register = () => {
     }
     const handleSignUp = async () => {
         // Validación cliente básica
-        if (!username.trim() || !apellidos.trim() || !email.trim() || !password) {
-            setError('Por favor, completa todos los campos.');
+        const fErrors: Record<string, string> = {}
+        if (!username.trim()) fErrors.username = 'El nombre de usuario es obligatorio'
+        if (!apellidos.trim()) fErrors.apellidos = 'Los apellidos son obligatorios'
+        if (!email.trim()) fErrors.email = 'El correo es obligatorio'
+        else {
+            const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+            if (!emailRegex.test(email)) fErrors.email = 'Introduce un correo válido'
+        }
+        if (!password) fErrors.password = 'La contraseña es obligatoria'
+        if (!confirmed) fErrors.confirmed = 'Debes aceptar los términos y condiciones'
+        if (Object.keys(fErrors).length) {
+            setFieldErrors(fErrors)
+            setError('Por favor corrige los errores del formulario')
             return;
         }
         // email simple
@@ -40,8 +52,8 @@ const Register = () => {
 
         setError(null);
 
-    
-    const payload = { nombreUsuario: username, apellidos, email, password };
+
+        const payload = { nombreUsuario: username, apellidos, email, password };
         console.debug('Register payload:', payload);
 
         try {
@@ -71,35 +83,120 @@ const Register = () => {
             }
 
         } catch (err: any) {
-            // Extraer mensaje/problemas devueltos por backend (422)
             console.error('Error al registrar usuario', err);
-            const serverData = err?.response?.data;
-            if (serverData) {
-                // Intentar extraer detalles de validación (formato común de muchos backends)
-                const details = serverData.error?.details || serverData.details || [];
-                let detailMsg = '';
-                if (Array.isArray(details) && details.length > 0) {
-                    detailMsg = details
-                        .map(d => {
-                            // distintos formatos posibles
-                            if (!d) return '';
-                            if (typeof d === 'string') return d;
-                            if (d.message) return d.message;
-                            if (d.context && d.context.key && d.message) return `${d.context.key}: ${d.message}`;
-                            if (d.constraints) return Object.values(d.constraints).join('; ');
-                            return JSON.stringify(d);
-                        })
-                        .filter(Boolean)
-                        .join(' — ');
+            // Preferimos body/status adjuntos por el adaptador si existen
+            const serverData = err?.body || err?.response?.data || err?.response || err?.message || '';
+            const text = typeof serverData === 'string' ? serverData : JSON.stringify(serverData || '');
+            const lower = text.toLowerCase();
+
+            // Extraer detalles si existen (para decisiones más precisas)
+            const details = serverData?.error?.details || serverData?.details || [];
+
+            // Extraer un message humano del serverData de forma robusta
+            let serverMsg: string | null = null;
+            try {
+                if (typeof serverData === 'object' && serverData !== null) {
+                    serverMsg = serverData.error?.message || serverData.message || null;
+                } else if (typeof serverData === 'string') {
+                    // Intentar parsear JSON incrustado en la cadena
+                    const first = serverData.indexOf('{');
+                    const last = serverData.lastIndexOf('}');
+                    if (first !== -1 && last !== -1 && last > first) {
+                        try {
+                            const parsed = JSON.parse(serverData.substring(first, last + 1));
+                            serverMsg = parsed?.error?.message || parsed?.message || null;
+                        } catch (e) { /* ignore */ }
+                    }
+                    // Si no hemos extraído message, intentar parsear desde la primera llave
+                    if (!serverMsg) {
+                        const jsonStart = serverData.indexOf('{"');
+                        if (jsonStart !== -1) {
+                            try {
+                                const parsed = JSON.parse(serverData.substring(jsonStart));
+                                serverMsg = parsed?.error?.message || parsed?.message || null;
+                            } catch (e) { /* ignore */ }
+                        }
+                    }
+                    // Como último recurso, si la cadena contiene comillas con el mensaje
+                    if (!serverMsg) {
+                        const m = serverData.match(/["\u201c\u201d']([^"']{5,100})["\u201c\u201d']/);
+                        if (m && m[1]) serverMsg = m[1];
+                    }
+                }
+            } catch (e) {
+                serverMsg = null;
+            }
+
+            if (serverMsg && typeof serverMsg === 'string') {
+                const sm = serverMsg.trim();
+                const sml = sm.toLowerCase();
+
+                // Detectar mensajes de duplicado / ER_DUP_ENTRY y mapear a mensajes amigables
+                if (sml.includes('duplicate') || sml.includes('er_dup_entry') || sml.includes('duplicate entry') || sml.includes('already exists') || sml.includes('unique')) {
+                    if (sml.includes('correo') || sml.includes('email') || sml.includes('e-mail') || sml.includes('correo electrónico')) {
+                        setFieldErrors({ email: 'El correo electrónico ya está en uso.' });
+                    } else if (sml.includes('nombre') || sml.includes('usuario')) {
+                        setFieldErrors({ username: 'El nombre de usuario ya existe' });
+                    } else {
+                        setFieldErrors({ username: 'Ya existe un usuario con esos datos' });
+                    }
+                    setError(null);
+                    return;
                 }
 
-                const message = serverData.message || serverData.error?.message || serverData.error || JSON.stringify(serverData);
-                const full = detailMsg ? `${message} — ${detailMsg}` : message;
-                setError(`Error del servidor: ${full}`);
-                console.error('Server response body:', serverData);
-            } else {
-                setError(err.message || 'Error al registrar usuario');
+                // Mapear a campo por palabras clave y eliminar JSON largo del UI
+                if (sml.includes('correo') || sml.includes('email') || sml.includes('e-mail') || sml.includes('correo electrónico')) {
+                    setFieldErrors({ email: sm });
+                    setError(null);
+                    return;
+                }
+                if (sml.includes('usuario') || sml.includes('nombre de usuario') || sml.includes('nombre')) {
+                    setFieldErrors({ username: sm });
+                    setError(null);
+                    return;
+                }
+                // Si no identificamos el campo, mostramos sólo el message humano (corto)
+                setError(sm.length > 300 ? sm.substring(0, 300) + '...' : sm);
+                return;
             }
+
+            // Detección simple de duplicados en el texto (prioritaria)
+            if (lower.includes('duplicate') || lower.includes('already exists') || lower.includes('unique')) {
+                setFieldErrors({ username: 'El nombre de usuario ya existe' });
+                return;
+            }
+
+            // Si hay detalles de validación, mapearlos de forma sencilla a fieldErrors
+
+            if (Array.isArray(details) && details.length) {
+                const fErrors: Record<string, string> = {};
+                for (const d of details) {
+                    try {
+                        const path = (d.path || d.context?.key || '').toString().replace(/^\//, '') || 'password';
+                        const key = (path === 'nombreUsuario' || path === 'nombre' || path === 'userName') ? 'username' : ((path === 'correo' || path === 'mail') ? 'email' : path);
+                        if (d.code === 'minLength' || (d.message && d.message.toLowerCase().includes('fewer than'))) {
+                            fErrors['password'] = 'La contraseña debe tener al menos 8 caracteres';
+                        } else if (d.message) {
+                            fErrors[key] = d.message;
+                        }
+                    } catch (ee) { /* continue */ }
+                }
+                setFieldErrors(fErrors);
+                return;
+            }
+
+            // Heurística para 'request body is invalid': solo mapear a password si el texto
+            // o los detalles indican explícitamente que hay un problema con la contraseña.
+            if (lower.includes('request body is invalid') || lower.includes('the request body is invalid') || lower.includes('see error object')) {
+                const indicatesPassword = lower.includes('password') || lower.includes('contraseña') || lower.includes('min') || lower.includes('length') || lower.includes('fewer') || (Array.isArray(details) && details.some(d => String(d.path || d.context?.key || '').toLowerCase().includes('password')));
+                if (indicatesPassword) {
+                    setFieldErrors({ password: 'La contraseña debe tener al menos 8 caracteres' });
+                    return;
+                }
+                // si no indica password, caer al fallback
+            }
+
+            // Fallback claro
         }
     };
 
@@ -154,11 +251,13 @@ const Register = () => {
                                 name="username"
                                 type="text"
                                 value={username}
-                    onChange={(e: any) => setUsername(e.target?.value)}
+                                onChange={(e: any) => setUsername(e.target?.value)}
                                 className="w-full md:w-25rem"
+                                style={fieldErrors.username ? { border: '1px solid red' } : undefined}
                                 placeholder="Nombre de usuario"
                             />
                         </span>
+                        {fieldErrors.username && <div style={{ color: 'red', fontSize: 13, marginTop: -8, marginBottom: 8 }}>{fieldErrors.username}</div>}
                         <span className="p-input-icon-left w-full mb-4">
                             <i className="pi pi-user"></i>
                             <InputText
@@ -168,9 +267,11 @@ const Register = () => {
                                 value={apellidos}
                                 onChange={(e: any) => setApellidos(e.target?.value)}
                                 className="w-full md:w-25rem"
+                                style={fieldErrors.apellidos ? { border: '1px solid red' } : undefined}
                                 placeholder="Apellidos"
                             />
                         </span>
+                        {fieldErrors.apellidos && <div style={{ color: 'red', fontSize: 13, marginTop: -8, marginBottom: 8 }}>{fieldErrors.apellidos}</div>}
                         <span className="p-input-icon-left w-full mb-4">
                             <i className="pi pi-envelope"></i>
                             <InputText
@@ -180,9 +281,11 @@ const Register = () => {
                                 value={email}
                                 onChange={(e: any) => setEmail(e.target?.value)}
                                 className="w-full md:w-25rem"
+                                style={fieldErrors.email ? { border: '1px solid red' } : undefined}
                                 placeholder="Correo electrónico"
                             />
                         </span>
+                        {fieldErrors.email && <div style={{ color: 'red', fontSize: 13, marginTop: -8, marginBottom: 8 }}>{fieldErrors.email}</div>}
                         <span className="p-input-icon-left w-full mb-4">
                             <i className="pi pi-lock z-2"></i>
                             <Password
@@ -192,12 +295,13 @@ const Register = () => {
                                 onChange={(e: any) => setPassword(e.target?.value)}
                                 type="password"
                                 className="w-full"
-                                inputClassName="w-full md:w-25rem"
+                                inputClassName={fieldErrors.password ? 'w-full md:w-25rem p-password-error' : 'w-full md:w-25rem'}
                                 placeholder="Contraseña"
                                 toggleMask
-                                inputStyle={{ paddingLeft: "2.5rem" }}
+                                inputStyle={{ paddingLeft: "2.5rem", ...(fieldErrors.password ? { border: '1px solid red' } : {}) }}
                             />
                         </span>
+                        {fieldErrors.password && <div style={{ color: 'red', fontSize: 13, marginTop: -8, marginBottom: 8 }}>{fieldErrors.password}</div>}
                         <div className="mb-4 flex flex-wrap align-items-center">
                             <Checkbox
                                 id="checkbox"
@@ -213,6 +317,7 @@ const Register = () => {
                                 Términos y condiciones
                             </button>
                         </div>
+                        {fieldErrors.confirmed && <div style={{ color: 'red', fontSize: 13, marginTop: -8, marginBottom: 8 }}>{fieldErrors.confirmed}</div>}
                         <Button label="Registrarse" className="w-full mb-4" onClick={handleSignUp} />
                         <span className="font-medium text-600">
                             ¿Ya tienes una cuenta?{" "}
