@@ -36,6 +36,10 @@
   padding: 8px;
   border: 1px solid #e5e7eb;
   border-radius: 6px;
+  min-height: 36px;
+  display: flex;
+  align-items: center;
+  white-space: normal;
 }
 .record-panel__value--view {
   background: #f3f4f6; /* gris claro para indicar modo ver */
@@ -106,6 +110,12 @@
 .record-panel__product-name {
   font-size: 18px;
   font-weight: 600;
+}
+/* Asegurar que el nombre del producto en vista tiene altura mínima para no colapsar */
+.record-panel__product-name.record-panel__value--view {
+  min-height: 36px;
+  display: flex;
+  align-items: center;
 }
 .record-panel__product-name.record-panel__value--view {
   padding: 8px;
