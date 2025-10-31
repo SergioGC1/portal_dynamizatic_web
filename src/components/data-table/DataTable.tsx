@@ -32,6 +32,17 @@ type Props = {
   // Predicado opcional para permitir/ocultar el botón de eliminar por fila.
   // Si se provee, el botón eliminar sólo se mostrará cuando allowDelete(row) === true
   allowDelete?: (row: any) => boolean
+  // Controles de permisos agrupados en un único objeto `puede`.
+  // - nuevo: permite mostrar el botón "Nuevo" (booleano)
+  // - ver: booleano o predicado por fila
+  // - editar: booleano o predicado por fila
+  // - borrar: booleano o predicado por fila
+  puede?: {
+    nuevo?: boolean
+    ver?: boolean | ((row: any) => boolean)
+    editar?: boolean | ((row: any) => boolean)
+    borrar?: boolean | ((row: any) => boolean)
+  }
 }
 
 export type DataTableHandle = {
@@ -51,7 +62,8 @@ const DataTableAdaptado = forwardRef<DataTableHandle, Props>(function DataTableA
     onView,
     onEdit,
     onDelete,
-    allowDelete,
+  allowDelete,
+  puede,
   }: Props,
   ref,
 ) {
@@ -244,37 +256,50 @@ const DataTableAdaptado = forwardRef<DataTableHandle, Props>(function DataTableA
       color: "#fff", // icon color
     }
 
+  // Evaluar permisos por fila usando el objeto `puede`.
+  const permisoVer = puede?.ver
+  const permisoEditar = puede?.editar
+  const permisoBorrar = puede?.borrar
+
+  const puedeVerFila = typeof permisoVer === 'function' ? permisoVer(rowData) : (permisoVer ?? true)
+  const puedeEditarFila = typeof permisoEditar === 'function' ? permisoEditar(rowData) : (permisoEditar ?? true)
+  const puedeBorrarFila = typeof permisoBorrar === 'function' ? permisoBorrar(rowData) : (permisoBorrar ?? true)
+
     return (
       <div className="tabla-actions" style={{ display: "flex", gap: 8, alignItems: "center", justifyContent: 'flex-start' }}>
-        <Button
-          icon="pi pi-eye"
-          onClick={(e) => {
-            e.stopPropagation()
-            if (onView) onView(rowData)
-            else console.log("view clicked", rowData)
-          }}
-          tooltip="Ver"
-          tooltipOptions={{ position: "top" }}
-          style={{ ...commonStyle, backgroundColor: "#007bff" }} // azul
-        />
+  {puedeVerFila && (
+          <Button
+            icon="pi pi-eye"
+            onClick={(e) => {
+              e.stopPropagation()
+              if (onView) onView(rowData)
+              else console.log("view clicked", rowData)
+            }}
+            tooltip="Ver"
+            tooltipOptions={{ position: "top" }}
+            style={{ ...commonStyle, backgroundColor: "#007bff" }} // azul
+          />
+        )}
 
-        <Button
-          icon="pi pi-pencil"
-          onClick={(e) => {
-            e.stopPropagation()
-            if (onEdit) onEdit(rowData)
-            else console.log("edit clicked", rowData)
-          }}
-          tooltip="Editar"
-          tooltipOptions={{ position: "top" }}
-          style={{ ...commonStyle, backgroundColor: "#28a745" }} // verde
-        />
+  {puedeEditarFila && (
+          <Button
+            icon="pi pi-pencil"
+            onClick={(e) => {
+              e.stopPropagation()
+              if (onEdit) onEdit(rowData)
+              else console.log("edit clicked", rowData)
+            }}
+            tooltip="Editar"
+            tooltipOptions={{ position: "top" }}
+            style={{ ...commonStyle, backgroundColor: "#28a745" }} // verde
+          />
+        )}
 
-        {/* Mostrar botón eliminar por defecto (compatibilidad):
-            - Si `allowDelete` está definido y devuelve false, ocultarlo.
-            - Si `allowDelete` no está definido, mostrar el botón.
-            - La acción solo llamará a `onDelete` si la página lo pasó; si no, hace console.log (no rompe). */}
-        {(!allowDelete || allowDelete(rowData)) && (
+    {/* Mostrar botón eliminar por defecto (compatibilidad):
+      - Si `allowDelete` está definido y devuelve false, ocultarlo.
+      - Si `allowDelete` no está definido, mostramos según `puede.borrar` evaluado por fila.
+    */}
+  {((!allowDelete || allowDelete(rowData)) && puedeBorrarFila) && (
           <Button
             icon="pi pi-trash"
             onClick={(e) => {
