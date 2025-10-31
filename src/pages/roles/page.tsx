@@ -3,6 +3,7 @@ import '../../styles/layout.scss';
 import '../../styles/_main.scss';
 import RecordPanel from '../../components/ui/RecordPanel';
 import TableToolbar from '../../components/ui/TableToolbar';
+import usePermisos from '../../hooks/usePermisos';
 import { DataTableHandle } from '../../components/data-table/DataTable';
 import { useRef } from 'react';
 import DataTable, { ColumnDef } from '../../components/data-table/DataTable';
@@ -45,6 +46,8 @@ export default function PageRoles() {
   );
 
   const [toast, setToast] = useState<any>(null);
+
+  const { hasPermission } = usePermisos()
 
   const loadRoles = async () => {
     setLoading(true);
@@ -100,8 +103,6 @@ export default function PageRoles() {
     <div style={{ padding: 16 }}>
       <Toast ref={setToast} />
       <ConfirmDialog />
-
-      <h2>Roles</h2>
       {cargando && <div>Cargando roles...</div>}
       {mensajeError && <div style={{ color: 'red' }}>{mensajeError}</div>}
       {!cargando && !mensajeError && (
@@ -109,8 +110,9 @@ export default function PageRoles() {
           {!modoPanel && (
             <>
                 <TableToolbar
-                title="Secciones"
-                onNew={() => { setModoPanel('editar'); setRegistroPanel({}) }}
+                title="Roles"
+                  onNew={() => { setModoPanel('editar'); setRegistroPanel({}) }}
+                  puede={{ nuevo: hasPermission('Roles', 'Nuevo') }}
                 onDownloadCSV={() => tableRef.current?.downloadCSV()}
                 globalFilter={globalFilter}
                 setGlobalFilter={(v: string) => {
@@ -133,7 +135,12 @@ export default function PageRoles() {
                   setModoPanel('editar');
                   setRegistroPanel(r);
                 }}
-                onDelete={eliminarRol}
+                  onDelete={eliminarRol}
+                  puede={{
+                    ver: hasPermission('Roles', 'Ver'),
+                    editar: hasPermission('Roles', 'Actualizar'),
+                    borrar: hasPermission('Roles', 'Borrar'),
+                  }}
                 allowDelete={(r) => String(r?.nombre || '').trim().toLowerCase() !== 'supervisor'}
               />
             </>
@@ -143,14 +150,19 @@ export default function PageRoles() {
               mode={modoPanel}
               record={registroPanel}
               columns={columns}
+              entityType="rol"
               onClose={async () => {
                 setModoPanel(null);
                 setRegistroPanel(null);
                 await refresh();
               }}
-              onSave={async (updated) => {
+              onSave={async (updated: any) => {
                 try {
+                  // Actualizar campos del rol primero
                   await RolesAPI.updateRoleById(updated.id || registroPanel.id, updated);
+
+                  
+
                   setModoPanel(null);
                   setRegistroPanel(null);
                   toast.show({
@@ -169,8 +181,6 @@ export default function PageRoles() {
           )}
         </div>
       )}
-
-      {/* idSeleccionado/edit flow removed: panelMode/panelRecord handles view/edit */}
     </div>
   );
 }

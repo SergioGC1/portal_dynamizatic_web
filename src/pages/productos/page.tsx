@@ -5,6 +5,7 @@ import RecordPanel from '../../components/ui/RecordPanel'
 import DataTable, { ColumnDef } from '../../components/data-table/DataTable'
 import productosAPI from '../../api-endpoints/productos/index'
 import TableToolbar from '../../components/data-table/TableToolbar'
+import usePermisos from '../../hooks/usePermisos'
 
 export default function PageProductos() {
   const [productos, setProductos] = useState<any[]>([])
@@ -35,6 +36,8 @@ export default function PageProductos() {
   const [modoPanel, setModoPanel] = useState<'ver' | 'editar' | null>(null)
   const [registroPanel, setRegistroPanel] = useState<any | null>(null)
 
+  const { hasPermission } = usePermisos()
+
   // removed idFromQuery handling; panelMode drives view/edit
 
   useEffect(() => {
@@ -55,7 +58,6 @@ export default function PageProductos() {
 
   return (
     <div style={{ padding: 16 }}>
-      <h2>Productos</h2>
       {cargando && <div>Cargando productos...</div>}
       {mensajeError && <div style={{ color: 'red' }}>{mensajeError}</div>}
       {!cargando && !mensajeError && (
@@ -65,6 +67,7 @@ export default function PageProductos() {
               <TableToolbar
                 title="Productos"
                 onNew={() => { setModoPanel('editar'); setRegistroPanel({}) }}
+                puede={{ nuevo: hasPermission('Productos', 'Nuevo') }}
                 onDownloadCSV={() => tableRef.current?.downloadCSV()}
                 globalFilter={globalFilter}
                 setGlobalFilter={(v: string) => { setGlobalFilter(v); tableRef.current?.setGlobalFilter(v) }}
@@ -79,6 +82,11 @@ export default function PageProductos() {
                 onNew={() => { setModoPanel('editar'); setRegistroPanel({}) }}
                 onView={(r) => { setModoPanel('ver'); setRegistroPanel(r) }}
                 onEdit={(r) => { setModoPanel('editar'); setRegistroPanel(r) }}
+                puede={{
+                  ver: hasPermission('Productos', 'Ver'),
+                  editar: hasPermission('Productos', 'Actualizar'),
+                  borrar: hasPermission('Productos', 'Borrar'),
+                }}
               />
             </>
           )}
@@ -87,6 +95,7 @@ export default function PageProductos() {
             <RecordPanel
               mode={modoPanel}
               record={registroPanel}
+              entityType="producto"
               columns={columns}
               onClose={async () => {
                 setModoPanel(null)

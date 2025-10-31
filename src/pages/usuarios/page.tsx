@@ -7,6 +7,7 @@ import DataTable, { ColumnDef } from '../../components/data-table/DataTable';
 import { DataTableHandle } from '../../components/data-table/DataTable';
 import UsuariosAPI from '../../api-endpoints/usuarios/index';
 import TableToolbar from '../../components/ui/TableToolbar';
+import usePermisos from '../../hooks/usePermisos';
 import { useAuth } from '../../contexts/AuthContext';
 
 // Page principal para Usuarios — obtiene la lista usando el adaptador en src/api-endpoints/usuarios
@@ -70,6 +71,8 @@ export default function PageUsuarios() {
   const tableRef = useRef<DataTableHandle | null>(null);
   // Obtener usuario actual desde el AuthContext (usa el objeto guardado en login/register)
   const { user: authUser } = useAuth();
+  // Cargar permisos del rol actual
+  const { hasPermission } = usePermisos()
   // Obtener email del usuario actual
   // 1) authUser.email si está en el contexto
   // 2) Si no, leer el objeto `user` guardado en localStorage y usar su email
@@ -119,7 +122,6 @@ export default function PageUsuarios() {
 
   return (
     <div style={{ padding: 16 }}>
-      <h2>Usuarios</h2>
       {cargando && <div>Cargando usuarios...</div>}
       {mensajeError && <div style={{ color: 'red' }}>{mensajeError}</div>}
       {!cargando && !mensajeError && (
@@ -127,8 +129,10 @@ export default function PageUsuarios() {
           {!modoPanel && (
             <>
                 <TableToolbar
-                title="Secciones"
-                onNew={() => { setModoPanel('editar'); setRegistroPanel({}) }}
+                title="Usuarios"
+                  onNew={() => { setModoPanel('editar'); setRegistroPanel({}) }}
+                  // controlar permisos con el objeto `puede` (nuevo/ver/editar/borrar)
+                  puede={{ nuevo: hasPermission('Usuarios', 'Nuevo') }}
                 onDownloadCSV={() => tableRef.current?.downloadCSV()}
                 globalFilter={globalFilter}
                 setGlobalFilter={(v: string) => {
@@ -154,6 +158,12 @@ export default function PageUsuarios() {
                 onEdit={(r) => {
                   setModoPanel('editar')
                   setRegistroPanel(r)
+                }}
+                // Permisos para acciones: usamos hasPermission con la pantalla 'Usuarios'
+                puede={{
+                  ver: hasPermission('Usuarios', 'Ver'),
+                  editar: hasPermission('Usuarios', 'Actualizar'),
+                  borrar: hasPermission('Usuarios', 'Borrar'),
                 }}
                 // Ocultar botón eliminar si la fila corresponde al usuario logado.
                 // Usamos solo el email del usuario autenticado como criterio (prefieres esta convención).
@@ -183,11 +193,21 @@ export default function PageUsuarios() {
               }}
               onSave={async (updated) => {
                 try {
-                  if (updated.id) await UsuariosAPI.updateUsuarioById(updated.id, updated)
+                  // extraer roles asignados (desde RecordPanel) y limpiar el payload
+                  const assignedRoles = (updated as any)._assignedRoles || []
+                  const payload: any = { ...updated }
+                  delete payload._assignedRoles
+                  // si hay roles asignados, mantenemos compatibilidad con el esquema actual usando `rolId` (primer rol)
+                  if (assignedRoles && assignedRoles.length) {
+                    const parsed = Number(assignedRoles[0])
+                    payload.rolId = Number.isNaN(parsed) ? assignedRoles[0] : parsed
+                  }
+
+                  if (updated.id) await UsuariosAPI.updateUsuarioById(updated.id, payload)
                   else {
                     // Para creación de usuario usamos el flujo de registro que acepta contraseña
                     // El RecordPanel añade `password` al form cuando entityType === 'usuario'
-                    await UsuariosAPI.register(updated)
+                    await UsuariosAPI.register(payload)
                   }
                   setModoPanel(null)
                   setRegistroPanel(null)
