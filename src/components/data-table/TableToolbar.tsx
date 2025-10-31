@@ -12,6 +12,7 @@ type TableToolbarProps = {
   setGlobalFilter: (v: string) => void
   clearFilters: () => void
   showSearchButton?: boolean
+  puede?: { nuevo?: boolean }
 }
 
 /**
@@ -31,12 +32,15 @@ export default function TableToolbar({
   setGlobalFilter,
   clearFilters,
   showSearchButton = true,
+  puede,
 }: TableToolbarProps) {
+  const permisoNuevo = puede?.nuevo ?? true
+
   return (
     <div className="tabla-toolbar">
       <div className="tabla-toolbar-left">
         {title && <span className="tabla-title">{title}</span>}
-        {onNew && (
+        {onNew && permisoNuevo && (
           <Button label="Nuevo" icon="pi pi-plus" severity="success" onClick={onNew} />
         )}
         <Button label="Descargar CSV" icon="pi pi-download" severity="success" onClick={onDownloadCSV} />
