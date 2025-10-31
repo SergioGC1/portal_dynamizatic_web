@@ -136,10 +136,7 @@ export default function LoginPage() {
               <Button label="Olvidé mi contraseña" type="button" className="p-button-text" onClick={handleForgot} />
             </div>
             {serverError && <div style={{ color: 'red', marginBottom: 8 }}>{serverError}</div>}
-            <div className="mt-3 text-left">
-              <span className="text-600 mr-2">¿Aún no tienes una cuenta?</span>
-              <button type="button" className="font-semibold text-900 hover:text-primary transition-colors transition-duration-300 bg-transparent border-none p-0 cursor-pointer" onClick={() => navigate('/register')}>Registrarme</button>
-            </div>
+            {/* Registro deshabilitado: la funcionalidad de self-register se ha eliminado según especificación */}
           </form>
         </div>
       </div>

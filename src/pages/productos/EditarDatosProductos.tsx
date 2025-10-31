@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from 'react'
 import productosAPI from '../../api-endpoints/productos/index'
+import ProductPhasesPanel from '../../components/product/ProductPhasesPanel'
 
 type Props = { productId?: string }
 
@@ -211,6 +212,11 @@ export default function EditarDatosProductos({ productId }: Props) {
           <button type="button" onClick={() => { /* reset si quieres */ }} style={{ padding: '8px 12px', borderRadius: 6 }}>Cancelar</button>
         </div>
       </form>
+
+      {/* Panel de fases: sólo en edición (producto existente) */}
+      {productId && (
+        <ProductPhasesPanel productId={productId} />
+      )}
     </div>
   )
 }

@@ -244,6 +244,7 @@ const Register = () => {
                         )}
                     </div>
                     <div className="flex flex-column">
+                        <label className="mb-1 font-medium">Nombre de usuario <span style={{ color: 'red' }}>*</span></label>
                         <span className="p-input-icon-left w-full mb-4">
                             <i className="pi pi-user"></i>
                             <InputText
@@ -258,6 +259,8 @@ const Register = () => {
                             />
                         </span>
                         {fieldErrors.username && <div style={{ color: 'red', fontSize: 13, marginTop: -8, marginBottom: 8 }}>{fieldErrors.username}</div>}
+
+                        <label className="mb-1 font-medium">Apellidos <span style={{ color: 'red' }}>*</span></label>
                         <span className="p-input-icon-left w-full mb-4">
                             <i className="pi pi-user"></i>
                             <InputText
@@ -272,6 +275,8 @@ const Register = () => {
                             />
                         </span>
                         {fieldErrors.apellidos && <div style={{ color: 'red', fontSize: 13, marginTop: -8, marginBottom: 8 }}>{fieldErrors.apellidos}</div>}
+
+                        <label className="mb-1 font-medium">Correo electrónico <span style={{ color: 'red' }}>*</span></label>
                         <span className="p-input-icon-left w-full mb-4">
                             <i className="pi pi-envelope"></i>
                             <InputText
@@ -286,6 +291,8 @@ const Register = () => {
                             />
                         </span>
                         {fieldErrors.email && <div style={{ color: 'red', fontSize: 13, marginTop: -8, marginBottom: 8 }}>{fieldErrors.email}</div>}
+
+                        <label className="mb-1 font-medium">Contraseña <span style={{ color: 'red' }}>*</span></label>
                         <span className="p-input-icon-left w-full mb-4">
                             <i className="pi pi-lock z-2"></i>
                             <Password
@@ -311,7 +318,7 @@ const Register = () => {
                                 className="mr-2"
                             />
                             <label htmlFor="checkbox" className="text-900 font-medium mr-2">
-                                He leído y acepto
+                                He leído y acepto <span style={{ color: 'red' }}>*</span>
                             </label>
                             <button type="button" className="text-600 hover:text-primary p-0 border-none bg-transparent cursor-pointer">
                                 Términos y condiciones

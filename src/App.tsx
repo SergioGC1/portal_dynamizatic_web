@@ -5,7 +5,6 @@ import ProtectedRoute from './components/routing/ProtectedRoute';
 import { useAuth } from './contexts/AuthContext';
 import { Navigate } from 'react-router-dom';
 import LoginPage from './pages/auth/login';
-import RegisterPage from './pages/auth/register';
 import MainPage from './pages/MainPage';
 import NotFoundPage from './pages/auth/notfound/page';
 
@@ -24,8 +23,7 @@ function App() {
     <BrowserRouter>
       <Routes>
         <Route path="/" element={<ProtectedRoute><MainPage /></ProtectedRoute>} />
-        <Route path="/login" element={<PublicRoute><LoginPage /></PublicRoute>} />
-        <Route path="/register" element={<PublicRoute><RegisterPage /></PublicRoute>} />
+  <Route path="/login" element={<PublicRoute><LoginPage /></PublicRoute>} />
         {/* Ruta comodín para 404 - Not Found */}
         <Route path="*" element={<NotFoundPage />} />
       </Routes>

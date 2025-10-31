@@ -2,12 +2,14 @@ import React, { useMemo, useState } from "react";
 import "../styles/layout.scss";
 import "../styles/_main.scss";
 import { useAuth } from "../contexts/AuthContext";
+import usePermisos from '../hooks/usePermisos';
 import Header from "../components/layout/Header";
 import Sidebar from "../components/layout/Sidebar";
 // Button import removed (no longer used here)
 import UsuariosPage from "./usuarios/page";
 import RolesPage from "./roles/page";
 import ProductosPage from "./productos/page";
+import PermisosPage from "./permisos/page";
 
 export default function MainPage() {
   const { user, logout } = useAuth();
@@ -15,19 +17,27 @@ export default function MainPage() {
   const [sidebarCollapsed, setSidebarCollapsed] = useState<boolean>(false);
   const [selected, setSelected] = useState<string>("dashboard");
 
-  const menuItems = useMemo(
-    () => [
+  // Obtener helper para comprobar permisos del rol actual
+  const { hasPermission: tienePermiso } = usePermisos()
+
+  const menuItems = useMemo(() => {
+    const base = [
       { key: "dashboard", label: "Dashboard" },
       { key: "usuarios", label: "Usuarios" },
       { key: "roles", label: "Roles" },
       { key: "productos", label: "Productos" },
       { key: "fases", label: "Fases" },
-      { key: "permisos", label: "Permisos" },
-      { key: "chat", label: "Chat" },
-      { key: "notificaciones", label: "Notificaciones" },
-    ],
-    []
-  );
+    ] as Array<{ key: string; label: string }>
+
+    // Mostrar opción "Permisos" solo si el usuario puede ver o actualizar permisos
+    if (tienePermiso('Permisos', 'Ver') || tienePermiso('Permisos', 'Actualizar')) {
+      base.push({ key: 'permisos', label: 'Permisos' })
+    }
+
+    base.push({ key: "chat", label: "Chat" })
+    base.push({ key: "notificaciones", label: "Notificaciones" })
+    return base
+  }, [tienePermiso])
 
   const componentes: Record<string, React.ReactNode> = {
     dashboard: (
@@ -41,6 +51,7 @@ export default function MainPage() {
     usuarios: <UsuariosPage />,
     roles: <RolesPage />,
     productos: <ProductosPage />,
+    permisos: <PermisosPage />,
     
   };
 
@@ -61,12 +72,13 @@ export default function MainPage() {
         <Sidebar items={menuItems as any} selectedKey={selected} onSelect={setSelected} />
       )}
       <div style={{ flex: 1, display: "flex", flexDirection: "column", minWidth: 0 }}>
-        <Header
+      <Header
           title="Portal Dynamizatic"
           userName={user?.email}
           notifications={0}
-          onLogout={cerrarSesion}
-          onToggleSidebar={() => setSidebarCollapsed(s => !s)}
+        onLogout={cerrarSesion}
+        // Evitar usar abreviaturas en callbacks; usar nombre explícito
+        onToggleSidebar={() => setSidebarCollapsed(prev => !prev)}
           sidebarCollapsed={sidebarCollapsed}
         />
         <main style={{ padding: 16, overflow: "auto", overflowX: "auto", minWidth: 0 }}>{contenido}</main>
