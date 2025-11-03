@@ -32,16 +32,27 @@ export default function PageUsuarios() {
       sortable: false,
       render: (value: any, row: any) => {
         const img = value || row?.imagen || ''
+        const apiBase = (typeof window !== 'undefined' && (window as any).__API_BASE_URL__) || 'http://127.0.0.1:3000'
+        const buildSrc = (p: string) => {
+          const s = String(p)
+          if (s.startsWith('http://') || s.startsWith('https://')) return s
+          if (s.startsWith('/')) return `${apiBase}${s}`
+          return `${apiBase}/${s}`
+        }
         const nombreUsuario = String(row?.nombreUsuario || '')
         const apellidos = String(row?.apellidos || '')
         // iniciales: primera letra de nombreUsuario + primera letra del primer apellido
         const iniciales = (nombreUsuario.trim().charAt(0).toUpperCase() + apellidos.charAt(0)).toUpperCase()
         const displayName = `${nombreUsuario}${apellidos ? ' ' + apellidos : ''}`.trim()
+        // Si el registro trae un cache-buster local (`_cb`) lo añadimos para forzar
+        // la recarga del avatar tras una subida reciente.
+        const cb = (row && (row as any)._cb) ? `cb=${(row as any)._cb}` : ''
+        const srcWithCb = cb ? (buildSrc(String(img)) + (String(buildSrc(String(img))).includes('?') ? `&${cb}` : `?${cb}`)) : buildSrc(String(img))
         return (
           <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
             {img ? (
               <div className="user-avatar">
-                <img src={String(img)} alt={String(displayName)} />
+                <img src={srcWithCb} alt={String(displayName)} />
               </div>
             ) : (
               <div className="user-avatar avatar-placeholder">{iniciales || '?'}</div>
@@ -186,6 +197,15 @@ export default function PageUsuarios() {
               record={registroPanel}
               entityType="usuario"
               columns={columns}
+              // cuando RecordPanel suba una imagen correctamente, refrescamos la lista
+              onUploadSuccess={async (userId:number) => {
+                try {
+                  // recargar la lista desde el servidor
+                  await refresh()
+                  // forzar cache-bust local para el usuario recién subido (evita mostrar imagen caché)
+                  setUsers((prev) => prev.map(u => (u && Number(u.id) === Number(userId)) ? { ...u, _cb: Date.now() } : u))
+                } catch(e){ console.error(e) }
+              }}
               onClose={async () => {
                 setModoPanel(null)
                 setRegistroPanel(null)

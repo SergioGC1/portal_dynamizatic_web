@@ -12,4 +12,5 @@ module.exports = {
   countUsuarios: (where) => usuariosAPI.count(where),
   login: (data) => usuariosAPI.login(data),
   register: (data) => usuariosAPI.register(data),
+  uploadUsuarioImagen: (userId, file, filename) => usuariosAPI.uploadImage(userId, file, filename),
 };

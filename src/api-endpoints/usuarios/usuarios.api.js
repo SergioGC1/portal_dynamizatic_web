@@ -75,6 +75,62 @@ async function register(data) {
   return await handleResponse(res, 'register');
 }
 
+// Upload image for a user. Tries the consolidated endpoint first (/usuarios/:id/imagen)
+// and falls back to the older uploads route (/uploads/users/:id) for backward
+// compatibility. Returns the parsed response (expected { path, url }).
+async function uploadImage(userId, file, filename) {
+  if (!userId) throw new Error('userId required')
+  if (!file) throw new Error('file required')
+
+  // Candidate URLs in order of preference. We include variants with and
+  // without the `/api` prefix and both the new usuarios endpoint and the
+  // legacy uploads endpoint to maximize compatibility with different backends.
+  const candidates = [
+    // Eliminada la variante `/api/usuarios/:id/imagen` porque tu backend
+    // no la expone y provocaba 404; mantenemos las rutas legacy que sí
+    // funcionan en tu entorno.
+    `${BASE_URL}/usuarios/${userId}/imagen`,
+    `${BASE_URL}/api/uploads/users/${userId}`,
+    `${BASE_URL}/uploads/users/${userId}`,
+  ]
+
+  const fd = new FormData()
+  fd.append('file', file)
+  if (filename) fd.append('filename', filename)
+
+  const headers = getAuthHeader()
+
+  // try each candidate until one succeeds
+  let lastError = null
+  const tried = []
+  for (const url of candidates) {
+    tried.push(url)
+    try {
+      const res = await fetch(url, { method: 'POST', headers, body: fd })
+      if (!res.ok) {
+        const txt = await res.text().catch(() => '')
+        const err = new Error(`uploadImage failed ${res.status}: ${txt}`)
+        err.status = res.status
+        lastError = err
+        // try next
+        continue
+      }
+      const contentType = res.headers.get('content-type') || ''
+      const txt = await res.text().catch(() => '')
+      if (!txt) return null
+      if (!contentType.includes('application/json')) return txt
+      try { return JSON.parse(txt) } catch (e) { return txt }
+    } catch (e) {
+      lastError = e
+      // continue to next candidate
+    }
+  }
+
+  const msg = lastError ? `${lastError.message}` : 'No endpoint responded successfully'
+  const err = new Error(`uploadImage failed. Tried: ${tried.join(', ')}. Last error: ${msg}`)
+  throw err
+}
+
 module.exports = {
   find,
   getById,
@@ -84,5 +140,6 @@ module.exports = {
   delete: _delete,
   count,
   login,
-  register
+  register,
+  uploadImage
 };
