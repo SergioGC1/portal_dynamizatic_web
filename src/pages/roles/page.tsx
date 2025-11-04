@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useMemo, useState } from 'react';
 import '../../styles/layout.scss';
 import '../../styles/_main.scss';
 import RecordPanel from '../../components/ui/RecordPanel';
@@ -17,6 +17,7 @@ export default function PageRoles() {
   const [roles, setRoles] = useState<any[]>([]);
   const [cargando, setLoading] = useState(false);
   const [mensajeError, setError] = useState<string | null>(null);
+  const [hasSearched, setHasSearched] = useState(false); // Indica si ya se ha realizado una búsqueda
   // Estado local para el panel de ver/editar
   const [modoPanel, setModoPanel] = useState<'ver' | 'editar' | null>(null);
   const [registroPanel, setRegistroPanel] = useState<any | null>(null);
@@ -55,6 +56,7 @@ export default function PageRoles() {
     try {
       const list = await RolesAPI.findRoles();
       setRoles(list || []);
+      setHasSearched(true); // Marcar que ya se ha realizado una búsqueda
     } catch (e: any) {
       console.error(e);
       setError(e?.message || 'Error cargando roles');
@@ -63,10 +65,9 @@ export default function PageRoles() {
     }
   };
 
-  useEffect(() => {
-    loadRoles();
-  }, []);
+  // NOTA: No cargamos datos automáticamente - solo cuando el usuario presiona "Buscar"
 
+  // Función de refrescar - alias para loadRoles para mantener compatibilidad
   const refresh = async () => {
     await loadRoles();
   };
@@ -103,25 +104,47 @@ export default function PageRoles() {
     <div style={{ padding: 16 }}>
       <Toast ref={setToast} />
       <ConfirmDialog />
-      {cargando && <div>Cargando roles...</div>}
       {mensajeError && <div style={{ color: 'red' }}>{mensajeError}</div>}
-      {!cargando && !mensajeError && (
-        <div className="tabla-personalizada">
-          {!modoPanel && (
-            <>
-                <TableToolbar
-                title="Roles"
-                  onNew={() => { setModoPanel('editar'); setRegistroPanel({}) }}
-                  puede={{ nuevo: hasPermission('Roles', 'Nuevo') }}
-                onDownloadCSV={() => tableRef.current?.downloadCSV()}
-                globalFilter={globalFilter}
-                setGlobalFilter={(v: string) => {
-                  setGlobalFilter(v)
-                  tableRef.current?.setGlobalFilter(v)
-                }}
-                clearFilters={() => tableRef.current?.clearFilters()}
-              />
-                <DataTable
+      
+      <div className="tabla-personalizada">
+        {!modoPanel && (
+          <>
+            <TableToolbar
+              title="Roles"
+              onNew={() => { setModoPanel('editar'); setRegistroPanel({}) }}
+              puede={{ nuevo: hasPermission('Roles', 'Nuevo') }}
+              onDownloadCSV={() => tableRef.current?.downloadCSV()}
+              onSearch={loadRoles} // Conectar búsqueda con loadRoles
+              globalFilter={globalFilter}
+              setGlobalFilter={(v: string) => {
+                setGlobalFilter(v)
+                tableRef.current?.setGlobalFilter(v)
+              }}
+              clearFilters={() => {
+                setRoles([])
+                setHasSearched(false)
+                tableRef.current?.clearFilters()
+              }}
+            />
+
+            {!hasSearched && !cargando && (
+              <div style={{ 
+                textAlign: 'center', 
+                padding: 40, 
+                background: '#f8f9fa', 
+                borderRadius: 8,
+                margin: '20px 0'
+              }}>
+                <h4 style={{ color: '#666', marginBottom: 16 }}>
+                  Buscar Roles
+                </h4>
+              </div>
+            )}
+
+            {cargando && <div style={{ textAlign: 'center', padding: 20 }}>Cargando roles...</div>}
+
+            {hasSearched && !cargando && (
+              <DataTable
                 ref={tableRef}
                 columns={columns}
                 data={roles}
@@ -143,9 +166,10 @@ export default function PageRoles() {
                   }}
                 allowDelete={(r) => String(r?.nombre || '').trim().toLowerCase() !== 'supervisor'}
               />
-            </>
-          )}
-          {modoPanel && registroPanel && (
+            )}
+          </>
+        )}
+        {modoPanel && registroPanel && (
             <RecordPanel
               mode={modoPanel}
               record={registroPanel}
@@ -171,7 +195,7 @@ export default function PageRoles() {
                     detail: 'Rol actualizado correctamente',
                     life: 2500,
                   });
-                  await refresh();
+                  await loadRoles();
                 } catch (e) {
                   console.error(e);
                   toast.show({ severity: 'error', summary: 'Error', detail: 'Error guardando rol', life: 2500 });
@@ -180,7 +204,6 @@ export default function PageRoles() {
             />
           )}
         </div>
-      )}
     </div>
   );
 }

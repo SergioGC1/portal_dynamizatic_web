@@ -1,16 +1,17 @@
-import React, { useEffect, useMemo, useState, useRef } from 'react'
+import React, { useMemo, useState, useRef } from 'react'
 import '../../styles/layout.scss'
 import '../../styles/_main.scss'
 import RecordPanel from '../../components/ui/RecordPanel'
 import DataTable, { ColumnDef } from '../../components/data-table/DataTable'
 import productosAPI from '../../api-endpoints/productos/index'
-import TableToolbar from '../../components/data-table/TableToolbar'
+import TableToolbar from '../../components/ui/TableToolbar'
 import usePermisos from '../../hooks/usePermisos'
 
 export default function PageProductos() {
   const [productos, setProductos] = useState<any[]>([])
   const [cargando, setLoading] = useState(false)
   const [mensajeError, setError] = useState<string | null>(null)
+  const [hasSearched, setHasSearched] = useState(false) // Indica si ya se ha realizado una búsqueda
   
   // Columnas explícitas para Productos — ajusta las keys según tu esquema (tamaño vs tamaño con ñ)
   const [columnasDefinicion] = useState<ColumnDef<any>[]>([
@@ -38,42 +39,68 @@ export default function PageProductos() {
 
   const { hasPermission } = usePermisos()
 
-  // removed idFromQuery handling; panelMode drives view/edit
-
-  useEffect(() => {
-    let mounted = true
+  // Función para cargar productos - solo cuando el usuario busque
+  const loadProductos = async () => {
     setLoading(true)
     setError(null)
-    productosAPI.findProductos()
-      .then(list => {
-        if (!mounted) return
-        setProductos(list || [])
-      })
-      .catch(e => { console.error(e); if (mounted) setError(e?.message || 'Error cargando productos') })
-      .finally(() => { if (mounted) setLoading(false) })
-    return () => { mounted = false }
-  }, [])
+    try {
+      const list = await productosAPI.findProductos()
+      setProductos(list || [])
+      setHasSearched(true) // Marcar que ya se ha realizado una búsqueda
+    } catch (e: any) {
+      console.error(e)
+      setError(e?.message || 'Error cargando productos')
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  // NOTA: No cargamos datos automáticamente - solo cuando el usuario presiona "Buscar"
 
   const columns = useMemo(() => (columnasDefinicion.length ? columnasDefinicion : [{ key: 'id', title: 'ID' }]), [columnasDefinicion])
 
   return (
     <div style={{ padding: 16 }}>
-      {cargando && <div>Cargando productos...</div>}
       {mensajeError && <div style={{ color: 'red' }}>{mensajeError}</div>}
-      {!cargando && !mensajeError && (
-        <div className="tabla-personalizada">
-          {!modoPanel && (
-            <>
-              <TableToolbar
-                title="Productos"
-                onNew={() => { setModoPanel('editar'); setRegistroPanel({}) }}
-                puede={{ nuevo: hasPermission('Productos', 'Nuevo') }}
-                onDownloadCSV={() => tableRef.current?.downloadCSV()}
-                globalFilter={globalFilter}
-                setGlobalFilter={(v: string) => { setGlobalFilter(v); tableRef.current?.setGlobalFilter(v) }}
-                clearFilters={() => tableRef.current?.clearFilters()}
-              />
+      
+      <div className="tabla-personalizada">
+        {!modoPanel && (
+          <>
+            <TableToolbar
+              title="Productos"
+              onNew={() => { setModoPanel('editar'); setRegistroPanel({}) }}
+              puede={{ nuevo: hasPermission('Productos', 'Nuevo') }}
+              onDownloadCSV={() => tableRef.current?.downloadCSV()}
+              onSearch={loadProductos} // Conectar búsqueda con loadProductos
+              globalFilter={globalFilter}
+              setGlobalFilter={(v: string) => { 
+                setGlobalFilter(v); 
+                tableRef.current?.setGlobalFilter(v) 
+              }}
+              clearFilters={() => {
+                setProductos([])
+                setHasSearched(false)
+                tableRef.current?.clearFilters()
+              }}
+            />
 
+            {!hasSearched && !cargando && (
+              <div style={{ 
+                textAlign: 'center', 
+                padding: 40, 
+                background: '#f8f9fa', 
+                borderRadius: 8,
+                margin: '20px 0'
+              }}>
+                <h4 style={{ color: '#666', marginBottom: 16 }}>
+                  Buscar Productos
+                </h4>
+              </div>
+            )}
+
+            {cargando && <div style={{ textAlign: 'center', padding: 20 }}>Cargando productos...</div>}
+
+            {hasSearched && !cargando && (
               <DataTable
                 ref={tableRef}
                 columns={columns}
@@ -88,10 +115,10 @@ export default function PageProductos() {
                   borrar: hasPermission('Productos', 'Borrar'),
                 }}
               />
-            </>
-          )}
-
-          {modoPanel && registroPanel && (
+            )}
+          </>
+        )}
+        {modoPanel && registroPanel && (
             <RecordPanel
               mode={modoPanel}
               record={registroPanel}
@@ -102,8 +129,7 @@ export default function PageProductos() {
                 setRegistroPanel(null)
                 // recargar lista
                 try {
-                  const list = await productosAPI.findProductos()
-                  setProductos(list || [])
+                  await loadProductos()
                 } catch (e) { console.error(e) }
               }}
               onSave={async (updated) => {
@@ -112,14 +138,12 @@ export default function PageProductos() {
                   else await productosAPI.createProducto(updated)
                   setModoPanel(null)
                   setRegistroPanel(null)
-                  const list = await productosAPI.findProductos()
-                  setProductos(list || [])
+                  await loadProductos()
                 } catch (e) { console.error(e) }
               }}
             />
           )}
         </div>
-      )}
     </div>
   )
 }
