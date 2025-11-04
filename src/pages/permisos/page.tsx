@@ -32,11 +32,18 @@ export default function PaginaPermisos() {
   // Calcular pantallas y sus acciones a partir de los permisos existentes
   const pantallasSeccion = useMemo(() => {
     const agrupado: Record<string, Set<string>> = {};
+    
+    // PRIMERO: Asegurar que 'Usuarios' y 'Roles' siempre existen con sus acciones obligatorias
+    agrupado['Usuarios'] = new Set(['Ver', 'Nuevo', 'Actualizar', 'Borrar', 'ActivoSn', 'Rol']);
+    agrupado['Roles'] = new Set(['Ver', 'Nuevo', 'Actualizar', 'Borrar', 'ActivoSn']);
+    
+    // SEGUNDO: Añadir permisos existentes de la BD
     listaPermisos.forEach(permisoItem => {
       const nombrePantalla = permisoItem.pantalla || 'Desconocido';
       agrupado[nombrePantalla] = agrupado[nombrePantalla] || new Set<string>();
       if (permisoItem.accion) agrupado[nombrePantalla].add(permisoItem.accion);
     });
+    
     return Object.keys(agrupado).map(nombre => ({ pantalla: nombre, acciones: Array.from(agrupado[nombre]) }));
   }, [listaPermisos]);
 

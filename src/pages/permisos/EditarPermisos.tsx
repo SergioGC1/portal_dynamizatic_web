@@ -30,7 +30,12 @@ export default function EditarPermisos({ rolId }: Props) {
         const lista = Array.isArray(permisosData) ? permisosData : [];
         setListaPermisos(rolId ? lista.filter((permisoItem: any) => String(permisoItem.rolId) === String(rolId)) : lista);
       })
-      .catch((err) => { console.error(err); setMensajeError('Error cargando datos'); })
+      .catch((err) => {
+        console.error('Error cargando datos del backend:', err);
+        setMensajeError('Error cargando datos del servidor');
+        setListaRoles([]);
+        setListaPermisos([]);
+      })
       .finally(() => setCargando(false));
   }, [rolId]);
 
@@ -84,9 +89,9 @@ export default function EditarPermisos({ rolId }: Props) {
 
   return (
     <div style={{ maxWidth: 960 }}>
-  <h3>{rolId ? `Editar permisos del rol ${rolId}` : 'Editar permisos'}</h3>
-  {mensajeError && <div style={{ color: 'red', margin: 8 }}>{mensajeError}</div>}
-  {cargando && <div style={{ margin: 8 }}>Cargando permisos...</div>}
+      <h3>{rolId ? `Editar permisos del rol ${rolId}` : 'Editar permisos'}</h3>
+      {mensajeError && <div style={{ color: 'red', margin: 8 }}>{mensajeError}</div>}
+      {cargando && <div style={{ margin: 8 }}>Cargando permisos...</div>}
 
       {pantallasSeccion.map(seccion => (
         <section key={seccion.pantalla} style={{ marginTop: 16 }}>

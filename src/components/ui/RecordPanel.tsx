@@ -125,7 +125,8 @@ export default function RecordPanel<T = any>({ mode, record = null, columns = []
     const [rolesOptions, setRolesOptions] = useState<Array<any>>([])
     const [selectedRole, setSelectedRole] = useState<string | null>(null)
     // Permisos del usuario actual: usamos el hook para conocer rolId del usuario
-    const { rolId: miRolId } = usePermisos()
+    // y la función hasPermission para comprobar acciones concretas por pantalla
+    const { rolId: miRolId, hasPermission } = usePermisos()
     const [puedeEditarRol, setPuedeEditarRol] = useState(false)
 
     const formRolId = (form as any)?.rolId
@@ -214,6 +215,26 @@ export default function RecordPanel<T = any>({ mode, record = null, columns = []
 
     // Determinar si la tabla (columns) declara la columna 'imagen'
     const hasImagenColumn = (columns || []).some((c) => String(c.key).toLowerCase() === 'imagen')
+
+    // Mapeo simple para obtener el nombre de "pantalla" usado en permisos
+    const pantalla = entityType === 'usuario' ? 'Usuarios' : entityType === 'rol' ? 'Roles' : (entityType ? `${entityType.charAt(0).toUpperCase()}${entityType.slice(1)}s` : '')
+
+    // Helper: comprobar variantes de permiso para 'Activo' y 'Rol'.
+    // CONTROL GRANULAR: Solo permite la acción específica, NO fallback a 'Actualizar'
+    const canEditActivo = () => {
+        if (!hasPermission) return false
+        return (
+            hasPermission(pantalla, 'ActivoSN') || hasPermission(pantalla, 'ActivoSn') || hasPermission(pantalla, 'Activo')
+        )
+    }
+
+    const canEditRol = () => {
+        if (!hasPermission) return puedeEditarRol
+        return (
+            puedeEditarRol ||
+            hasPermission(pantalla, 'Rol') || hasPermission(pantalla, 'EditarRol') || hasPermission(pantalla, 'Editar Rol')
+        )
+    }
 
     // Mostrar el bloque de imagen sólo si:
     // - el registro ya tiene imagen, o
@@ -472,7 +493,12 @@ export default function RecordPanel<T = any>({ mode, record = null, columns = []
                             ) : (
                                 isActivo ? (
                                     <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                                        <InputSwitch checked={String(value ?? '').toUpperCase() === 'S'} onChange={(e: any) => handleChange(key, e.value ? 'S' : 'N')} />
+                                        {/* Sólo permitir cambiar activo si el usuario tiene el permiso específico 'ActivoSN' para la pantalla */}
+                                        <InputSwitch
+                                            checked={String(value ?? '').toUpperCase() === 'S'}
+                                            onChange={(e: any) => handleChange(key, e.value ? 'S' : 'N')}
+                                            disabled={!canEditActivo()}
+                                        />
                                         <span style={{ fontSize: 14 }}>{String(value ?? '').toUpperCase() === 'S' ? 'Activo' : 'Inactivo'}</span>
                                     </div>
                                 ) : (
@@ -497,7 +523,7 @@ export default function RecordPanel<T = any>({ mode, record = null, columns = []
                                     <div style={{ color: '#999' }}>Sin rol asignado</div>
                                 )}
                             </div>
-                        ) : (
+                                ) : (
                             <div>
                                 <select value={selectedRole || ''} onChange={(e) => {
                                     const val = e.target.value || null
@@ -505,7 +531,7 @@ export default function RecordPanel<T = any>({ mode, record = null, columns = []
                                     handleChange('_assignedRoles', val ? [val] : [])
                                     // actualizar rolId real para compatibilidad con payloads existentes
                                     handleChange('rolId', val ? (isNaN(Number(val)) ? val : Number(val)) : val)
-                                }} disabled={mode === 'editar' && !puedeEditarRol} style={{ width: '100%', padding: 8, borderRadius: 6 }}>
+                                }} disabled={mode === 'editar' && !canEditRol()} style={{ width: '100%', padding: 8, borderRadius: 6 }}>
                                     <option value="">-- Selecciona un rol --</option>
                                     {rolesOptions.map((o) => (
                                         <option key={o.value} value={o.value}>{o.label}</option>
