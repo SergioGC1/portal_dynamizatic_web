@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react'
 import { InputSwitch } from 'primereact/inputswitch'
+import { confirmDialog, ConfirmDialog } from 'primereact/confirmdialog'
 import { ColumnDef } from '../../components/data-table/DataTable'
 import Button from './Button'
 import './RecordPanel.css'
@@ -105,20 +106,35 @@ export default function RecordPanel<T = any>({ mode, record = null, columns = []
     }
 
     const removeImage = () => {
-        handleChange('imagen', '')
-        setForm((s: any) => {
-            const copy = { ...s }
-            delete copy._imagenFile
-            return copy
+        confirmDialog({
+            message: '¿Estás seguro de que quieres eliminar esta imagen? Esta acción no se puede deshacer.',
+            header: 'Confirmar eliminación',
+            icon: 'pi pi-exclamation-triangle',
+            accept: async () => {
+                try {
+                    // Si es un usuario existente con imagen, eliminar de la base de datos
+                    if (entityType === 'usuario' && (form as any)?.id && (form as any).imagen) {
+                        const UsuariosAPI = require('../../api-endpoints/usuarios/index')
+                        await UsuariosAPI.updateUsuarioById((form as any).id, { imagen: null })
+                    }
+                    
+                    // Limpiar solo la imagen existente (no archivos locales pendientes)
+                    handleChange('imagen', '')
+                    
+                    console.log('Imagen eliminada correctamente')
+                } catch (error) {
+                    console.error('Error al eliminar la imagen:', error)
+                    alert('Error al eliminar la imagen. Inténtalo de nuevo.')
+                }
+            },
+            reject: () => {
+                // Usuario canceló, no hacer nada
+            },
+            acceptLabel: 'Sí, eliminar',
+            rejectLabel: 'Cancelar',
+            acceptClassName: 'p-button-danger',
+            rejectClassName: 'p-button-secondary'
         })
-        // limpiar preview local si existía
-        try {
-            if (currentObjectUrlRef.current) URL.revokeObjectURL(currentObjectUrlRef.current)
-        } catch (e) {
-            // ignore
-        }
-        currentObjectUrlRef.current = null
-        setLocalPreviewUrl(null)
     }
 
     // Roles (solo para entidad 'usuario'). No mostramos ni cargamos permisos aquí.
@@ -408,23 +424,51 @@ export default function RecordPanel<T = any>({ mode, record = null, columns = []
                         )}
                         {/* overlay: si hay preview local, lo colocamos encima de la imagen */}
                         {localPreviewUrl && (
-                            <img
-                                src={localPreviewUrl}
-                                alt="Vista previa"
-                                style={{
-                                    position: 'absolute',
-                                    top: 0,
-                                    left: 0,
-                                    width: 160,
-                                    height: 160,
-                                    objectFit: 'cover',
-                                    borderRadius: 6,
-                                    boxShadow: '0 6px 18px rgba(0,0,0,0.18)'
-                                }}
-                            />
+                            <>
+                                <img
+                                    src={localPreviewUrl}
+                                    alt="Vista previa"
+                                    style={{
+                                        position: 'absolute',
+                                        top: 0,
+                                        left: 0,
+                                        width: 160,
+                                        height: 160,
+                                        objectFit: 'cover',
+                                        borderRadius: 6,
+                                        boxShadow: '0 6px 18px rgba(0,0,0,0.18)'
+                                    }}
+                                />
+                                {/* Botón para descartar imagen nueva seleccionada */}
+                                {mode === 'editar' && (
+                                    <div className="record-panel__image-delete">
+                                        <Button 
+                                            label="" 
+                                            icon="pi pi-times" 
+                                            onClick={() => {
+                                                // Descartar imagen nueva seleccionada
+                                                setForm((s: any) => {
+                                                    const copy = { ...s }
+                                                    delete copy._imagenFile
+                                                    return copy
+                                                })
+                                                try {
+                                                    if (currentObjectUrlRef.current) URL.revokeObjectURL(currentObjectUrlRef.current)
+                                                } catch (e) {
+                                                    // ignore
+                                                }
+                                                currentObjectUrlRef.current = null
+                                                setLocalPreviewUrl(null)
+                                            }}
+                                            className="p-button-sm p-button-rounded p-button-secondary" 
+                                            tooltip="Descartar imagen nueva"
+                                        />
+                                    </div>
+                                )}
+                            </>
                         )}
-                        {/* Icono de borrar sobre la imagen */}
-                        {mode === 'editar' && (
+                        {/* Icono de borrar sobre la imagen - solo si hay imagen existente y no hay preview local */}
+                        {mode === 'editar' && previewUrl && !localPreviewUrl && (
                             <div className="record-panel__image-delete">
                                 <Button label="" icon="pi pi-trash" onClick={removeImage} className="p-button-sm p-button-rounded p-button-danger" />
                             </div>
@@ -441,14 +485,51 @@ export default function RecordPanel<T = any>({ mode, record = null, columns = []
 
                                     {/* File upload UI */}
                                     <div style={{ marginTop: 12 }}>
-                                        <label className="record-panel__label">Subir imagen</label>
                                         {/* input file oculto: lo abrimos con el botón */}
                                         <input ref={fileInputRef} type="file" style={{ display: 'none' }} accept="image/*" onChange={(e) => onFileSelected(e.target.files ? e.target.files[0] : undefined)} />
 
-                                        <div style={{ marginTop: 8, display: 'flex', gap: 8, alignItems: 'center' }}>
-                                            <Button label="Subir imagen" onClick={() => fileInputRef.current && fileInputRef.current.click()} />
-                                            {uploadingImage && <div style={{ marginLeft: 8 }}>Subiendo...</div>}
-                                            {!(form as any)?.id && <div style={{ marginLeft: 8, color: '#999' }}>Guarda el registro primero para confirmar el nombre del archivo</div>}
+                                        <div style={{ marginTop: 8, display: 'flex', gap: 12, alignItems: 'center' }}>
+                                            <Button 
+                                                icon="pi pi-upload" 
+                                                label="Subir imagen"
+                                                onClick={() => fileInputRef.current && fileInputRef.current.click()} 
+                                                className="p-button-outlined"
+                                            />
+                                            
+                                            {/* Mostrar nombre del archivo seleccionado */}
+                                            {(form as any)?._imagenFile && (
+                                                <div style={{ 
+                                                    display: 'flex', 
+                                                    alignItems: 'center', 
+                                                    gap: 8,
+                                                    padding: '6px 12px',
+                                                    backgroundColor: '#f0f0f0',
+                                                    borderRadius: '4px',
+                                                    fontSize: '0.9em'
+                                                }}>
+                                                    <i className="pi pi-file" style={{ color: '#6c757d' }}></i>
+                                                    <span style={{ color: '#495057' }}>
+                                                        {((form as any)._imagenFile as File).name}
+                                                    </span>
+                                                </div>
+                                            )}
+                                            
+                                            {uploadingImage && (
+                                                <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                                                    <i className="pi pi-spin pi-spinner" style={{ color: '#007bff' }}></i>
+                                                    <span style={{ color: '#007bff' }}>Subiendo...</span>
+                                                </div>
+                                            )}
+                                            
+                                            {!(form as any)?.id && (
+                                                <div style={{ 
+                                                    color: '#6c757d', 
+                                                    fontSize: '0.85em',
+                                                    fontStyle: 'italic'
+                                                }}>
+                                                    Guarda el registro primero para confirmar el nombre del archivo
+                                                </div>
+                                            )}
                                         </div>
                                     </div>
                                 </div>
@@ -547,6 +628,9 @@ export default function RecordPanel<T = any>({ mode, record = null, columns = []
             {isProductRecord && (form as any)?.id && (
                 <ProductPhasesPanel productId={(form as any).id} />
             )}
+            
+            {/* Dialog de confirmación para eliminar imagen */}
+            <ConfirmDialog />
         </div>
     )
 }
