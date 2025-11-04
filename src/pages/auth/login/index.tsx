@@ -36,6 +36,15 @@ export default function LoginPage() {
     try {
       console.log('DEBUG: handleSubmit called with', { email, password });
       const resp = await signIn({ email, password });
+      
+      // Verificar si el usuario está activo antes de permitir el login
+      const usuario = resp?.user || resp;
+      if (usuario && usuario.activoSn !== 'S') {
+        setServerError('Tu cuenta no está activa.\nContacta al administrador para activarla.');
+        setLoading(false);
+        return;
+      }
+      
       login(resp);
       navigate('/');
     } catch (err: any) {
@@ -135,7 +144,7 @@ export default function LoginPage() {
               <Button label={loading ? 'Ingresando...' : 'Ingresar'} type="submit" className="p-button-primary" disabled={loading} />
               <Button label="Olvidé mi contraseña" type="button" className="p-button-text" onClick={handleForgot} />
             </div>
-            {serverError && <div style={{ color: 'red', marginBottom: 8 }}>{serverError}</div>}
+            {serverError && <div style={{ color: 'red', marginBottom: 8, whiteSpace: 'pre-line' }}>{serverError}</div>}
             {/* Registro deshabilitado: la funcionalidad de self-register se ha eliminado según especificación */}
           </form>
         </div>
