@@ -12,6 +12,7 @@ type TableToolbarProps = {
   setGlobalFilter: (v: string) => void
   clearFilters: () => void
   showSearchButton?: boolean
+  onSearch?: () => void // Callback para el botón buscar
   // Control de permisos: objeto `puede`. Si `puede.nuevo` es false se oculta el botón Nuevo
   puede?: { nuevo?: boolean }
 }
@@ -32,6 +33,7 @@ export default function TableToolbar({
   setGlobalFilter,
   clearFilters,
   showSearchButton = true,
+  onSearch,
   puede,
 }: TableToolbarProps) {
   const permisoNuevo = puede?.nuevo ?? true
@@ -53,9 +55,10 @@ export default function TableToolbar({
             placeholder="Buscar por palabra clave"
             value={globalFilter}
             onChange={(e: React.ChangeEvent<HTMLInputElement>) => setGlobalFilter(e.target.value)}
+            onKeyDown={(e) => e.key === 'Enter' && onSearch && onSearch()}
           />
         </span>
-        {showSearchButton && <Button label="Buscar" icon="pi pi-search" />}
+        {showSearchButton && <Button label="Buscar" icon="pi pi-search" onClick={onSearch} />}
         <Button label="Limpiar filtros" icon="pi pi-filter-slash" severity="secondary" onClick={clearFilters} />
       </div>
     </div>

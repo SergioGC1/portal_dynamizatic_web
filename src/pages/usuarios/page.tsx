@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState, useRef } from 'react';
+import React, { useMemo, useState, useRef } from 'react';
 // Estilos globales para páginas y componentes
 import '../../styles/layout.scss';
 import '../../styles/_main.scss';
@@ -20,6 +20,7 @@ export default function PageUsuarios() {
   const [usuarios, setUsers] = useState<any[]>([]); // lista de usuarios (setter mantiene nombre técnico `setUsers`)
   const [cargando, setLoading] = useState(false);
   const [mensajeError, setError] = useState<string | null>(null);
+  const [hasSearched, setHasSearched] = useState(false); // Indica si ya se ha realizado una búsqueda
   
   // Definición explícita de columnas que queremos mostrar en la tabla de Usuarios.
   // Edita este arreglo para mostrar u ocultar atributos.
@@ -109,6 +110,7 @@ export default function PageUsuarios() {
     try {
       const list = await UsuariosAPI.findUsuarios()
       setUsers(list || [])
+      setHasSearched(true) // Marcar que ya se ha realizado una búsqueda
     } catch (e: any) {
       console.error(e)
       setError(e?.message || 'Error cargando usuarios')
@@ -118,41 +120,52 @@ export default function PageUsuarios() {
   }
 
   // (removed query param handling) Página no abre edición al clicar fila; el panel se controla con panelMode/panelRecord
-
-  useEffect(() => {
-    let mounted = true;
-    // usar refresh pero proteger mounted flag
-    (async () => {
-      if (!mounted) return
-      await refresh()
-    })()
-    return () => { mounted = false }
-  }, [])
+  // NOTA: No cargamos datos automáticamente - solo cuando el usuario presiona "Buscar"
 
   const columns = useMemo(() => (columnasDefinicion.length ? columnasDefinicion : [{ key: 'id', title: 'ID' }]), [columnasDefinicion]);
 
   return (
     <div style={{ padding: 16 }}>
-      {cargando && <div>Cargando usuarios...</div>}
       {mensajeError && <div style={{ color: 'red' }}>{mensajeError}</div>}
-      {!cargando && !mensajeError && (
-        <div className="tabla-personalizada">
-          {!modoPanel && (
-            <>
-                <TableToolbar
-                title="Usuarios"
-                  onNew={() => { setModoPanel('editar'); setRegistroPanel({}) }}
-                  // controlar permisos con el objeto `puede` (nuevo/ver/editar/borrar)
-                  puede={{ nuevo: hasPermission('Usuarios', 'Nuevo') }}
-                onDownloadCSV={() => tableRef.current?.downloadCSV()}
-                globalFilter={globalFilter}
-                setGlobalFilter={(v: string) => {
-                  setGlobalFilter(v)
-                  tableRef.current?.setGlobalFilter(v)
-                }}
-                clearFilters={() => tableRef.current?.clearFilters()}
-              />
+      
+      <div className="tabla-personalizada">
+        {!modoPanel && (
+          <>
+            <TableToolbar
+              title="Usuarios"
+              onNew={() => { setModoPanel('editar'); setRegistroPanel({}) }}
+              puede={{ nuevo: hasPermission('Usuarios', 'Nuevo') }}
+              onDownloadCSV={() => tableRef.current?.downloadCSV()}
+              onSearch={refresh} // Conectar búsqueda con refresh
+              globalFilter={globalFilter}
+              setGlobalFilter={(v: string) => {
+                setGlobalFilter(v)
+                tableRef.current?.setGlobalFilter(v)
+              }}
+              clearFilters={() => {
+                setUsers([])
+                setHasSearched(false)
+                tableRef.current?.clearFilters()
+              }}
+            />
 
+            {!hasSearched && !cargando && (
+              <div style={{ 
+                textAlign: 'center', 
+                padding: 40, 
+                background: '#f8f9fa', 
+                borderRadius: 8,
+                margin: '20px 0'
+              }}>
+                <h4 style={{ color: '#666', marginBottom: 16 }}>
+                Usuarios
+                </h4>
+              </div>
+            )}
+
+            {cargando && <div style={{ textAlign: 'center', padding: 20 }}>Cargando usuarios...</div>}
+
+            {hasSearched && !cargando && (
               <DataTable
                 ref={tableRef}
                 columns={columns}
@@ -188,8 +201,9 @@ export default function PageUsuarios() {
                   return true;
                 }}
               />
-            </>
-          )}
+            )}
+          </>
+        )}
 
           {modoPanel && registroPanel && (
             <RecordPanel
@@ -239,7 +253,6 @@ export default function PageUsuarios() {
             />
           )}
         </div>
-      )}
     </div>
   );
 }
