@@ -1,7 +1,7 @@
 import React, { useMemo, useState, useRef } from 'react';
 import '../../styles/layout.scss';
 import '../../styles/_main.scss';
-import RecordPanel from '../../components/ui/RecordPanel';
+import GestorPaneles from '../../components/ui/GestorPaneles';
 import DataTable, { ColumnDef } from '../../components/data-table/DataTable';
 import { DataTableHandle } from '../../components/data-table/DataTable';
 import FasesAPI from '../../api-endpoints/fases/index';
@@ -159,7 +159,7 @@ export default function PageFases() {
 
                 {/* Panel para ver/editar fase */}
                 {modoPanel && registroPanel && (
-                    <RecordPanel
+                    <GestorPaneles
                         mode={modoPanel}
                         record={registroPanel}
                         entityType="fase"

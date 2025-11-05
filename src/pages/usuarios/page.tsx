@@ -2,7 +2,7 @@ import React, { useMemo, useState, useRef } from 'react';
 // Estilos globales para páginas y componentes
 import '../../styles/layout.scss';
 import '../../styles/_main.scss';
-import RecordPanel from '../../components/ui/RecordPanel';
+import GestorPaneles from '../../components/ui/GestorPaneles';
 import DataTable, { ColumnDef } from '../../components/data-table/DataTable';
 import { DataTableHandle } from '../../components/data-table/DataTable';
 import UsuariosAPI from '../../api-endpoints/usuarios/index';
@@ -21,7 +21,7 @@ export default function PageUsuarios() {
   const [cargando, setLoading] = useState(false);
   const [mensajeError, setError] = useState<string | null>(null);
   const [hasSearched, setHasSearched] = useState(false); // Indica si ya se ha realizado una búsqueda
-  
+
   // Definición explícita de columnas que queremos mostrar en la tabla de Usuarios.
   // Edita este arreglo para mostrar u ocultar atributos.
   // Columnas basadas en la definición de la tabla `usuarios` en la BD
@@ -62,9 +62,9 @@ export default function PageUsuarios() {
         )
       }
     },
-  { key: 'nombreUsuario', title: 'Nombre', sortable: true },
-  { key: 'apellidos', title: 'Apellidos', sortable: true },
-  { key: 'email', title: 'Email', sortable: true },
+    { key: 'nombreUsuario', title: 'Nombre', sortable: true },
+    { key: 'apellidos', title: 'Apellidos', sortable: true },
+    { key: 'email', title: 'Email', sortable: true },
     {
       key: 'activoSn',
       title: 'Activo',
@@ -127,7 +127,7 @@ export default function PageUsuarios() {
   return (
     <div style={{ padding: 16 }}>
       {mensajeError && <div style={{ color: 'red' }}>{mensajeError}</div>}
-      
+
       <div className="tabla-personalizada">
         {!modoPanel && (
           <>
@@ -150,15 +150,15 @@ export default function PageUsuarios() {
             />
 
             {!hasSearched && !cargando && (
-              <div style={{ 
-                textAlign: 'center', 
-                padding: 40, 
-                background: '#f8f9fa', 
+              <div style={{
+                textAlign: 'center',
+                padding: 40,
+                background: '#f8f9fa',
                 borderRadius: 8,
                 margin: '20px 0'
               }}>
                 <h4 style={{ color: '#666', marginBottom: 16 }}>
-                Usuarios
+                  Usuarios
                 </h4>
               </div>
             )}
@@ -205,54 +205,54 @@ export default function PageUsuarios() {
           </>
         )}
 
-          {modoPanel && registroPanel && (
-            <RecordPanel
-              mode={modoPanel}
-              record={registroPanel}
-              entityType="usuario"
-              columns={columns}
-              // cuando RecordPanel suba una imagen correctamente, refrescamos la lista
-              onUploadSuccess={async (userId:number) => {
-                try {
-                  // recargar la lista desde el servidor
-                  await refresh()
-                  // forzar cache-bust local para el usuario recién subido (evita mostrar imagen caché)
-                  setUsers((prev) => prev.map(u => (u && Number(u.id) === Number(userId)) ? { ...u, _cb: Date.now() } : u))
-                } catch(e){ console.error(e) }
-              }}
-              onClose={async () => {
+        {modoPanel && registroPanel && (
+          <GestorPaneles
+            mode={modoPanel}
+            record={registroPanel}
+            entityType="usuario"
+            columns={columns}
+            // cuando GestorPaneles suba una imagen correctamente, refrescamos la lista
+            onUploadSuccess={async (userId: number) => {
+              try {
+                // recargar la lista desde el servidor
+                await refresh()
+                // forzar cache-bust local para el usuario recién subido (evita mostrar imagen caché)
+                setUsers((prev) => prev.map(u => (u && Number(u.id) === Number(userId)) ? { ...u, _cb: Date.now() } : u))
+              } catch (e) { console.error(e) }
+            }}
+            onClose={async () => {
+              setModoPanel(null)
+              setRegistroPanel(null)
+              await refresh()
+            }}
+            onSave={async (updated) => {
+              try {
+                // extraer roles asignados (desde GestorPaneles) y limpiar el payload
+                const assignedRoles = (updated as any)._assignedRoles || []
+                const payload: any = { ...updated }
+                delete payload._assignedRoles
+                // si hay roles asignados, mantenemos compatibilidad con el esquema actual usando `rolId` (primer rol)
+                if (assignedRoles && assignedRoles.length) {
+                  const parsed = Number(assignedRoles[0])
+                  payload.rolId = Number.isNaN(parsed) ? assignedRoles[0] : parsed
+                }
+
+                if (updated.id) await UsuariosAPI.updateUsuarioById(updated.id, payload)
+                else {
+                  // Para creación de usuario usamos el flujo de registro que acepta contraseña
+                  // El GestorPaneles añade `password` al form cuando entityType === 'usuario'
+                  await UsuariosAPI.register(payload)
+                }
                 setModoPanel(null)
                 setRegistroPanel(null)
                 await refresh()
-              }}
-              onSave={async (updated) => {
-                try {
-                  // extraer roles asignados (desde RecordPanel) y limpiar el payload
-                  const assignedRoles = (updated as any)._assignedRoles || []
-                  const payload: any = { ...updated }
-                  delete payload._assignedRoles
-                  // si hay roles asignados, mantenemos compatibilidad con el esquema actual usando `rolId` (primer rol)
-                  if (assignedRoles && assignedRoles.length) {
-                    const parsed = Number(assignedRoles[0])
-                    payload.rolId = Number.isNaN(parsed) ? assignedRoles[0] : parsed
-                  }
-
-                  if (updated.id) await UsuariosAPI.updateUsuarioById(updated.id, payload)
-                  else {
-                    // Para creación de usuario usamos el flujo de registro que acepta contraseña
-                    // El RecordPanel añade `password` al form cuando entityType === 'usuario'
-                    await UsuariosAPI.register(payload)
-                  }
-                  setModoPanel(null)
-                  setRegistroPanel(null)
-                  await refresh()
-                } catch (e) {
-                  console.error(e)
-                }
-              }}
-            />
-          )}
-        </div>
+              } catch (e) {
+                console.error(e)
+              }
+            }}
+          />
+        )}
+      </div>
     </div>
   );
 }

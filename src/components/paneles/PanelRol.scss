@@ -1,0 +1,208 @@
+/* Estilos específicos para PanelRol */
+.panel-rol__seccion-permisos {
+  margin-top: 24px;
+  border-top: 2px solid #e9ecef;
+  padding-top: 24px;
+}
+
+.panel-rol__seccion-permisos h4 {
+  margin: 0 0 16px 0;
+  color: #495057;
+  font-size: 1.2rem;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.panel-rol__seccion-permisos h4::before {
+  content: '\e917'; /* pi-shield icon */
+  font-family: 'primeicons';
+  color: #007bff;
+}
+
+.panel-rol__permisos-info {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  margin-bottom: 20px;
+}
+
+.panel-rol__nivel-permiso {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  padding: 16px;
+  background: linear-gradient(135deg, #007bff 0%, #0056b3 100%);
+  color: white;
+  border-radius: 8px;
+}
+
+.panel-rol__nivel-permiso i {
+  font-size: 1.4rem;
+  margin-top: 2px;
+}
+
+.panel-rol__nivel-permiso strong {
+  display: block;
+  font-size: 1.1rem;
+  margin-bottom: 4px;
+}
+
+.panel-rol__nivel-permiso p {
+  margin: 0;
+  font-size: 0.9rem;
+  opacity: 0.9;
+}
+
+.panel-rol__advertencia-sistema {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  padding: 16px;
+  background-color: #fff3cd;
+  border: 1px solid #ffeaa7;
+  border-radius: 8px;
+  color: #856404;
+}
+
+.panel-rol__advertencia-sistema i {
+  font-size: 1.4rem;
+  margin-top: 2px;
+  color: #f39c12;
+}
+
+.panel-rol__advertencia-sistema strong {
+  display: block;
+  font-size: 1rem;
+  margin-bottom: 4px;
+  color: #8b4513;
+}
+
+.panel-rol__advertencia-sistema p {
+  margin: 0;
+  font-size: 0.9rem;
+}
+
+.panel-rol__lista-permisos h5 {
+  margin: 20px 0 12px 0;
+  color: #495057;
+  font-size: 1rem;
+  border-bottom: 1px solid #dee2e6;
+  padding-bottom: 8px;
+}
+
+.panel-rol__permisos-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: 8px;
+  margin-top: 12px;
+}
+
+.panel-rol__permiso-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 12px;
+  background-color: #e8f5e8;
+  border: 1px solid #c3e6cb;
+  border-radius: 6px;
+  font-size: 0.85rem;
+  font-weight: 500;
+  color: #155724;
+}
+
+.panel-rol__permiso-item i {
+  color: #28a745;
+  font-size: 0.9rem;
+}
+
+.panel-rol__sin-permisos {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 20px;
+  background-color: #f8f9fa;
+  border: 2px dashed #dee2e6;
+  border-radius: 8px;
+  color: #6c757d;
+  text-align: center;
+  margin-top: 12px;
+}
+
+.panel-rol__sin-permisos i {
+  font-size: 1.5rem;
+  color: #adb5bd;
+}
+
+.panel-rol__sin-permisos p {
+  margin: 0;
+  font-size: 0.9rem;
+}
+
+/* Estados de nivel */
+.panel-rol__nivel-permiso.nivel-alto {
+  background: linear-gradient(135deg, #dc3545 0%, #c82333 100%);
+}
+
+.panel-rol__nivel-permiso.nivel-medio {
+  background: linear-gradient(135deg, #ffc107 0%, #e0a800 100%);
+  color: #212529;
+}
+
+.panel-rol__nivel-permiso.nivel-bajo {
+  background: linear-gradient(135deg, #28a745 0%, #1e7e34 100%);
+}
+
+/* Tipos de permisos con colores diferentes */
+.panel-rol__permiso-item.permiso-critico {
+  background-color: #f8d7da;
+  border-color: #f5c6cb;
+  color: #721c24;
+}
+
+.panel-rol__permiso-item.permiso-critico i {
+  color: #dc3545;
+}
+
+.panel-rol__permiso-item.permiso-moderado {
+  background-color: #fff3cd;
+  border-color: #ffeaa7;
+  color: #856404;
+}
+
+.panel-rol__permiso-item.permiso-moderado i {
+  color: #ffc107;
+}
+
+/* Responsive */
+@media (max-width: 768px) {
+  .panel-rol__permisos-info {
+    flex-direction: column;
+  }
+  
+  .panel-rol__permisos-grid {
+    grid-template-columns: 1fr;
+  }
+  
+  .panel-rol__nivel-permiso,
+  .panel-rol__advertencia-sistema {
+    padding: 12px;
+  }
+  
+  .panel-rol__sin-permisos {
+    flex-direction: column;
+    text-align: center;
+    gap: 8px;
+  }
+}
+
+@media (max-width: 480px) {
+  .panel-rol__seccion-permisos {
+    padding-top: 16px;
+  }
+  
+  .panel-rol__permiso-item {
+    font-size: 0.8rem;
+    padding: 6px 10px;
+  }
+}

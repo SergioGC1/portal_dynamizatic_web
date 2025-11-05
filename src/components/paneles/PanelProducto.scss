@@ -1,0 +1,197 @@
+/* Estilos específicos para PanelProducto */
+
+
+.panel-producto__informacion-precio {
+  background: linear-gradient(135deg, #28a745 0%, #20c997 100%);
+  color: white;
+  padding: 16px;
+  border-radius: 8px;
+  margin: 16px 0;
+}
+
+.panel-producto__precio-principal {
+  font-size: 1.8rem;
+  font-weight: bold;
+  margin-bottom: 4px;
+}
+
+.panel-producto__precio-descripcion {
+  font-size: 0.9rem;
+  opacity: 0.9;
+}
+
+.panel-producto__stock-info {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+  margin: 16px 0;
+}
+
+.panel-producto__stock-disponible {
+  padding: 12px;
+  background-color: #e3f2fd;
+  border: 1px solid #2196f3;
+  border-radius: 6px;
+  text-align: center;
+}
+
+.panel-producto__stock-disponible .numero {
+  font-size: 1.4rem;
+  font-weight: bold;
+  color: #1976d2;
+  display: block;
+}
+
+.panel-producto__stock-disponible .etiqueta {
+  font-size: 0.8rem;
+  color: #666;
+  margin-top: 4px;
+}
+
+.panel-producto__peso-dimensiones {
+  padding: 12px;
+  background-color: #f3e5f5;
+  border: 1px solid #9c27b0;
+  border-radius: 6px;
+  text-align: center;
+}
+
+.panel-producto__peso-dimensiones .valor {
+  font-size: 0.95rem;
+  font-weight: 600;
+  color: #7b1fa2;
+  display: block;
+}
+
+.panel-producto__peso-dimensiones .etiqueta {
+  font-size: 0.8rem;
+  color: #666;
+  margin-top: 4px;
+}
+
+.panel-producto__codigo-barras {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 12px;
+  background-color: #fff3e0;
+  border: 1px solid #ff9800;
+  border-radius: 6px;
+  margin: 16px 0;
+}
+
+.panel-producto__codigo-barras i {
+  font-size: 1.2rem;
+  color: #f57c00;
+}
+
+.panel-producto__codigo-barras-texto {
+  font-family: 'Courier New', monospace;
+  font-size: 1rem;
+  font-weight: bold;
+  color: #e65100;
+}
+
+.panel-producto__estado-activo {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 12px;
+  border-radius: 20px;
+  font-size: 0.85rem;
+  font-weight: 600;
+  width: fit-content;
+}
+
+.panel-producto__estado-activo.activo {
+  background-color: #d4edda;
+  color: #155724;
+  border: 1px solid #c3e6cb;
+}
+
+.panel-producto__estado-activo.inactivo {
+  background-color: #f8d7da;
+  color: #721c24;
+  border: 1px solid #f5c6cb;
+}
+
+.panel-producto__estado-activo i {
+  font-size: 0.8rem;
+}
+
+.panel-producto__categoria-badge {
+  display: inline-block;
+  padding: 4px 12px;
+  background-color: #6f42c1;
+  color: white;
+  border-radius: 12px;
+  font-size: 0.8rem;
+  font-weight: 500;
+  margin: 8px 0;
+}
+
+.panel-producto__descripcion {
+  background-color: #f8f9fa;
+  border: 1px solid #e9ecef;
+  border-radius: 6px;
+  padding: 12px;
+  margin: 16px 0;
+  color: #495057;
+  line-height: 1.5;
+}
+
+.panel-producto__descripcion.vacia {
+  font-style: italic;
+  color: #6c757d;
+  opacity: 0.7;
+}
+
+/* Estados de stock */
+.panel-producto__stock-disponible.stock-bajo {
+  background-color: #fff3cd;
+  border-color: #ffc107;
+}
+
+.panel-producto__stock-disponible.stock-bajo .numero {
+  color: #e65100;
+}
+
+.panel-producto__stock-disponible.sin-stock {
+  background-color: #f8d7da;
+  border-color: #dc3545;
+}
+
+.panel-producto__stock-disponible.sin-stock .numero {
+  color: #721c24;
+}
+
+/* Responsive */
+@media (max-width: 768px) {
+  .panel-producto__stock-info {
+    grid-template-columns: 1fr;
+  }
+  
+  .panel-producto__precio-principal {
+    font-size: 1.5rem;
+  }
+  
+  .panel-producto__codigo-barras {
+    flex-direction: column;
+    text-align: center;
+    gap: 4px;
+  }
+}
+
+@media (max-width: 480px) {
+  .panel-producto__informacion-precio {
+    padding: 12px;
+  }
+  
+  .panel-producto__precio-principal {
+    font-size: 1.3rem;
+  }
+  
+  .panel-producto__descripcion {
+    padding: 8px;
+  }
+}

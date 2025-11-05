@@ -1,7 +1,7 @@
 import React, { useMemo, useState, useRef } from 'react'
 import '../../styles/layout.scss'
 import '../../styles/_main.scss'
-import RecordPanel from '../../components/ui/RecordPanel'
+import GestorPaneles from '../../components/ui/GestorPaneles'
 import DataTable, { ColumnDef } from '../../components/data-table/DataTable'
 import productosAPI from '../../api-endpoints/productos/index'
 import TableToolbar from '../../components/ui/TableToolbar'
@@ -119,7 +119,7 @@ export default function PageProductos() {
           </>
         )}
         {modoPanel && registroPanel && (
-            <RecordPanel
+            <GestorPaneles
               mode={modoPanel}
               record={registroPanel}
               entityType="producto"

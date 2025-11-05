@@ -1,182 +1,98 @@
 import React, { useEffect, useState } from 'react'
 
-// Adaptadores (API)
-const fasesApi = require('../../api-endpoints/fases')
-const pftApi = require('../../api-endpoints/productos-fases-tareas')
-const usuariosApi = require('../../api-endpoints/usuarios')
+// Adaptadores (API) con imports arriba para buenas prácticas
+import fasesAPI from '../../api-endpoints/fases'
+import tareasFasesAPI from '../../api-endpoints/tareas-fases'
 
-// Tipos locales (coinciden con el backend donde corresponde)
-type TareaItem = {
+// Tipos locales alineados con PanelFase
+type TareaFase = {
     id: number
-    productoId?: number
-    faseId?: number
-    tareaFaseId?: number
-    nombre?: string
-    usuarioId?: number
-    completadaSn?: 'S' | 'N'
-    validadaSupervisorSn?: 'S' | 'N'
+    faseId: number
+    nombre: string
 }
 
 type Fase = { id: number; codigo?: string; nombre?: string }
 
 export default function PanelFasesProducto({ productId }: { productId?: string | number }) {
-    const [fases, setFases] = useState<Fase[]>([])
-    const [faseActivaId, setFaseActivaId] = useState<number | null>(null)
-    const [tareas, setTareas] = useState<TareaItem[]>([])
-    const [cargando, setCargando] = useState(false)
-    const [error, setError] = useState<string | null>(null)
+    const [listaDeFases, establecerListaDeFases] = useState<Fase[]>([])
+    const [identificadorDeFaseActiva, establecerIdentificadorDeFaseActiva] = useState<number | null>(null)
+    const [tareasDeLaFaseActiva, establecerTareasDeLaFaseActiva] = useState<TareaFase[]>([])
+    const [estaCargando, establecerEstaCargando] = useState(false)
+    const [mensajeDeError, establecerMensajeDeError] = useState<string | null>(null)
 
     useEffect(() => {
-        let mounted = true
+        let componenteMontado = true
         ;(async () => {
             try {
-                // fasesApi puede exponer find() o findFases(); intentamos ambos
-                const list = typeof fasesApi.findFases === 'function' ? await fasesApi.findFases() : await (typeof fasesApi.find === 'function' ? fasesApi.find() : [])
-                if (!mounted) return
-                const mapped: Fase[] = (Array.isArray(list) ? list : []).map((f: any) => ({ id: Number(f.id), codigo: f.codigo, nombre: f.nombre }))
-                setFases(mapped)
-                if (mapped.length) setFaseActivaId(mapped[0].id)
-            } catch (e: any) {
-                console.error(e)
-                if (mounted) setError(e?.message || 'Error cargando fases')
+                const listaRemota = typeof (fasesAPI as any).findFases === 'function'
+                    ? await (fasesAPI as any).findFases()
+                    : await (typeof (fasesAPI as any).find === 'function' ? (fasesAPI as any).find() : [])
+                if (!componenteMontado) return
+                const listaMapeada: Fase[] = (Array.isArray(listaRemota) ? listaRemota : []).map((fase: any) => ({ id: Number(fase.id), codigo: fase.codigo, nombre: fase.nombre }))
+                establecerListaDeFases(listaMapeada)
+                if (listaMapeada.length) establecerIdentificadorDeFaseActiva(listaMapeada[0].id)
+            } catch (error: any) {
+                console.error(error)
+                if (componenteMontado) establecerMensajeDeError(error?.message || 'Error cargando fases')
             }
         })()
-        return () => { mounted = false }
+        return () => { componenteMontado = false }
     }, [])
 
-    // Comprueba si todas las tareas de una fase están completadas ('S') => marcadas en la UI
-    function todasTareasCompletadas(faseId: number) {
-        const list = tareasPorFase(faseId)
-        if (!list || list.length === 0) return false
-        // Ahora consideramos completada la tarea cuando completadaSn === 'S' (checkbox marcado)
-        return list.every(t => t.completadaSn === 'S')
+    // Cambio directo de fase activa y recarga de tareas (sin bloqueo por completadas)
+    function cambiarAFase(identificadorDeFaseDestino: number) {
+        establecerIdentificadorDeFaseActiva(identificadorDeFaseDestino)
     }
 
-    // Intentar cambiar a una fase (previene avanzar a la derecha si tareas no completadas)
-    function intentarCambiarAFase(targetFaseId: number) {
-        if (!faseActivaId) {
-            setFaseActivaId(targetFaseId)
-            return
-        }
-        const currentIndex = fases.findIndex(f => f.id === faseActivaId)
-        const targetIndex = fases.findIndex(f => f.id === targetFaseId)
-        // Si target no encontrado o current no encontrado, permitir
-        if (currentIndex === -1 || targetIndex === -1) {
-            setFaseActivaId(targetFaseId)
-            return
-        }
-        // Si nos movemos a la derecha (targetIndex > currentIndex), asegurarse de completar tareas
-        if (targetIndex > currentIndex) {
-            if (!todasTareasCompletadas(faseActivaId)) {
-                const msg = 'No puede avanzar a la siguiente fase hasta marcar todas las tareas de la fase actual.'
-                console.log(msg)
-                setError(msg)
-                // limpiar mensaje tras 4s
-                setTimeout(() => { setError(null) }, 4000)
-                return
-            }
-        }
-        // En otros casos permitimos el cambio
-        setFaseActivaId(targetFaseId)
-    }
-
-    async function cargarTareasPorProducto(prodId: any) {
-        setCargando(true); setError(null)
-            try {
-                // usamos el adaptador productos-fases-tareas
-                const params = { filter: JSON.stringify({ where: { productoId: Number(prodId) } }) }
-                const data = await pftApi.findProductosFasesTareas(params)
-                    const arr = Array.isArray(data) ? data : []
-                    // Resolver los nombres de usuario asociados (nombreUsuario + apellido)
-                    try {
-                        const userIds = Array.from(new Set(arr.map((x: any) => x.usuarioId).filter(Boolean).map((n: any) => Number(n))))
-                        let uMap: Record<number,string> = {}
-                        if (userIds.length) {
-                            const users = await Promise.all(userIds.map((id: number) => usuariosApi.getById(id).catch(() => null)))
-                            users.forEach((u: any, i: number) => {
-                                const id = userIds[i]
-                                if (u && u.id !== undefined) {
-                                    const nombre = (u.nombreUsuario || u.nombre || '')
-                                    const apellido = (u.apellido || u.lastName || u.apellidos || '')
-                                    uMap[Number(id)] = (nombre + ' ' + apellido).trim() || String(id)
-                                }
-                            })
-                        }
-                        const mapped = arr.map((t: any) => ({ ...t, usuarioNombreFull: t.usuarioId ? uMap[Number(t.usuarioId)] ?? null : null }))
-                        setTareas(mapped)
-                    } catch (e) {
-                        setTareas(arr)
-                    }
-            } catch (e: any) {
-                    console.error('Error cargando tareas', e)
-                    setError(e?.message || 'Error cargando tareas')
-        } finally { setCargando(false) }
-        }
-
-    useEffect(() => { if (productId) cargarTareasPorProducto(productId) }, [productId])
-
-    const tareasPorFase = (faseId: number) => tareas.filter((t: TareaItem) => Number(t.faseId) === Number(faseId))
-
-    async function alternarTarea(pftId: number, checked: boolean) {
-        const prev = tareas
-    // Nota: en la UI, el checkbox marcado corresponde a completada (completadaSn === 'S').
-    // Si el checkbox queda marcado => enviar 'N', si queda desmarcado => enviar 'N'.
-        setTareas(prev.map(t => t.id === pftId ? { ...t, completadaSn: checked ? 'S' : 'N' } : t))
+    async function cargarTareasPorFase(identificadorDeFase: number) {
+        establecerEstaCargando(true)
+        establecerMensajeDeError(null)
         try {
-            await pftApi.updateProductosFasesTareasById(pftId, { completadaSn: checked ? 'S' : 'N' })
-        } catch (e: any) {
-            alert('Error actualizando tarea: ' + (e?.message || e))
-            setTareas(prev)
+            const parametros = { filter: JSON.stringify({ where: { faseId: Number(identificadorDeFase) } }) }
+            const resultado = await (tareasFasesAPI as any).findTareasFases(parametros)
+            const arreglo = Array.isArray(resultado) ? resultado : []
+            const mapeadas: TareaFase[] = arreglo.map((t: any) => ({ id: Number(t.id), faseId: Number(t.faseId), nombre: t.nombre }))
+            establecerTareasDeLaFaseActiva(mapeadas)
+        } catch (error: any) {
+            console.error('Error cargando tareas por fase', error)
+            establecerMensajeDeError(error?.message || 'Error cargando tareas de la fase')
+        } finally {
+            establecerEstaCargando(false)
         }
     }
 
-    // Cargar usuario para una tarea concreta: consulta el usuario por su id (t.usuarioId)
-    // y actualiza esa tarea en el estado con campo `usuarioNombreFull`.
-    async function fetchUsuarioParaTarea(tareaId: number, usuarioId?: number) {
-        try {
-            const uid = usuarioId ?? tareas.find(t => t.id === tareaId)?.usuarioId
-            if (!uid) return null
-            const u = await usuariosApi.getById(Number(uid))
-            if (!u) return null
-            const nombre = (u.nombreUsuario)
-            const apellidos = (u.apellidos)
-            const full = (nombre + ' ' + apellidos).trim() || String(uid)
-            setTareas(prev => prev.map(t => t.id === tareaId ? ({ ...t, usuarioNombreFull: full }) : t))
-            return full
-        } catch (e) {
-            console.error('Error cargando usuario para tarea', e)
-            return null
-        }
-    }
+    useEffect(() => {
+        if (identificadorDeFaseActiva) cargarTareasPorFase(identificadorDeFaseActiva)
+    }, [identificadorDeFaseActiva])
 
     if (!productId) return null
 
     return (
         <div style={{ marginTop: 18, borderTop: '1px solid #eee', paddingTop: 12 }}>
 
-            {cargando && <div>Cargando...</div>}
-            {error && <div style={{ color: 'red' }}>{error}</div>}
+            {estaCargando && <div>Cargando...</div>}
+            {mensajeDeError && <div style={{ color: 'red' }}>{mensajeDeError}</div>}
 
                     <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 12, flexWrap: 'wrap' }}>
-                        {fases.map((p, idx) => {
-                            const isActive = faseActivaId === p.id
+                        {listaDeFases.map((fase, indice) => {
+                            const estaActiva = identificadorDeFaseActiva === fase.id
                             return (
-                                <React.Fragment key={p.id}>
+                                <React.Fragment key={fase.id}>
                                     <div
-                                        onClick={() => intentarCambiarAFase(p.id)}
+                                        onClick={() => cambiarAFase(fase.id)}
                                         style={{
                                             cursor: 'pointer',
-                                            fontWeight: isActive ? 700 : 600,
-                                            color: isActive ? '#0f172a' : '#374151',
+                                            fontWeight: estaActiva ? 700 : 600,
+                                            color: estaActiva ? '#0f172a' : '#374151',
                                             padding: '6px 8px',
                                             background: 'transparent',
                                             borderRadius: 4,
                                         }}
-                                        aria-current={isActive}
+                                        aria-current={estaActiva}
                                     >
-                                        {p.nombre || `Fase ${p.id}`}
+                                        {fase.nombre || `Fase ${fase.id}`}
                                     </div>
-                                    {idx < fases.length - 1 && (
+                                    {indice < listaDeFases.length - 1 && (
                                         <span style={{ width: 1, height: 18, background: '#e6e6e6', display: 'inline-block', marginLeft: 6, marginRight: 6 }} />
                                     )}
                                 </React.Fragment>
@@ -186,24 +102,24 @@ export default function PanelFasesProducto({ productId }: { productId?: string |
 
             <div>
                 <ul style={{ listStyle: 'none', padding: 0 }}>
-                    {faseActivaId && tareasPorFase(faseActivaId).map(t => (
-                        <li key={t.id} style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '8px 0', borderBottom: '1px solid #f3f4f6' }}>
-                            {/* Checkbox marcado significa completada (completadaSn === 'S') */}
-                            <input type="checkbox" checked={t.completadaSn === 'S'} onChange={e => alternarTarea(t.id, e.target.checked)} />
-                            <div style={{ flex: 1 }}>
-                                <div style={{ fontWeight: 600 }}>{t.nombre || `Tarea ${t.id}`}</div>
-                                <div style={{ fontSize: 12, color: '#666' }}>Asignada a: {(t as any).usuarioNombreFull ?? (
-                                    t.usuarioId ? (
-
-
-//Retocar aqui para llamada a api-Usuarios y sacar nomreUsuario y Apellido, para sustituir al usuarioId
-
-                                        <span style={{ color: '#0ea5a4', cursor: 'pointer' }} onClick={() => fetchUsuarioParaTarea(t.id, t.usuarioId)}>{t.usuarioId}</span>
-                                    ) : '—'
-                                )}</div>
+                    {identificadorDeFaseActiva && tareasDeLaFaseActiva.map((tarea, indice) => (
+                        <li key={tarea.id} style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '8px 0', borderBottom: '1px solid #f3f4f6' }}>
+                            <div style={{
+                                minWidth: 30,
+                                height: 30,
+                                display: 'flex',
+                                alignItems: 'center',
+                                justifyContent: 'center',
+                                backgroundColor: '#007bff',
+                                color: 'white',
+                                borderRadius: '50%',
+                                fontSize: '0.9em',
+                                fontWeight: 'bold'
+                            }}>
+                                {indice + 1}
                             </div>
-                            <div style={{ minWidth: 140, textAlign: 'right' }}>
-                                <div style={{ fontSize: 12, color: '#666' }}>Validada: {t.validadaSupervisorSn === 'S' ? 'Sí' : 'No'}</div>
+                            <div style={{ flex: 1 }}>
+                                <div style={{ fontWeight: 600 }}>{tarea.nombre || `Tarea ${tarea.id}`}</div>
                             </div>
                         </li>
                     ))}
