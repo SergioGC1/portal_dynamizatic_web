@@ -9,6 +9,7 @@ import Sidebar from "../components/layout/Sidebar";
 import UsuariosPage from "./usuarios/page";
 import RolesPage from "./roles/page";
 import ProductosPage from "./productos/page";
+import FasesPage from "./fases/page";
 import PermisosPage from "./permisos/page";
 
 export default function MainPage() {
@@ -77,6 +78,7 @@ export default function MainPage() {
     usuarios: tienePermiso('Usuarios', 'Ver') ? <UsuariosPage /> : null,
     roles: tienePermiso('Roles', 'Ver') ? <RolesPage /> : null,
     productos: tienePermiso('Productos', 'Ver') ? <ProductosPage /> : null,
+    fases: tienePermiso('Fases', 'Ver') ? <FasesPage /> : null,
     permisos: (tienePermiso('Permisos', 'Ver') || tienePermiso('Permisos', 'Actualizar')) ? <PermisosPage /> : null,
     chat: (
       <section>
