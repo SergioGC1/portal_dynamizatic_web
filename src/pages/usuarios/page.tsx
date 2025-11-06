@@ -31,6 +31,7 @@ export default function PageUsuarios() {
       key: 'imagen',
       title: 'Usuario',
       sortable: false,
+      filterable: false,
       render: (value: any, row: any) => {
         const img = value || row?.imagen || ''
         const apiBase = (typeof window !== 'undefined' && (window as any).__API_BASE_URL__) || 'http://127.0.0.1:3000'

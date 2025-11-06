@@ -76,10 +76,11 @@ const DataTableAdaptado = forwardRef<DataTableHandle, Props>(function DataTableA
   const [rows, setRows] = useState(pageSize)
   const overlayRefs = React.useRef<Record<string, OverlayPanel | null>>({})
 
-  // Inicializar orden por la primera columna (descendente)
+  // Inicializar orden por la primera columna 'sortable' (descendente)
   useEffect(() => {
     if (!sortField && columns && columns.length > 0) {
-      setSortField(columns[0].key)
+      const primeraColumnaOrdenable = columns.find(c => c.sortable !== false)
+      setSortField((primeraColumnaOrdenable || columns[0]).key)
       setSortOrder(-1)
     }
   }, [columns, sortField])
@@ -114,6 +115,8 @@ const DataTableAdaptado = forwardRef<DataTableHandle, Props>(function DataTableA
     if (globalFilter) {
       result = result.filter((row) =>
         columns.some((col) => {
+          // Respetar columnas no filtrables también en el filtro global
+          if (col.filterable === false) return false
           const value = row[col.key]
           return String(value || "")
             .toLowerCase()
@@ -144,9 +147,11 @@ const DataTableAdaptado = forwardRef<DataTableHandle, Props>(function DataTableA
       const aValue = a[sortField]
       const bValue = b[sortField]
 
+      // Nulos siempre al final, independientemente del orden
+      if (aValue == null && bValue == null) return 0
+      if (aValue == null) return 1
+      if (bValue == null) return -1
       if (aValue === bValue) return 0
-      if (aValue == null) return sortOrder
-      if (bValue == null) return -sortOrder
 
       // Intentar comparación numérica
       const aNum = Number(aValue)
