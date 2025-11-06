@@ -295,11 +295,11 @@ export default function PanelUsuario({
         return `${urlBaseDeAPI}/${rutaComoTexto}`
     }
 
-    const urlDeVistaPreviaFinal = (formularioDelUsuario as any)?._imagenUrl ||
+    const urlDeVistaPreviaFinal = urlDeVistaPrevia ||
+        (formularioDelUsuario as any)?._imagenUrl ||
         (valorDeLaImagen ? construirUrlDeImagen(valorDeLaImagen) : '')
-    const tieneColumnaDeImagen = (columns || []).some((columna) =>
-        String(columna.key).toLowerCase() === 'imagen')
-    const deberíaMostrarImagen = Boolean(valorDeLaImagen || (mode === 'editar' && tieneColumnaDeImagen))
+    // Mostrar siempre el contenedor de imagen en modo edición, aunque aún no exista imagen
+    const deberíaMostrarImagen = (mode === 'editar') || Boolean(valorDeLaImagen)
 
     // Manejo de selección de archivos
     const manejarSeleccionDeArchivo = (archivo?: File) => {
@@ -318,6 +318,30 @@ export default function PanelUsuario({
         referenciaUrlObjetoActual.current = nuevaUrl
         establecerUrlDeVistaPrevia(nuevaUrl)
         actualizarCampoDelFormulario('_imagenFile', archivo)
+    }
+
+    // Eliminar imagen: si hay vista previa local, limpia selección local; si no, elimina del servidor
+    const manejarEliminarImagen = () => {
+        if (urlDeVistaPrevia) {
+            // Limpiar solo la selección local (cancelar cambio de imagen)
+            try {
+                if (referenciaUrlObjetoActual.current) {
+                    URL.revokeObjectURL(referenciaUrlObjetoActual.current)
+                }
+            } catch (error) {
+                console.error('Error limpiando URL de vista previa:', error)
+            }
+            referenciaUrlObjetoActual.current = null
+            establecerUrlDeVistaPrevia(null)
+            establecerFormularioDelUsuario((formularioActual: any) => {
+                const copia = { ...formularioActual }
+                delete (copia as any)._imagenFile
+                return copia
+            })
+        } else {
+            // No hay vista previa local: proceder con la eliminación en servidor (si existe imagen)
+            eliminarImagenConConfirmacion()
+        }
     }
 
     // Limpiar URLs de objetos al desmontar
@@ -430,6 +454,9 @@ export default function PanelUsuario({
         )
     }
 
+    // Estado activo (para badge en la cabecera junto a la imagen)
+    const esActivo = String(formularioDelUsuario?.activoSn ?? '').toUpperCase() === 'S'
+
     // No renderizar si no hay registro
     if (!record) return null
 
@@ -458,30 +485,39 @@ export default function PanelUsuario({
             {/* Sección superior: imagen + datos principales */}
             <div className="record-panel__top">
                 {deberíaMostrarImagen && (
-                    <div className="record-panel__image-box--static" style={{ position: 'relative', width: 160, height: 160 }}>
-                        {urlDeVistaPreviaFinal ? (
-                            <img
-                                src={urlDeVistaPreviaFinal}
-                                alt="imagen del usuario"
-                                className="record-panel__thumbnail"
-                                onError={() => actualizarCampoDelFormulario('imagen', '')}
-                                style={{ width: 160, height: 160, objectFit: 'cover', borderRadius: 6 }}
-                            />
-                        ) : (
-                            <div className="record-panel__no-image">Sin imagen</div>
-                        )}
-
-                        {/* Botón eliminar imagen existente */}
-                        {mode === 'editar' && urlDeVistaPreviaFinal && !urlDeVistaPrevia && (
-                            <div className="record-panel__image-delete">
-                                <Button
-                                    label=""
-                                    icon="pi pi-trash"
-                                    onClick={eliminarImagenConConfirmacion}
-                                    className="p-button-sm p-button-rounded p-button-danger"
+                    <div style={{ position: 'relative', width: 160 }}>
+                        {/* Badge de estado al lado/sobre la imagen */}
+                        <div style={{ position: 'absolute', top: -22, left: 0 }}>
+                            <span className={`badge-estado ${esActivo ? 'badge-activo' : 'badge-inactivo'}`}>
+                                {esActivo ? 'Activo' : 'Inactivo'}
+                            </span>
+                        </div>
+                        <div className="record-panel__image-box--static" style={{ position: 'relative', width: 160, height: 160 }}>
+                            {urlDeVistaPreviaFinal ? (
+                                <img
+                                    src={urlDeVistaPreviaFinal}
+                                    alt="imagen del usuario"
+                                    className="record-panel__thumbnail"
+                                    onError={() => { if (!urlDeVistaPrevia) actualizarCampoDelFormulario('imagen', '') }}
+                                    style={{ width: 160, height: 160, objectFit: 'cover', borderRadius: 6 }}
                                 />
-                            </div>
-                        )}
+                            ) : (
+                                <div className="record-panel__no-image">Sin imagen</div>
+                            )}
+
+                            {/* Botón eliminar imagen existente */}
+                            {mode === 'editar' && urlDeVistaPreviaFinal && (
+                                <div className="record-panel__image-delete">
+                                    <Button
+                                        label=""
+                                        icon="pi pi-trash"
+                                        onClick={manejarEliminarImagen}
+                                        className="p-button-sm p-button-rounded p-button-danger"
+                                        title={urlDeVistaPrevia ? 'Quitar imagen seleccionada' : 'Eliminar imagen actual'}
+                                    />
+                                </div>
+                            )}
+                        </div>
                     </div>
                 )}
 
@@ -681,12 +717,7 @@ export default function PanelUsuario({
                                 }
                                 disabled={mode === 'ver' || !puedeEditarEstadoActivo()}
                             />
-                            <span style={{ fontSize: 14 }}>
-                                {String(formularioDelUsuario?.activoSn ?? '').toUpperCase() === 'S'
-                                    ? 'Usuario Activo'
-                                    : 'Usuario Inactivo'
-                                }
-                            </span>
+                            {/* Eliminamos el texto “Usuario Activo/Inactivo” para usar solo la badge en la cabecera */}
                             {erroresDeValidacion.activoSn && (
                                 <div className="record-panel__error">{erroresDeValidacion.activoSn}</div>
                             )}
