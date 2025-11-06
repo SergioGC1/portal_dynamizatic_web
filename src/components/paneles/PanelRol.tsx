@@ -3,6 +3,7 @@ import { Button } from 'primereact/button'
 import { InputSwitch } from 'primereact/inputswitch'
 import '../ui/GestorPaneles.css'
 import './PanelRol.scss'
+import RolesAPI from '../../api-endpoints/roles/index'
 
 // Interfaces con nomenclatura en español
 interface Rol {
@@ -58,6 +59,29 @@ export default function PanelRol({ mode, record = null, columns = [], onClose, o
             return
         }
 
+        // Validación de unicidad de nombre (pre-chequeo antes de llamar al backend)
+        try {
+            // No dependemos de cómo el backend interpreta "where"; filtramos en cliente
+            const lista = await RolesAPI.findRoles()
+            const esNuevo = !formularioDelRol?.id
+            const idActual = (formularioDelRol as any)?.id
+            const nombreNormalizado = nombreDelRol.toLowerCase()
+            const existeOtroConMismoNombre = Array.isArray(lista) && lista.some((r: any) => {
+                if (!r) return false
+                const n = String(r.nombre || '').trim().toLowerCase()
+                if (n !== nombreNormalizado) return false
+                // Si estamos editando, ignorar el propio registro
+                if (!esNuevo && Number(r.id) === Number(idActual)) return false
+                return true
+            })
+            if (existeOtroConMismoNombre) {
+                establecerErroresDeValidacionDelRol({ nombre: 'Este nombre de rol ya está en uso' })
+                return
+            }
+        } catch (e) {
+            // Si el pre-chequeo falla, continuamos y delegamos en el backend
+        }
+
         // Validar nivel del rol
         const nivelDelRol = Number(formularioDelRol.nivel || 1)
         if (nivelDelRol < 1 || nivelDelRol > 10) {
@@ -79,7 +103,39 @@ export default function PanelRol({ mode, record = null, columns = [], onClose, o
         if ('activo' in datosLimpiosDelRol) delete datosLimpiosDelRol.activo
         if (datosLimpiosDelRol._cb !== undefined) delete datosLimpiosDelRol._cb
 
-        if (onSave) await onSave(datosLimpiosDelRol as Rol)
+        if (onSave) {
+            try {
+                await onSave(datosLimpiosDelRol as Rol)
+            } catch (e: any) {
+                // Mapear errores del backend (por ejemplo, unique constraint sobre nombre)
+                const errores: Record<string, string> = {}
+                const msg: string = e?.message || ''
+                let mensajeBackend: string | null = null
+                let detalles: any = null
+                const i = msg.indexOf('{')
+                if (i >= 0) {
+                    try {
+                        const jsonStr = msg.slice(i)
+                        const parsed = JSON.parse(jsonStr)
+                        mensajeBackend = parsed?.error?.message || null
+                        detalles = parsed?.error?.details || null
+                    } catch {}
+                }
+                const base = (mensajeBackend || msg).toLowerCase()
+                if (/unique|duplicad/i.test(base) && /nombre/.test(base)) {
+                    errores.nombre = 'Este nombre de rol ya está en uso'
+                }
+                if (!errores.nombre && Array.isArray(detalles)) {
+                    const enNombre = detalles.find((d: any) => /nombre/i.test(String(d?.path || d?.message || '')) && /unique|duplicad/i.test(String(d?.code || d?.message || '')))
+                    if (enNombre) errores.nombre = 'Este nombre de rol ya está en uso'
+                }
+                if (Object.keys(errores).length) {
+                    establecerErroresDeValidacionDelRol(errores)
+                    return
+                }
+                throw e
+            }
+        }
     }
 
 
@@ -118,7 +174,7 @@ export default function PanelRol({ mode, record = null, columns = [], onClose, o
                         onChange={(evento: React.ChangeEvent<HTMLInputElement>) =>
                             actualizarCampoDelFormularioRol('nombre', evento.target.value)
                         }
-                        className="record-panel__input record-panel__product-name-input"
+                        className={`record-panel__input record-panel__product-name-input ${erroresDeValidacionDelRol.nombre ? 'record-panel__input--error' : ''}`}
                         disabled={mode === 'ver'}
                     />
 

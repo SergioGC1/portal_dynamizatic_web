@@ -196,8 +196,12 @@ export default function PageRoles() {
               }}
               onSave={async (updated: any) => {
                 try {
-                  // Actualizar campos del rol primero
-                  await RolesAPI.updateRoleById(updated.id || registroPanel.id, updated);
+                  // Crear o actualizar según haya id
+                  if (updated && (updated.id || registroPanel?.id)) {
+                    await RolesAPI.updateRoleById(updated.id || registroPanel.id, updated);
+                  } else {
+                    await RolesAPI.createRole(updated);
+                  }
 
                   
 
@@ -213,6 +217,7 @@ export default function PageRoles() {
                 } catch (e) {
                   console.error(e);
                   toast.show({ severity: 'error', summary: 'Error', detail: 'Error guardando rol', life: 2500 });
+                  throw e;
                 }
               }}
             />

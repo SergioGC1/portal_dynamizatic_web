@@ -287,9 +287,22 @@ export default function PanelProducto({
     const guardarProductoConValidaciones = async () => {
         setErrores({})
         // Validaciones básicas (extiéndelas según necesites)
+        const nuevosErrores: Record<string, string> = {}
         const nombre = String((formulario as any).nombre || '').trim()
         if (!nombre) {
-            setErrores({ nombre: 'El nombre del producto es obligatorio' })
+            nuevosErrores.nombre = 'El nombre del producto es obligatorio'
+        }
+        // Aceptar claves 'anyo' o 'año' según provengan del backend/columns
+        const anyoValor = (formulario as any).anyo ?? (formulario as any)['año']
+        const anyoStr = anyoValor !== undefined && anyoValor !== null ? String(anyoValor).trim() : ''
+        if (!anyoStr) {
+            nuevosErrores.anyo = 'El año es obligatorio'
+        } else if (Number.isNaN(Number(anyoStr))) {
+            nuevosErrores.anyo = 'El año debe ser un número'
+        }
+
+        if (Object.keys(nuevosErrores).length > 0) {
+            setErrores(nuevosErrores)
             return
         }
 
@@ -496,7 +509,16 @@ export default function PanelProducto({
                                         <span style={{ fontSize: 14 }}>{String(value ?? '').toUpperCase() === 'S' ? 'Activo' : 'Inactivo'}</span>
                                     </div>
                                 ) : (
-                                    <input value={value ?? ''} onChange={(e) => actualizarCampoDelFormulario(key, (e.target as HTMLInputElement).value)} className="record-panel__input" />
+                                    <>
+                                        <input
+                                            value={value ?? ''}
+                                            onChange={(e) => actualizarCampoDelFormulario(key, (e.target as HTMLInputElement).value)}
+                                            className={`record-panel__input ${errores[key] ? 'record-panel__input--error' : ''}`}
+                                        />
+                                        {errores[key] && (
+                                            <div className="record-panel__error">{errores[key]}</div>
+                                        )}
+                                    </>
                                 )
                             )}
                         </div>
