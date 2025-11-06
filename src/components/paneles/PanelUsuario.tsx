@@ -7,6 +7,7 @@ import { Button } from 'primereact/button'
 import usePermisos from '../../hooks/usePermisos'
 import '../ui/GestorPaneles.css'
 import './PanelUsuario.scss'
+import UsuariosAPI from '../../api-endpoints/usuarios/index'
 
 export interface Usuario {
     id?: number
@@ -358,7 +359,6 @@ export default function PanelUsuario({
             datosDelFormulario.append('file', archivoASubir)
             datosDelFormulario.append('filename', nombreDeseadoDelArchivo)
 
-            const UsuariosAPI = require('../../api-endpoints/usuarios/index')
             const respuestaDelServidor = await UsuariosAPI.uploadUsuarioImagen(
                 idDelUsuario,
                 archivoASubir,
@@ -469,52 +469,6 @@ export default function PanelUsuario({
                             />
                         ) : (
                             <div className="record-panel__no-image">Sin imagen</div>
-                        )}
-
-                        {/* Vista previa de archivo seleccionado */}
-                        {urlDeVistaPrevia && (
-                            <>
-                                <img
-                                    src={urlDeVistaPrevia}
-                                    alt="Vista previa"
-                                    style={{
-                                        position: 'absolute',
-                                        top: 0,
-                                        left: 0,
-                                        width: 160,
-                                        height: 160,
-                                        objectFit: 'cover',
-                                        borderRadius: 6,
-                                        boxShadow: '0 6px 18px rgba(0,0,0,0.18)'
-                                    }}
-                                />
-                                {mode === 'editar' && (
-                                    <div className="record-panel__image-delete">
-                                        <Button
-                                            label=""
-                                            icon="pi pi-times"
-                                            onClick={() => {
-                                                establecerFormularioDelUsuario((formularioActual: any) => {
-                                                    const formularioLimpio = { ...formularioActual }
-                                                    delete formularioLimpio._imagenFile
-                                                    return formularioLimpio
-                                                })
-                                                try {
-                                                    if (referenciaUrlObjetoActual.current) {
-                                                        URL.revokeObjectURL(referenciaUrlObjetoActual.current)
-                                                    }
-                                                } catch (error) {
-                                                    console.error('Error limpiando URL:', error)
-                                                }
-                                                referenciaUrlObjetoActual.current = null
-                                                establecerUrlDeVistaPrevia(null)
-                                            }}
-                                            className="p-button-sm p-button-rounded p-button-secondary"
-                                            tooltip="Descartar archivo seleccionado"
-                                        />
-                                    </div>
-                                )}
-                            </>
                         )}
 
                         {/* Botón eliminar imagen existente */}

@@ -6,6 +6,8 @@ import DataTable, { ColumnDef } from '../../components/data-table/DataTable'
 import productosAPI from '../../api-endpoints/productos/index'
 import TableToolbar from '../../components/ui/TableToolbar'
 import usePermisos from '../../hooks/usePermisos'
+import { ConfirmDialog, confirmDialog } from 'primereact/confirmdialog'
+import { Toast } from 'primereact/toast'
 
 export default function PageProductos() {
   const [productos, setProductos] = useState<any[]>([])
@@ -31,6 +33,7 @@ export default function PageProductos() {
     { key: 'esBiodegradableSn', title: 'Biodegradable', sortable: true },
   ])
   const tableRef = useRef<any | null>(null)
+  const [toast, setToast] = useState<any>(null)
   // Filtro de búsqueda temporal (no aplica a la tabla hasta pulsar "Buscar")
   const [filtroBusquedaTemporal, establecerFiltroBusquedaTemporal] = useState<string>('')
   // Filtro a aplicar tras pulsar "Buscar" (se fija en el momento del click)
@@ -74,6 +77,8 @@ export default function PageProductos() {
 
   return (
     <div style={{ padding: 16 }}>
+      <Toast ref={setToast} />
+      <ConfirmDialog />
       {mensajeError && <div style={{ color: 'red' }}>{mensajeError}</div>}
       
       <div className="tabla-personalizada">
@@ -124,6 +129,27 @@ export default function PageProductos() {
                 onNew={() => { setModoPanel('editar'); setRegistroPanel({}) }}
                 onView={(r) => { setModoPanel('ver'); setRegistroPanel(r) }}
                 onEdit={(r) => { setModoPanel('editar'); setRegistroPanel(r) }}
+                onDelete={(row) => {
+                  if (!row) return
+                  confirmDialog({
+                    message: `¿Seguro que deseas eliminar el producto "${row?.nombre || row?.id}"?`,
+                    header: 'Confirmar eliminación',
+                    icon: 'pi pi-exclamation-triangle',
+                    acceptLabel: 'Sí, eliminar',
+                    rejectLabel: 'Cancelar',
+                    acceptClassName: 'p-button-danger',
+                    accept: async () => {
+                      try {
+                        await productosAPI.deleteProductoById(row.id)
+                        if (toast && toast.show) toast.show({ severity: 'success', summary: 'Eliminado', detail: 'Producto eliminado correctamente', life: 2000 })
+                        await loadProductos()
+                      } catch (e) {
+                        console.error(e)
+                        if (toast && toast.show) toast.show({ severity: 'error', summary: 'Error', detail: 'No se pudo eliminar el producto', life: 2500 })
+                      }
+                    }
+                  })
+                }}
                 puede={{
                   ver: hasPermission('Productos', 'Ver'),
                   editar: hasPermission('Productos', 'Actualizar'),

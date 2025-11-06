@@ -6,9 +6,12 @@ import GestorPaneles from '../../components/ui/GestorPaneles';
 import DataTable, { ColumnDef } from '../../components/data-table/DataTable';
 import { DataTableHandle } from '../../components/data-table/DataTable';
 import UsuariosAPI from '../../api-endpoints/usuarios/index';
+import CredencialesAPI from '../../api-endpoints/credenciales-usuarios/index';
 import TableToolbar from '../../components/ui/TableToolbar';
 import usePermisos from '../../hooks/usePermisos';
 import { useAuth } from '../../contexts/AuthContext';
+import { ConfirmDialog, confirmDialog } from 'primereact/confirmdialog';
+import { Toast } from 'primereact/toast';
 
 // Page principal para Usuarios — obtiene la lista usando el adaptador en src/api-endpoints/usuarios
 export default function PageUsuarios() {
@@ -82,6 +85,7 @@ export default function PageUsuarios() {
     },
   ]);
   const tableRef = useRef<DataTableHandle | null>(null);
+  const [toast, setToast] = useState<any>(null);
   // Obtener usuario actual desde el AuthContext (usa el objeto guardado en login/register)
   const { user: authUser } = useAuth();
   // Cargar permisos del rol actual
@@ -140,6 +144,8 @@ export default function PageUsuarios() {
 
   return (
     <div style={{ padding: 16 }}>
+      <Toast ref={setToast} />
+      <ConfirmDialog />
       {mensajeError && <div style={{ color: 'red' }}>{mensajeError}</div>}
 
       <div className="tabla-personalizada">
@@ -197,6 +203,62 @@ export default function PageUsuarios() {
                 onEdit={(r) => {
                   setModoPanel('editar')
                   setRegistroPanel(r)
+                }}
+                onDelete={(row) => {
+                  if (!row) return
+                  // No permitir borrar al usuario autenticado
+                  const esPropio = currentEmail && String(row.email) === String(currentEmail)
+                  if (esPropio) {
+                    if (toast && toast.show) toast.show({ severity: 'warn', summary: 'No permitido', detail: 'No puedes eliminar tu propio usuario', life: 2500 })
+                    return
+                  }
+                  confirmDialog({
+                    message: `¿Seguro que deseas eliminar al usuario "${row?.nombreUsuario || row?.email || row?.id}"?`,
+                    header: 'Confirmar eliminación',
+                    icon: 'pi pi-exclamation-triangle',
+                    acceptLabel: 'Sí, eliminar',
+                    rejectLabel: 'Cancelar',
+                    acceptClassName: 'p-button-danger',
+                    accept: async () => {
+                      try {
+                        // 1) Eliminar credenciales del usuario (capa cliente para evitar FK)
+                        try {
+                          const todas = await CredencialesAPI.findCredencialesUsuarios()
+                          const asociadas = Array.isArray(todas) ? todas.filter((c: any) => Number(c?.usuarioId) === Number(row.id)) : []
+                          for (const c of asociadas) {
+                            if (c && c.id !== undefined) {
+                              // eslint-disable-next-line no-await-in-loop
+                              await CredencialesAPI.deleteCredencialesUsuarioById(c.id)
+                            }
+                          }
+                        } catch (eBorrarCred) {
+                          // Si falla limpiar credenciales, seguimos; el backend puede manejarlo
+                          console.warn('No se pudieron eliminar todas las credenciales del usuario antes del borrado:', eBorrarCred)
+                        }
+
+                        // 2) Intentar eliminar el usuario
+                        await UsuariosAPI.deleteUsuarioById(row.id)
+                        if (toast && toast.show) toast.show({ severity: 'success', summary: 'Eliminado', detail: 'Usuario eliminado correctamente', life: 2000 })
+                        await refresh()
+                      } catch (e: any) {
+                        console.error(e)
+                        // Fallback: desactivar el usuario si persisten dependencias (FK)
+                        try {
+                          await UsuariosAPI.updateUsuarioById(row.id, { activoSn: 'N' })
+                          const msgRaw = String(e?.message || '')
+                          const porFK = /foreign key|credenciales_usuario|constraint/i.test(msgRaw)
+                          const detail = porFK
+                            ? 'No se pudo eliminar por dependencias (credenciales vinculadas). Usuario desactivado.'
+                            : 'No se pudo eliminar el usuario. Se ha desactivado en su lugar.'
+                          if (toast && toast.show) toast.show({ severity: 'info', summary: 'Desactivado', detail, life: 3500 })
+                          await refresh()
+                        } catch (e2) {
+                          console.error(e2)
+                          if (toast && toast.show) toast.show({ severity: 'error', summary: 'Error', detail: 'No se pudo eliminar ni desactivar el usuario', life: 3000 })
+                        }
+                      }
+                    }
+                  })
                 }}
                 // Permisos para acciones: usamos hasPermission con la pantalla 'Usuarios'
                 puede={{

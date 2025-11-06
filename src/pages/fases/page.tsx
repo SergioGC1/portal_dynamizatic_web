@@ -8,6 +8,8 @@ import FasesAPI from '../../api-endpoints/fases/index';
 import TableToolbar from '../../components/ui/TableToolbar';
 import usePermisos from '../../hooks/usePermisos';
 import { Button } from 'primereact/button';
+import { ConfirmDialog, confirmDialog } from 'primereact/confirmdialog';
+import { Toast } from 'primereact/toast';
 
 // Tipos para las entidades basados en la estructura real de la BD
 interface Fase {
@@ -25,6 +27,7 @@ export default function PageFases() {
     const [filtroBusquedaTemporal, establecerFiltroBusquedaTemporal] = useState<string>('');
     const [filtroBusquedaAplicar, setFiltroBusquedaAplicar] = useState<string>('');
     const tableRef = useRef<DataTableHandle | null>(null);
+    const [toast, setToast] = useState<any>(null);
 
     // Estados para el panel de ver/editar
     const [modoPanel, setModoPanel] = useState<'ver' | 'editar' | null>(null);
@@ -82,6 +85,8 @@ export default function PageFases() {
 
     return (
         <div style={{ padding: 16 }}>
+            <Toast ref={setToast} />
+            <ConfirmDialog />
             {mensajeError && (
                 <div style={{
                     color: 'red',
@@ -162,6 +167,27 @@ export default function PageFases() {
                         onEdit={(r) => {
                             setModoPanel('editar');
                             setRegistroPanel(r);
+                        }}
+                        onDelete={(row) => {
+                            if (!row) return
+                            confirmDialog({
+                                message: `¿Seguro que deseas eliminar la fase "${row?.nombre || row?.id}"?`,
+                                header: 'Confirmar eliminación',
+                                icon: 'pi pi-exclamation-triangle',
+                                acceptLabel: 'Sí, eliminar',
+                                rejectLabel: 'Cancelar',
+                                acceptClassName: 'p-button-danger',
+                                accept: async () => {
+                                    try {
+                                        await FasesAPI.deleteFaseById(row.id)
+                                        if (toast && toast.show) toast.show({ severity: 'success', summary: 'Eliminado', detail: 'Fase eliminada correctamente', life: 2000 })
+                                        await refresh()
+                                    } catch (e) {
+                                        console.error(e)
+                                        if (toast && toast.show) toast.show({ severity: 'error', summary: 'Error', detail: 'No se pudo eliminar la fase', life: 2500 })
+                                    }
+                                }
+                            })
                         }}
                         puede={{
                             ver: hasPermission('Fases', 'Ver'),
