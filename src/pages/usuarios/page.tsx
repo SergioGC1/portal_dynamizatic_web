@@ -1,4 +1,4 @@
-import React, { useMemo, useState, useRef } from 'react';
+import React, { useMemo, useState, useRef, useEffect } from 'react';
 // Estilos globales para páginas y componentes
 import '../../styles/layout.scss';
 import '../../styles/_main.scss';
@@ -99,12 +99,16 @@ export default function PageUsuarios() {
       return null;
     }
   }, [authUser]);
-  const [globalFilter, setGlobalFilter] = useState<string>('');
+  // Filtro de búsqueda temporal (no aplica hasta pulsar "Buscar")
+  const [filtroBusquedaTemporal, establecerFiltroBusquedaTemporal] = useState<string>('');
+  const [filtroBusquedaAplicar, setFiltroBusquedaAplicar] = useState<string>('');
   // Estados locales del panel (ver / editar)
   const [modoPanel, setModoPanel] = useState<'ver' | 'editar' | null>(null);
   const [registroPanel, setRegistroPanel] = useState<any | null>(null);
 
   const refresh = async () => {
+    // Congelar el valor actual del filtro para esta búsqueda
+    setFiltroBusquedaAplicar(filtroBusquedaTemporal)
     setLoading(true)
     setError(null)
     try {
@@ -118,6 +122,15 @@ export default function PageUsuarios() {
       setLoading(false)
     }
   }
+
+  // Aplicar el filtro cuando la tabla esté visible (no cargando) tras una búsqueda
+  useEffect(() => {
+    if (hasSearched && !cargando) {
+      tableRef.current?.setGlobalFilter(filtroBusquedaAplicar)
+    }
+  }, [hasSearched, cargando, filtroBusquedaAplicar])
+
+  // El input solo cambia el filtro temporal; la búsqueda se hace exclusivamente al pulsar "Buscar".
 
   // (removed query param handling) Página no abre edición al clicar fila; el panel se controla con panelMode/panelRecord
   // NOTA: No cargamos datos automáticamente - solo cuando el usuario presiona "Buscar"
@@ -137,15 +150,16 @@ export default function PageUsuarios() {
               puede={{ nuevo: hasPermission('Usuarios', 'Nuevo') }}
               onDownloadCSV={() => tableRef.current?.downloadCSV()}
               onSearch={refresh} // Conectar búsqueda con refresh
-              globalFilter={globalFilter}
-              setGlobalFilter={(v: string) => {
-                setGlobalFilter(v)
-                tableRef.current?.setGlobalFilter(v)
+              globalFilter={filtroBusquedaTemporal}
+              setGlobalFilter={(texto: string) => {
+                // Solo actualizamos el filtro temporal; la tabla no cambia hasta pulsar "Buscar"
+                establecerFiltroBusquedaTemporal(texto)
               }}
               clearFilters={() => {
-                setUsers([])
-                setHasSearched(false)
+                // Limpiar filtros sin perder datos
+                establecerFiltroBusquedaTemporal('')
                 tableRef.current?.clearFilters()
+                setHasSearched(true)
               }}
             />
 

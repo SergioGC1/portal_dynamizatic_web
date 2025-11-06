@@ -55,7 +55,6 @@ export default function TableToolbar({
             placeholder="Buscar por palabra clave"
             value={globalFilter}
             onChange={(e: React.ChangeEvent<HTMLInputElement>) => setGlobalFilter(e.target.value)}
-            onKeyDown={(e) => e.key === 'Enter' && onSearch && onSearch()}
           />
         </span>
         {showSearchButton && <Button label="Buscar" icon="pi pi-search" onClick={onSearch} />}

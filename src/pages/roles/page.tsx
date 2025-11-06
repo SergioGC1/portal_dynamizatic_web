@@ -1,4 +1,4 @@
-import React, { useMemo, useState } from 'react';
+import React, { useMemo, useState, useEffect } from 'react';
 import '../../styles/layout.scss';
 import '../../styles/_main.scss';
 import GestorPaneles from '../../components/ui/GestorPaneles';
@@ -22,7 +22,9 @@ export default function PageRoles() {
   const [modoPanel, setModoPanel] = useState<'ver' | 'editar' | null>(null);
   const [registroPanel, setRegistroPanel] = useState<any | null>(null);
   const tableRef = useRef<DataTableHandle | null>(null);
-  const [globalFilter, setGlobalFilter] = useState<string>('');
+  // Filtro de búsqueda temporal
+  const [filtroBusquedaTemporal, establecerFiltroBusquedaTemporal] = useState<string>('');
+  const [filtroBusquedaAplicar, setFiltroBusquedaAplicar] = useState<string>('');
 
   const [columnasDefinicion] = useState<ColumnDef<any>[]>([
     { key: 'nombre', title: 'Nombre', sortable: true },
@@ -51,6 +53,8 @@ export default function PageRoles() {
   const { hasPermission } = usePermisos()
 
   const loadRoles = async () => {
+    // Congelar filtro en el momento de la búsqueda
+    setFiltroBusquedaAplicar(filtroBusquedaTemporal)
     setLoading(true);
     setError(null);
     try {
@@ -64,6 +68,15 @@ export default function PageRoles() {
       setLoading(false);
     }
   };
+
+  // Aplicar el filtro cuando la tabla esté montada y no cargando
+  useEffect(() => {
+    if (hasSearched && !cargando) {
+      tableRef.current?.setGlobalFilter(filtroBusquedaAplicar)
+    }
+  }, [hasSearched, cargando, filtroBusquedaAplicar])
+
+  // El input solo actualiza el filtro temporal; la carga se hace al pulsar "Buscar".
 
   // NOTA: No cargamos datos automáticamente - solo cuando el usuario presiona "Buscar"
 
@@ -115,15 +128,16 @@ export default function PageRoles() {
               puede={{ nuevo: hasPermission('Roles', 'Nuevo') }}
               onDownloadCSV={() => tableRef.current?.downloadCSV()}
               onSearch={loadRoles} // Conectar búsqueda con loadRoles
-              globalFilter={globalFilter}
-              setGlobalFilter={(v: string) => {
-                setGlobalFilter(v)
-                tableRef.current?.setGlobalFilter(v)
+              globalFilter={filtroBusquedaTemporal}
+              setGlobalFilter={(texto: string) => {
+                // Solo actualizamos el filtro temporal
+                establecerFiltroBusquedaTemporal(texto)
               }}
               clearFilters={() => {
-                setRoles([])
-                setHasSearched(false)
+                // Limpiar filtros pero mantener datos visibles
+                establecerFiltroBusquedaTemporal('')
                 tableRef.current?.clearFilters()
+                setHasSearched(true)
               }}
             />
 

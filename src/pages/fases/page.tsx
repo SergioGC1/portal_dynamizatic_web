@@ -1,4 +1,4 @@
-import React, { useMemo, useState, useRef } from 'react';
+import React, { useMemo, useState, useRef, useEffect } from 'react';
 import '../../styles/layout.scss';
 import '../../styles/_main.scss';
 import GestorPaneles from '../../components/ui/GestorPaneles';
@@ -21,7 +21,9 @@ export default function PageFases() {
     const [cargando, setCargando] = useState(false);
     const [mensajeError, setMensajeError] = useState<string | null>(null);
     const [hasSearched, setHasSearched] = useState(false);
-    const [globalFilter, setGlobalFilter] = useState<string>('');
+    // Filtro de búsqueda temporal (solo se aplica a la tabla al pulsar "Buscar")
+    const [filtroBusquedaTemporal, establecerFiltroBusquedaTemporal] = useState<string>('');
+    const [filtroBusquedaAplicar, setFiltroBusquedaAplicar] = useState<string>('');
     const tableRef = useRef<DataTableHandle | null>(null);
 
     // Estados para el panel de ver/editar
@@ -48,6 +50,8 @@ export default function PageFases() {
 
     // Cargar datos de fases
     const refresh = async () => {
+        // Congelar filtro en el momento del clic en Buscar
+        setFiltroBusquedaAplicar(filtroBusquedaTemporal);
         setCargando(true);
         setMensajeError(null);
         try {
@@ -61,6 +65,15 @@ export default function PageFases() {
             setCargando(false);
         }
     };
+
+    // Aplicar el filtro una vez que la tabla esté visible tras la búsqueda
+    useEffect(() => {
+        if (hasSearched && !cargando) {
+            tableRef.current?.setGlobalFilter(filtroBusquedaAplicar);
+        }
+    }, [hasSearched, cargando, filtroBusquedaAplicar]);
+
+    // El input solo cambia el filtro temporal; la búsqueda se realiza al pulsar "Buscar".
 
     const columns = useMemo(() =>
         columnasDefinicion.length ? columnasDefinicion : [{ key: 'id', title: 'ID' }],
@@ -98,15 +111,16 @@ export default function PageFases() {
                         puede={{ nuevo: hasPermission('Fases', 'Nuevo') }}
                         onDownloadCSV={() => tableRef.current?.downloadCSV()}
                         onSearch={refresh}
-                        globalFilter={globalFilter}
-                        setGlobalFilter={(v: string) => {
-                            setGlobalFilter(v);
-                            tableRef.current?.setGlobalFilter(v);
+                        globalFilter={filtroBusquedaTemporal}
+                        setGlobalFilter={(texto: string) => {
+                            // Solo actualizamos el filtro temporal; la tabla no cambia hasta pulsar "Buscar"
+                            establecerFiltroBusquedaTemporal(texto);
                         }}
                         clearFilters={() => {
-                            setFases([]);
-                            setHasSearched(false);
+                            // Limpiar filtros manteniendo los datos visibles
+                            establecerFiltroBusquedaTemporal('');
                             tableRef.current?.clearFilters();
+                            setHasSearched(true);
                         }}
                     />
                 )}

@@ -1,4 +1,4 @@
-import React, { useMemo, useState, useRef } from 'react'
+import React, { useMemo, useState, useRef, useEffect } from 'react'
 import '../../styles/layout.scss'
 import '../../styles/_main.scss'
 import GestorPaneles from '../../components/ui/GestorPaneles'
@@ -32,7 +32,10 @@ export default function PageProductos() {
     { key: 'imagen', title: 'Imagen', sortable: false },
   ])
   const tableRef = useRef<any | null>(null)
-  const [globalFilter, setGlobalFilter] = useState<string>('')
+  // Filtro de búsqueda temporal (no aplica a la tabla hasta pulsar "Buscar")
+  const [filtroBusquedaTemporal, establecerFiltroBusquedaTemporal] = useState<string>('')
+  // Filtro a aplicar tras pulsar "Buscar" (se fija en el momento del click)
+  const [filtroBusquedaAplicar, setFiltroBusquedaAplicar] = useState<string>('')
   // Estados del panel para ver/editar registros
   const [modoPanel, setModoPanel] = useState<'ver' | 'editar' | null>(null)
   const [registroPanel, setRegistroPanel] = useState<any | null>(null)
@@ -41,6 +44,8 @@ export default function PageProductos() {
 
   // Función para cargar productos - solo cuando el usuario busque
   const loadProductos = async () => {
+    // Congelar el valor del filtro a aplicar en esta búsqueda
+    setFiltroBusquedaAplicar(filtroBusquedaTemporal)
     setLoading(true)
     setError(null)
     try {
@@ -54,6 +59,15 @@ export default function PageProductos() {
       setLoading(false)
     }
   }
+
+  // Aplicar el filtro global a la tabla una vez que la tabla esté montada (hasSearched) y no esté cargando
+  useEffect(() => {
+    if (hasSearched && !cargando) {
+      tableRef.current?.setGlobalFilter(filtroBusquedaAplicar)
+    }
+  }, [hasSearched, cargando, filtroBusquedaAplicar])
+
+  // El input solo cambia el filtro temporal; la búsqueda se hace exclusivamente al pulsar "Buscar".
 
   // NOTA: No cargamos datos automáticamente - solo cuando el usuario presiona "Buscar"
 
@@ -72,15 +86,17 @@ export default function PageProductos() {
               puede={{ nuevo: hasPermission('Productos', 'Nuevo') }}
               onDownloadCSV={() => tableRef.current?.downloadCSV()}
               onSearch={loadProductos} // Conectar búsqueda con loadProductos
-              globalFilter={globalFilter}
-              setGlobalFilter={(v: string) => { 
-                setGlobalFilter(v); 
-                tableRef.current?.setGlobalFilter(v) 
+              globalFilter={filtroBusquedaTemporal}
+              setGlobalFilter={(texto: string) => { 
+                // Solo actualizamos el filtro temporal; la tabla no cambia hasta pulsar "Buscar"
+                establecerFiltroBusquedaTemporal(texto)
               }}
               clearFilters={() => {
-                setProductos([])
-                setHasSearched(false)
+                // Limpiar filtros sin perder los datos ya cargados
+                establecerFiltroBusquedaTemporal('')
                 tableRef.current?.clearFilters()
+                // Mantenemos hasSearched para que la tabla siga visible
+                setHasSearched(true)
               }}
             />
 
