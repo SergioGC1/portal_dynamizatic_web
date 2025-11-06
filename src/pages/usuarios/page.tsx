@@ -246,11 +246,22 @@ export default function PageUsuarios() {
                 const assignedRoles = (updated as any)._assignedRoles || []
                 const payload: any = { ...updated }
                 delete payload._assignedRoles
-                // si hay roles asignados, mantenemos compatibilidad con el esquema actual usando `rolId` (primer rol)
-                if (assignedRoles && assignedRoles.length) {
-                  const parsed = Number(assignedRoles[0])
-                  payload.rolId = Number.isNaN(parsed) ? assignedRoles[0] : parsed
-                }
+                  // Aplicar cambio de rol SOLO si el usuario tiene permiso explícito para ello
+                  const puedeEditarRol = (
+                    hasPermission('Usuarios', 'Rol') ||
+                    hasPermission('Usuarios', 'EditarRol') ||
+                    hasPermission('Usuarios', 'Editar Rol')
+                  )
+                  if (puedeEditarRol) {
+                    // si hay roles asignados, mantenemos compatibilidad con el esquema actual usando `rolId` (primer rol)
+                    if (assignedRoles && assignedRoles.length) {
+                      const parsed = Number(assignedRoles[0])
+                      payload.rolId = Number.isNaN(parsed) ? assignedRoles[0] : parsed
+                    }
+                  } else {
+                    // Si no hay permiso para editar rol, ignorar cualquier cambio recibido
+                    delete payload.rolId
+                  }
 
                 if (updated.id) await UsuariosAPI.updateUsuarioById(updated.id, payload)
                 else {

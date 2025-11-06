@@ -44,7 +44,8 @@ export default function PanelUsuario({
     // Estados para manejo de roles
     const [opcionesDeRoles, establecerOpcionesDeRoles] = useState<Array<any>>([])
     const [rolSeleccionado, establecerRolSeleccionado] = useState<string | null>(null)
-    const [puedeEditarRolDelUsuario, establecerPuedeEditarRolDelUsuario] = useState(false)
+    // Ya no se otorga permiso implícito por rol (p.ej., 'supervisor');
+    // se respetan únicamente los permisos declarados.
     
     // Estados para manejo de imágenes
     const [estaSubiendoImagen, establecerEstaSubiendoImagen] = useState(false)
@@ -53,7 +54,7 @@ export default function PanelUsuario({
     const referenciaUrlObjetoActual = useRef<string | null>(null)
     
     // Hook de permisos
-    const { rolId: miRolId, hasPermission: tienePermiso } = usePermisos()
+    const { hasPermission: tienePermiso } = usePermisos()
 
     // Inicializar formulario cuando cambie el registro
     useEffect(() => {
@@ -179,25 +180,14 @@ export default function PanelUsuario({
                     establecerRolSeleccionado(null)
                 }
 
-                // Verificar permisos de edición de roles
-                if (miRolId) {
-                    try {
-                        const miRol = await RolesAPI.getRoleById(miRolId)
-                        const nombreDeMiRol = String(miRol?.nombre || miRol?.name || '').trim().toLowerCase()
-                        establecerPuedeEditarRolDelUsuario(nombreDeMiRol === 'supervisor')
-                    } catch (error) {
-                        console.error('Error verificando rol de supervisor:', error)
-                        establecerPuedeEditarRolDelUsuario(false)
-                    }
-                } else {
-                    establecerPuedeEditarRolDelUsuario(false)
-                }
+                // No otorgar permisos implícitos por nombre de rol.
+                // La edición de rol se regirá solo por permisos explícitos.
             } catch (error) {
                 console.error('Error cargando opciones de roles:', error)
             }
         }
         cargarOpcionesDeRoles()
-    }, [formularioDelUsuario?.rolId, formularioDelUsuario?.id, miRolId, formularioDelUsuario])
+    }, [formularioDelUsuario?.rolId, formularioDelUsuario?.id, formularioDelUsuario])
 
     // Gestión de imágenes
     const valorDeLaImagen = formularioDelUsuario?.imagen
@@ -339,9 +329,8 @@ export default function PanelUsuario({
     }
 
     const puedeEditarRol = () => {
-        if (!tienePermiso) return puedeEditarRolDelUsuario
+        if (!tienePermiso) return false
         return (
-            puedeEditarRolDelUsuario ||
             tienePermiso('Usuarios', 'Rol') || 
             tienePermiso('Usuarios', 'EditarRol') || 
             tienePermiso('Usuarios', 'Editar Rol')
