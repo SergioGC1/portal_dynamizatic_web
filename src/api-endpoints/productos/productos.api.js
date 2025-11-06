@@ -63,3 +63,20 @@ async function count(where) {
 }
 
 module.exports = { find, getById, create, update, replace: replaceFn, delete: _delete, count };
+ 
+// Subida de imagen de producto: POST /productos/{id}/imagen con campo 'file'
+async function uploadProductoImagen(id, file /*, filenameOptional */) {
+  if (!id) throw new Error('uploadProductoImagen: falta id')
+  if (!file) throw new Error('uploadProductoImagen: falta file')
+  const headers = { ...getAuthHeader() } // NO fijar Content-Type; dejar que el navegador ponga el boundary
+  const form = new FormData()
+  form.append('file', file)
+  const res = await fetch(`${BASE_URL}/productos/${id}/imagen`, {
+    method: 'POST',
+    headers,
+    body: form,
+  })
+  return await handleResponse(res, 'uploadProductoImagen')
+}
+
+module.exports.uploadProductoImagen = uploadProductoImagen;

@@ -85,7 +85,8 @@ export default function PanelProducto({
     const vistaPreviaLocal = localPreviewUrl
 
     // Detectar si la tabla incluye columna 'imagen'
-    const tieneColumnaImagen = (columns || []).some((c) => String(c.key).toLowerCase() === 'imagen')
+    // (Deprecated) Antes dependíamos de la presencia de una columna 'imagen' en la tabla
+    // para mostrar la caja de imagen. Ya no es necesario.
 
     // Heurística para producto (mantener compatibilidad)
     const esRegistroDeProducto = Boolean(
@@ -315,15 +316,38 @@ export default function PanelProducto({
         delete payload._imagenUrl
         if (payload._cb !== undefined) delete payload._cb
 
+        // Normalizaciones de tipos requeridas por el backend
+        // anyo debe ser número (el input suele venir como string)
+        const anyoValor2 = (formulario as any).anyo ?? (formulario as any)['año']
+        if (anyoValor2 !== undefined && anyoValor2 !== null && String(anyoValor2).trim() !== '') {
+            const parsedYear = Number(String(anyoValor2).trim())
+            if (!Number.isNaN(parsedYear)) payload.anyo = parsedYear
+        }
+        // Evitar enviar simultáneamente 'año'
+        if (Object.prototype.hasOwnProperty.call(payload, 'año')) delete payload['año']
+        // Nombre sin espacios sobrantes
+        if (payload.nombre) payload.nombre = String(payload.nombre).trim()
+
+        let resultadoGuardado: any = null
         if (onSave) {
-            await onSave(payload as Producto)
+            try {
+                resultadoGuardado = await onSave(payload as Producto)
+            } catch (e) {
+                // Si el padre lanza, no intentamos subir imagen
+                throw e
+            }
         }
 
-        // intentar subir imagen pendiente
+        // intentar subir imagen pendiente: preferir id devuelto; fallback a espera de id en formulario
         try {
-            await intentarSubirImagenDespuesDeGuardar(archivoPendiente)
+            const idNuevo = (resultadoGuardado && (resultadoGuardado.id || resultadoGuardado?.data?.id)) || (formulario as any)?.id
+            if (archivoPendiente && idNuevo) {
+                await subirImagenDelProducto(archivoPendiente, idNuevo)
+            } else {
+                await intentarSubirImagenDespuesDeGuardar(archivoPendiente)
+            }
         } catch (e) {
-            // ya gestionado
+            // ya gestionado en funciones de subida
         }
     }
 
@@ -332,7 +356,9 @@ export default function PanelProducto({
 
     const valorTitulo = (formulario as any)?.[claveTitulo]
 
-    const debeMostrarImagen = Boolean((formulario as any)?.imagen || (mode === 'editar' && tieneColumnaImagen))
+    // Mostrar caja de imagen para productos siempre en edición, aunque no exista columna 'imagen' en la tabla
+    // y también en modo ver si el registro ya tiene una imagen
+    const debeMostrarImagen = Boolean(esRegistroDeProducto && (mode === 'editar' || (formulario as any)?.imagen))
 
     return (
         <div className="record-panel">
@@ -356,7 +382,7 @@ export default function PanelProducto({
                                 alt="imagen"
                                 className="record-panel__thumbnail"
                                 onError={() => actualizarCampoDelFormulario('imagen', '')}
-                                style={{ width: 160, height: 160, objectFit: 'cover', borderRadius: 6 }}
+                                style={{ width: '100%', height: '100%', objectFit: 'contain', objectPosition: 'center', borderRadius: 6 }}
                             />
                         ) : (
                             <div className="record-panel__no-image">Sin imagen</div>
@@ -372,9 +398,10 @@ export default function PanelProducto({
                                         position: 'absolute',
                                         top: 0,
                                         left: 0,
-                                        width: 160,
-                                        height: 160,
-                                        objectFit: 'cover',
+                                        width: '100%',
+                                        height: '100%',
+                                        objectFit: 'contain',
+                                        objectPosition: 'center',
                                         borderRadius: 6,
                                         boxShadow: '0 6px 18px rgba(0,0,0,0.18)'
                                     }}

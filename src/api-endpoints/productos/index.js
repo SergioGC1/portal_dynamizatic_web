@@ -9,4 +9,5 @@ module.exports = {
   replaceProductoById: (id, payload) => productosApi.replace(id, payload),
   deleteProductoById: (id) => productosApi.delete(id),
   countProductos: (where) => productosApi.count(where),
+  uploadProductoImagen: (id, file, filename) => productosApi.uploadProductoImagen(id, file, filename),
 };

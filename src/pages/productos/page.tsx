@@ -29,7 +29,6 @@ export default function PageProductos() {
     { key: 'material3', title: 'Material 3', sortable: true },
     { key: 'esElectricoSn', title: 'Eléctrico', sortable: true },
     { key: 'esBiodegradableSn', title: 'Biodegradable', sortable: true },
-    { key: 'imagen', title: 'Imagen', sortable: false },
   ])
   const tableRef = useRef<any | null>(null)
   // Filtro de búsqueda temporal (no aplica a la tabla hasta pulsar "Buscar")
@@ -148,13 +147,22 @@ export default function PageProductos() {
                   await loadProductos()
                 } catch (e) { console.error(e) }
               }}
+              onUploadSuccess={async () => {
+                try { await loadProductos() } catch (e) { console.error(e) }
+              }}
               onSave={async (updated) => {
                 try {
-                  if (updated.id) await productosAPI.updateProductoById(updated.id, updated)
-                  else await productosAPI.createProducto(updated)
+                  let resultado: any
+                  if (updated.id) {
+                    await productosAPI.updateProductoById(updated.id, updated)
+                    resultado = { id: updated.id }
+                  } else {
+                    resultado = await productosAPI.createProducto(updated)
+                  }
                   setModoPanel(null)
                   setRegistroPanel(null)
                   await loadProductos()
+                  return resultado
                 } catch (e) { console.error(e) }
               }}
             />
