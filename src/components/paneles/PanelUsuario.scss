@@ -5,6 +5,18 @@
   gap: 16px;
 }
 
+/* Estados de error para inputs del panel */
+.record-panel__input--error {
+  border: 1px solid #dc3545 !important; /* rojo */
+  outline: none;
+}
+
+.record-panel__error {
+  color: #dc3545;
+  margin-top: 6px;
+  font-size: 0.85em;
+}
+
 /* Responsive */
 @media (max-width: 768px) {
   .panel-usuario__campos-especiales {

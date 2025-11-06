@@ -246,34 +246,49 @@ export default function PageUsuarios() {
                 const assignedRoles = (updated as any)._assignedRoles || []
                 const payload: any = { ...updated }
                 delete payload._assignedRoles
-                  // Aplicar cambio de rol SOLO si el usuario tiene permiso explícito para ello
-                  const puedeEditarRol = (
-                    hasPermission('Usuarios', 'Rol') ||
-                    hasPermission('Usuarios', 'EditarRol') ||
-                    hasPermission('Usuarios', 'Editar Rol')
-                  )
-                  if (puedeEditarRol) {
-                    // si hay roles asignados, mantenemos compatibilidad con el esquema actual usando `rolId` (primer rol)
-                    if (assignedRoles && assignedRoles.length) {
-                      const parsed = Number(assignedRoles[0])
-                      payload.rolId = Number.isNaN(parsed) ? assignedRoles[0] : parsed
-                    }
-                  } else {
-                    // Si no hay permiso para editar rol, ignorar cualquier cambio recibido
-                    delete payload.rolId
+                // Salvaguarda: en edición, el backend no acepta 'password' en PATCH
+                // Nos aseguramos de no enviarlo nunca en el update
+                if (payload && payload.id) {
+                  if (Object.prototype.hasOwnProperty.call(payload, 'password')) {
+                    delete payload.password
                   }
+                }
+                // Aplicar cambio de rol SOLO si el usuario tiene permiso explícito para ello
+                const puedeEditarRol = (
+                  hasPermission('Usuarios', 'Rol') ||
+                  hasPermission('Usuarios', 'EditarRol') ||
+                  hasPermission('Usuarios', 'Editar Rol')
+                )
+                if (puedeEditarRol) {
+                  // si hay roles asignados, mantenemos compatibilidad con el esquema actual usando `rolId` (primer rol)
+                  if (assignedRoles && assignedRoles.length) {
+                    const parsed = Number(assignedRoles[0])
+                    payload.rolId = Number.isNaN(parsed) ? assignedRoles[0] : parsed
+                  }
+                } else {
+                  // Si no hay permiso para editar rol, ignorar cualquier cambio recibido
+                  delete payload.rolId
+                }
 
-                if (updated.id) await UsuariosAPI.updateUsuarioById(updated.id, payload)
-                else {
+                let resultado: any
+                if (updated.id) {
+                  await UsuariosAPI.updateUsuarioById(updated.id, payload)
+                  resultado = { id: updated.id }
+                } else {
                   // Para creación de usuario usamos el flujo de registro que acepta contraseña
                   // El GestorPaneles añade `password` al form cuando entityType === 'usuario'
-                  await UsuariosAPI.register(payload)
+                  const creado = await UsuariosAPI.register(payload)
+                  // devolver el usuario creado (o al menos su id) para que el Panel suba la imagen
+                  resultado = creado
                 }
                 setModoPanel(null)
                 setRegistroPanel(null)
                 await refresh()
+                return resultado
               } catch (e) {
                 console.error(e)
+                // Re-propagar el error para que PanelUsuario pueda mapearlo a campos y mostrarlos en rojo
+                throw e
               }
             }}
           />
