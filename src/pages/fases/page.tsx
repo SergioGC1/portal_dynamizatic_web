@@ -5,6 +5,7 @@ import GestorPaneles from '../../components/ui/GestorPaneles';
 import DataTable, { ColumnDef } from '../../components/data-table/DataTable';
 import { DataTableHandle } from '../../components/data-table/DataTable';
 import FasesAPI from '../../api-endpoints/fases/index';
+import TareasFasesAPI from '../../api-endpoints/tareas-fases/index';
 import TableToolbar from '../../components/ui/TableToolbar';
 import usePermisos from '../../hooks/usePermisos';
 import { Button } from 'primereact/button';
@@ -16,6 +17,12 @@ interface Fase {
     id?: number;
     nombre: string;
     codigo?: string;
+}
+
+interface TareaFase {
+    id?: number;
+    faseId: number;
+    nombre: string;
 }
 
 export default function PageFases() {
@@ -82,6 +89,66 @@ export default function PageFases() {
         columnasDefinicion.length ? columnasDefinicion : [{ key: 'id', title: 'ID' }],
         [columnasDefinicion]
     );
+
+    // Eliminar fase con confirmación y borrado de tareas asociadas (si existen)
+    const eliminarFaseConConfirmacion = async (row: Fase) => {
+        // 1) Consultar si existen tareas asociadas a la fase
+        let tareasAsociadas: TareaFase[] = []
+        try {
+            const params = { filter: JSON.stringify({ where: { faseId: Number(row.id) } }) }
+            const lista = await TareasFasesAPI.findTareasFases(params)
+            tareasAsociadas = Array.isArray(lista) ? (lista as TareaFase[]) : []
+        } catch (e) {
+            // Si falla la consulta, continuamos con confirmación estándar
+            console.warn('No se pudo comprobar tareas asociadas, continuando con borrado simple...', e)
+        }
+
+        const totalTareas = tareasAsociadas.length
+        const mensaje = totalTareas > 0
+            ? `La fase "${row?.nombre || row?.id}" tiene ${totalTareas} tarea(s) asociada(s).\n\n¿Deseas eliminar también esas tareas y la fase?`
+            : `¿Seguro que deseas eliminar la fase "${row?.nombre || row?.id}"?`
+
+        confirmDialog({
+            message: mensaje,
+            header: 'Confirmar eliminación',
+            icon: 'pi pi-exclamation-triangle',
+            acceptLabel: totalTareas > 0 ? 'Sí, eliminar tareas y fase' : 'Sí, eliminar',
+            rejectLabel: 'Cancelar',
+            acceptClassName: 'p-button-danger',
+            accept: async () => {
+                try {
+                    // 2) Si hay tareas, eliminarlas primero
+                    if (totalTareas > 0) {
+                        // borrar en serie para mensajes claros (o usar Promise.all si el backend soporta)
+                        for (const t of tareasAsociadas) {
+                            if (t?.id != null) {
+                                try {
+                                    await TareasFasesAPI.deleteTareasFaseById(t.id)
+                                } catch (errT) {
+                                    console.error('Error eliminando tarea asociada:', errT)
+                                }
+                            }
+                        }
+                    }
+
+                    // 3) Ahora eliminar la fase
+                    if (row?.id != null) {
+                        await FasesAPI.deleteFaseById(row.id)
+                    }
+                    if (toast && (toast as any).show) {
+                        const detail = totalTareas > 0
+                            ? `Fase y ${totalTareas} tarea(s) eliminadas correctamente`
+                            : 'Fase eliminada correctamente'
+                        ;(toast as any).show({ severity: 'success', summary: 'Eliminado', detail, life: 2200 })
+                    }
+                    await refresh()
+                } catch (e) {
+                    console.error(e)
+                    if (toast && (toast as any).show) (toast as any).show({ severity: 'error', summary: 'Error', detail: 'No se pudo eliminar la fase', life: 2800 })
+                }
+            }
+        })
+    }
 
     return (
         <div style={{ padding: 16 }}>
@@ -168,26 +235,9 @@ export default function PageFases() {
                             setModoPanel('editar');
                             setRegistroPanel(r);
                         }}
-                        onDelete={(row) => {
-                            if (!row) return
-                            confirmDialog({
-                                message: `¿Seguro que deseas eliminar la fase "${row?.nombre || row?.id}"?`,
-                                header: 'Confirmar eliminación',
-                                icon: 'pi pi-exclamation-triangle',
-                                acceptLabel: 'Sí, eliminar',
-                                rejectLabel: 'Cancelar',
-                                acceptClassName: 'p-button-danger',
-                                accept: async () => {
-                                    try {
-                                        await FasesAPI.deleteFaseById(row.id)
-                                        if (toast && toast.show) toast.show({ severity: 'success', summary: 'Eliminado', detail: 'Fase eliminada correctamente', life: 2000 })
-                                        await refresh()
-                                    } catch (e) {
-                                        console.error(e)
-                                        if (toast && toast.show) toast.show({ severity: 'error', summary: 'Error', detail: 'No se pudo eliminar la fase', life: 2500 })
-                                    }
-                                }
-                            })
+                        onDelete={async (row) => {
+                            if (!row) return;
+                            await eliminarFaseConConfirmacion(row);
                         }}
                         puede={{
                             ver: hasPermission('Fases', 'Ver'),

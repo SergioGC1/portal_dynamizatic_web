@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react'
 import { Button } from 'primereact/button'
 import { Dialog } from 'primereact/dialog'
-import { confirmDialog, ConfirmDialog } from 'primereact/confirmdialog'
+import { confirmDialog } from 'primereact/confirmdialog'
 import '../ui/GestorPaneles.css'
 import './PanelFase.scss'
 
@@ -370,28 +370,7 @@ export default function PanelFase({ mode, record = null, columns = [], onClose, 
                             )}
                         </div>
                     </div>
-                ) : (
-                    <div className="record-panel__grid" style={{ marginTop: 20, gridColumn: '1 / -1', width: '100%' }}>
-                        <div className="panel-fase__tareas-guardado-requerido" style={{ gridColumn: '1 / -1' }}>
-                            <div className="panel-fase__mensaje-info" style={{
-                                display: 'flex',
-                                alignItems: 'center',
-                                gap: 12,
-                                padding: 16,
-                                backgroundColor: '#e7f3ff',
-                                borderRadius: 6
-                            }}>
-                                <i className="pi pi-info-circle" style={{ color: '#007bff' }}></i>
-                                <div>
-                                    <strong style={{ color: '#007bff' }}>Guarda la fase primero</strong>
-                                    <p style={{ margin: 0, fontSize: '0.9em', color: '#007bff' }}>
-                                        Para gestionar las tareas de esta fase, primero debes guardar los datos básicos.
-                                    </p>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                )}
+                ) : null}
             </div>
 
             {/* Diálogo para nueva/editar tarea */}
@@ -452,8 +431,7 @@ export default function PanelFase({ mode, record = null, columns = [], onClose, 
                 </div>
             </Dialog>
 
-            {/* Diálogo de confirmación */}
-            <ConfirmDialog />
+            {/* ConfirmDialog global se renderiza en la página padre; evitamos duplicarlo aquí */}
         </>
     )
 }
