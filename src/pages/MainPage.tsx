@@ -11,6 +11,8 @@ import RolesPage from "./roles/page";
 import ProductosPage from "./productos/page";
 import FasesPage from "./fases/page";
 import PermisosPage from "./permisos/page";
+// Ajuste: la página de chat ahora se exporta sólo como 'page.tsx'
+import ChatPage from "./chat/page";
 
 export default function MainPage() {
   const { user, logout } = useAuth();
@@ -80,12 +82,7 @@ export default function MainPage() {
     productos: tienePermiso('Productos', 'Ver') ? <ProductosPage /> : null,
     fases: tienePermiso('Fases', 'Ver') ? <FasesPage /> : null,
     permisos: (tienePermiso('Permisos', 'Ver') || tienePermiso('Permisos', 'Actualizar')) ? <PermisosPage /> : null,
-    chat: (
-      <section>
-        <h2>Chat</h2>
-        <p>Funcionalidad de chat en construcción.</p>
-      </section>
-    ),
+    chat: <ChatPage />,
   };
 
   const getContenido = () => {
@@ -150,7 +147,6 @@ export default function MainPage() {
         <Header
           title="Portal Dynamizatic"
           userName={user?.email}
-          notifications={0}
           onLogout={cerrarSesion}
           // Evitar usar abreviaturas en callbacks; usar nombre explícito
           onToggleSidebar={() => setSidebarCollapsed(prev => !prev)}

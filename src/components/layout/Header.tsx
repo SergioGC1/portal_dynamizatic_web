@@ -4,25 +4,22 @@ import '../../styles/layout.scss';
 import '../../styles/_main.scss';
 import { Toolbar } from 'primereact/toolbar';
 import { Button } from 'primereact/button';
-import { Badge } from 'primereact/badge';
 
 type Props = {
   title?: string;
   onToggleSidebar?: () => void;
   // Indica si el sidebar está colapsado/oculto (true) o visible (false)
   sidebarCollapsed?: boolean;
-  notifications?: number;
   userName?: string;
   onLogout?: () => void;
 };
 
-export default function Header({ title, onToggleSidebar, sidebarCollapsed = false, notifications = 0, userName, onLogout }: Props) {
+export default function Header({ title, onToggleSidebar, sidebarCollapsed = false, userName, onLogout }: Props) {
   // - alternarBarraLateral: función para abrir/cerrar sidebar
   // - notificaciones: número de notificaciones (se muestra un badge si > 0)
   // - nombreUsuario: email o nombre mostrado en el header
   // - cerrarSesion: callback para cerrar sesión
   const alternarBarraLateral = onToggleSidebar;
-  const notificaciones = notifications;
   const nombreUsuario = userName;
   const cerrarSesion = onLogout;
 
@@ -41,10 +38,6 @@ export default function Header({ title, onToggleSidebar, sidebarCollapsed = fals
 
   const right = (
     <div style={{ display: 'flex', gap: 12, alignItems: 'center' }}>
-      <div style={{ position: 'relative' }}>
-        <Button icon="pi pi-bell" className="p-button-text" />
-        {notificaciones > 0 && <Badge value={String(notificaciones)} severity="danger" style={{ position: 'absolute', top: -10, right: -10 }} />}
-      </div>
       {nombreUsuario && <div style={{ fontSize: 14 }}>{nombreUsuario}</div>}
       {cerrarSesion && <Button label="Cerrar sesión" icon="pi pi-sign-out" onClick={cerrarSesion} />}
     </div>

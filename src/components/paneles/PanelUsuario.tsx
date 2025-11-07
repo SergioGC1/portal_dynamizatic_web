@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react'
 import { InputSwitch } from 'primereact/inputswitch'
 import { InputText } from 'primereact/inputtext'
-import { confirmDialog, ConfirmDialog } from 'primereact/confirmdialog'
+import { confirmDialog } from 'primereact/confirmdialog'
 import { ColumnDef } from '../../components/data-table/DataTable'
 import { Button } from 'primereact/button'
 import usePermisos from '../../hooks/usePermisos'
@@ -759,8 +759,7 @@ export default function PanelUsuario({
                 </div>
             </div>
 
-            {/* Diálogo de confirmación */}
-            <ConfirmDialog />
+            {/* ConfirmDialog global se gestiona en la página; evitamos duplicar aquí para no mostrar doble confirmación */}
         </div>
     )
 }
