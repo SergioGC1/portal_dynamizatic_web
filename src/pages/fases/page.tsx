@@ -90,7 +90,7 @@ export default function PageFases() {
         [columnasDefinicion]
     );
 
-    // Eliminar fase con confirmación y borrado de tareas asociadas (si existen)
+    // Eliminar fase: si tiene tareas asociadas, mostrar error y no permitir borrar
     const eliminarFaseConConfirmacion = async (row: Fase) => {
         // 1) Consultar si existen tareas asociadas a la fase
         let tareasAsociadas: TareaFase[] = []
@@ -104,42 +104,36 @@ export default function PageFases() {
         }
 
         const totalTareas = tareasAsociadas.length
-        const mensaje = totalTareas > 0
-            ? `La fase "${row?.nombre || row?.id}" tiene ${totalTareas} tarea(s) asociada(s).\n\n¿Deseas eliminar también esas tareas y la fase?`
-            : `¿Seguro que deseas eliminar la fase "${row?.nombre || row?.id}"?`
+        if (totalTareas > 0) {
+            // Mostrar error y no permitir borrado
+            if (toast && (toast as any).show) {
+                (toast as any).show({
+                    severity: 'error',
+                    summary: 'ERROR',
+                    detail: 'No se pudo eliminar el registro porque tiene otros registros relacionados',
+                    life: 3500
+                })
+            } else {
+                alert('ERROR: No se pudo eliminar el registro porque tiene otros registros relacionados')
+            }
+            return
+        }
 
+        // Si no hay tareas asociadas, confirmar y eliminar la fase
         confirmDialog({
-            message: mensaje,
+            message: `¿Seguro que deseas eliminar la fase "${row?.nombre || row?.id}"?`,
             header: 'Confirmar eliminación',
             icon: 'pi pi-exclamation-triangle',
-            acceptLabel: totalTareas > 0 ? 'Sí, eliminar tareas y fase' : 'Sí, eliminar',
+            acceptLabel: 'Sí, eliminar',
             rejectLabel: 'Cancelar',
             acceptClassName: 'p-button-danger',
             accept: async () => {
                 try {
-                    // 2) Si hay tareas, eliminarlas primero
-                    if (totalTareas > 0) {
-                        // borrar en serie para mensajes claros (o usar Promise.all si el backend soporta)
-                        for (const t of tareasAsociadas) {
-                            if (t?.id != null) {
-                                try {
-                                    await TareasFasesAPI.deleteTareasFaseById(t.id)
-                                } catch (errT) {
-                                    console.error('Error eliminando tarea asociada:', errT)
-                                }
-                            }
-                        }
-                    }
-
-                    // 3) Ahora eliminar la fase
                     if (row?.id != null) {
                         await FasesAPI.deleteFaseById(row.id)
                     }
                     if (toast && (toast as any).show) {
-                        const detail = totalTareas > 0
-                            ? `Fase y ${totalTareas} tarea(s) eliminadas correctamente`
-                            : 'Fase eliminada correctamente'
-                        ;(toast as any).show({ severity: 'success', summary: 'Eliminado', detail, life: 2200 })
+                        (toast as any).show({ severity: 'success', summary: 'Eliminado', detail: 'Fase eliminada correctamente', life: 2200 })
                     }
                     await refresh()
                 } catch (e) {
