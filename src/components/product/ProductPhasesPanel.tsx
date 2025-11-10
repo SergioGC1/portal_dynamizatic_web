@@ -1,8 +1,10 @@
-import React, { useEffect, useState } from 'react'
+import React, { useEffect, useState, useCallback } from 'react'
+import { useAuth } from '../../contexts/AuthContext'
 
 // Adaptadores (API) con imports arriba para buenas prácticas
 import fasesAPI from '../../api-endpoints/fases'
 import tareasFasesAPI from '../../api-endpoints/tareas-fases'
+import productosFasesTareasAPI from '../../api-endpoints/productos-fases-tareas'
 
 // Tipos locales alineados con PanelFase
 type TareaFase = {
@@ -19,6 +21,9 @@ export default function PanelFasesProducto({ productId }: { productId?: string |
     const [tareasDeLaFaseActiva, establecerTareasDeLaFaseActiva] = useState<TareaFase[]>([])
     const [estaCargando, establecerEstaCargando] = useState(false)
     const [mensajeDeError, establecerMensajeDeError] = useState<string | null>(null)
+    const [registrosProductosTareas, establecerRegistrosProductosTareas] = useState<Record<number, any>>({})
+    const [updatingTareas, setUpdatingTareas] = useState<Record<number, boolean>>({})
+    const { user } = useAuth()
 
     useEffect(() => {
         let componenteMontado = true
@@ -44,7 +49,7 @@ export default function PanelFasesProducto({ productId }: { productId?: string |
         establecerIdentificadorDeFaseActiva(identificadorDeFaseDestino)
     }
 
-    async function cargarTareasPorFase(identificadorDeFase: number) {
+    const cargarTareasPorFase = useCallback(async (identificadorDeFase: number) => {
         establecerEstaCargando(true)
         establecerMensajeDeError(null)
         try {
@@ -53,19 +58,69 @@ export default function PanelFasesProducto({ productId }: { productId?: string |
             const arreglo = Array.isArray(resultado) ? resultado : []
             const mapeadas: TareaFase[] = arreglo.map((t: any) => ({ id: Number(t.id), faseId: Number(t.faseId), nombre: t.nombre }))
             establecerTareasDeLaFaseActiva(mapeadas)
+            // Cargar registros existentes para este producto y fase
+            try {
+                const filtro = { filter: JSON.stringify({ where: { productoId: Number(productId), faseId: Number(identificadorDeFase) } }) }
+                const rp = await (productosFasesTareasAPI as any).findProductosFasesTareas(filtro)
+                const arrRp = Array.isArray(rp) ? rp : []
+                const mapa: Record<number, any> = {}
+                for (const r of arrRp) {
+                    const tareaId = Number(r.tareaFaseId)
+                    if (!Number.isNaN(tareaId)) mapa[tareaId] = r
+                }
+                establecerRegistrosProductosTareas(mapa)
+            } catch (err) {
+                console.error('Error cargando registros productos_fases_tareas', err)
+            }
         } catch (error: any) {
             console.error('Error cargando tareas por fase', error)
             establecerMensajeDeError(error?.message || 'Error cargando tareas de la fase')
         } finally {
             establecerEstaCargando(false)
         }
-    }
+    }, [productId])
 
     useEffect(() => {
         if (identificadorDeFaseActiva) cargarTareasPorFase(identificadorDeFaseActiva)
-    }, [identificadorDeFaseActiva])
+    }, [identificadorDeFaseActiva, cargarTareasPorFase])
 
     if (!productId) return null
+
+    // helper to find the completada key name in an existing record
+    // Use camel-case 'completadaSn' as the default because backend validation is strict
+    const detectCompletadaKey = (rec: any) => (rec ? Object.keys(rec).find(k => /complet/i.test(k)) || 'completadaSn' : 'completadaSn')
+
+    async function toggleCompletada(tarea: TareaFase, checked: boolean) {
+        const existente = registrosProductosTareas[tarea.id]
+        const keyName = detectCompletadaKey(existente)
+        const prev = existente ? { ...existente } : undefined
+
+        setUpdatingTareas(u => ({ ...u, [tarea.id]: true }))
+        establecerRegistrosProductosTareas(p => ({ ...p, [tarea.id]: { ...(p[tarea.id] || {}), [keyName]: checked ? 'S' : 'N' } }))
+
+        try {
+            if (existente && existente.id) {
+                await (productosFasesTareasAPI as any).updateProductosFasesTareasById(existente.id, { [keyName]: checked ? 'S' : 'N' })
+                } else {
+                const payload: any = { productoId: Number(productId), faseId: Number(identificadorDeFaseActiva), tareaFaseId: Number(tarea.id), [keyName]: checked ? 'S' : 'N' }
+                const userId = (user as any)?.id ?? (user as any)?.usuarioId ?? (user as any)?.userId
+                if (userId) payload.usuarioId = Number(userId)
+                const creado = await (productosFasesTareasAPI as any).createProductosFasesTareas(payload)
+                establecerRegistrosProductosTareas(p => ({ ...p, [tarea.id]: creado && creado.id ? creado : payload }))
+            }
+        } catch (err: any) {
+            console.error('Error guardando completada', err)
+            establecerRegistrosProductosTareas(p => {
+                const copy = { ...p }
+                if (prev) copy[tarea.id] = prev
+                else delete copy[tarea.id]
+                return copy
+            })
+            establecerMensajeDeError(err?.message || 'Error guardando tarea')
+        } finally {
+            setUpdatingTareas(u => ({ ...u, [tarea.id]: false }))
+        }
+    }
 
     return (
         <div style={{ marginTop: 18, borderTop: '1px solid #eee', paddingTop: 12 }}>
@@ -102,7 +157,12 @@ export default function PanelFasesProducto({ productId }: { productId?: string |
 
             <div>
                 <ul style={{ listStyle: 'none', padding: 0 }}>
-                    {identificadorDeFaseActiva && tareasDeLaFaseActiva.map((tarea, indice) => (
+                    {identificadorDeFaseActiva && tareasDeLaFaseActiva.map((tarea, indice) => {
+                        const registro = registrosProductosTareas[tarea.id]
+                        const keyName = detectCompletadaKey(registro)
+                        const checked = registro ? String(registro[keyName] ?? '').toUpperCase() === 'S' : false
+                        const updating = updatingTareas[tarea.id] === true
+                        return (
                         <li key={tarea.id} style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '8px 0', borderBottom: '1px solid #f3f4f6' }}>
                             <div style={{
                                 minWidth: 30,
@@ -119,10 +179,13 @@ export default function PanelFasesProducto({ productId }: { productId?: string |
                                 {indice + 1}
                             </div>
                             <div style={{ flex: 1 }}>
-                                <div style={{ fontWeight: 600 }}>{tarea.nombre || `Tarea ${tarea.id}`}</div>
+                                <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+                                    <input type="checkbox" checked={checked} disabled={updating} onChange={(e) => toggleCompletada(tarea, e.target.checked)} />
+                                    <div style={{ fontWeight: 600 }}>{tarea.nombre || `Tarea ${tarea.id}`}</div>
+                                </div>
                             </div>
                         </li>
-                    ))}
+                    )})}
                 </ul>
 
                 
