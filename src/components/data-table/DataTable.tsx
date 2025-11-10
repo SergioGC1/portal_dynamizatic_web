@@ -220,12 +220,19 @@ const DataTableAdaptado = forwardRef<DataTableHandle, Props>(function DataTableA
               <div className="tabla-filter-content">
                 <InputText
                   placeholder={`Buscar por ${(col.label || col.title || col.key).toLowerCase()}`}
-                  value={tempColumnFilters[col.key] || columnFilters[col.key] || ""}
+                  // Usar comprobación explícita contra undefined para que una cadena
+                  // vacía escrita por el usuario no vuelva a tomar el valor aplicado
+                  // en columnFilters (esto provocaba que el texto "reapareciera" al borrar).
+                  value={
+                    tempColumnFilters[col.key] !== undefined
+                      ? tempColumnFilters[col.key]
+                      : (columnFilters[col.key] ?? "")
+                  }
                   onChange={(e) =>
-                    setTempColumnFilters({
-                      ...tempColumnFilters,
+                    setTempColumnFilters((prev) => ({
+                      ...prev,
                       [col.key]: e.target.value,
-                    })
+                    }))
                   }
                   className="tabla-filter-input"
                 />
