@@ -1,4 +1,5 @@
 import React, { useEffect, useState } from 'react'
+import { Calendar } from 'primereact/calendar'
 import productosAPI from '../../api-endpoints/productos/index'
 import ProductPhasesPanel from '../../components/product/ProductPhasesPanel'
 
@@ -75,8 +76,9 @@ export default function EditarDatosProductos({ productId }: Props) {
   function validate(): boolean {
     const errs: Record<string, string> = {}
     if (!producto.nombre || !producto.nombre.trim()) errs.nombre = 'El nombre es obligatorio'
-    if (producto.anyo === '' || producto.anyo == null || Number.isNaN(Number(producto.anyo))) errs.anyo = 'Año inválido'
-    else if (Number(producto.anyo) < 1900 || Number(producto.anyo) > 2100) errs.anyo = 'Año debe estar entre 1900 y 2100'
+  const currentYear = new Date().getFullYear()
+  if (producto.anyo === '' || producto.anyo == null || Number.isNaN(Number(producto.anyo))) errs.anyo = 'Año inválido'
+  else if (Number(producto.anyo) < 1900 || Number(producto.anyo) > currentYear) errs.anyo = `Año debe estar entre 1900 y ${currentYear}`
     setFieldErrors(errs)
     return Object.keys(errs).length === 0
   }
@@ -136,7 +138,17 @@ export default function EditarDatosProductos({ productId }: Props) {
 
           <div>
             <label style={{ display: 'block', marginBottom: 6 }}>Año *</label>
-            <input type="number" value={producto.anyo as any} onChange={e => setProducto(p => ({ ...p, anyo: e.target.value === '' ? '' : Number(e.target.value) }))} style={{ width: '100%', padding: 8 }} />
+            <Calendar
+              value={producto.anyo ? new Date(Number(producto.anyo), 0, 1) : null}
+              onChange={(e: any) => setProducto(p => ({ ...p, anyo: e.value ? (e.value as Date).getFullYear() : '' }))}
+              view="year"
+              dateFormat="yy"
+              showIcon
+              placeholder="Selecciona año"
+              maxDate={new Date(new Date().getFullYear(), 11, 31)}
+              minDate={new Date(1900, 0, 1)}
+              style={{ width: '100%' }}
+            />
             {fieldErrors.anyo && <div style={{ color: 'red', marginTop: 6 }}>{fieldErrors.anyo}</div>}
           </div>
 

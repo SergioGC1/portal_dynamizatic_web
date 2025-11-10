@@ -1,4 +1,5 @@
 import React, { useEffect, useRef, useState } from 'react'
+import { Calendar } from 'primereact/calendar'
 import { InputSwitch } from 'primereact/inputswitch'
 import { ConfirmDialog, confirmDialog } from 'primereact/confirmdialog'
 import { ColumnDef } from '../../components/data-table/DataTable'
@@ -296,10 +297,13 @@ export default function PanelProducto({
         // Aceptar claves 'anyo' o 'año' según provengan del backend/columns
         const anyoValor = (formulario as any).anyo ?? (formulario as any)['año']
         const anyoStr = anyoValor !== undefined && anyoValor !== null ? String(anyoValor).trim() : ''
+        const currentYearLocal = new Date().getFullYear()
         if (!anyoStr) {
             nuevosErrores.anyo = 'El año es obligatorio'
         } else if (Number.isNaN(Number(anyoStr))) {
             nuevosErrores.anyo = 'El año debe ser un número'
+        } else if (Number(anyoStr) < 1900 || Number(anyoStr) > currentYearLocal) {
+            nuevosErrores.anyo = `El año debe estar entre 1900 y ${currentYearLocal}`
         }
 
         if (Object.keys(nuevosErrores).length > 0) {
@@ -537,14 +541,66 @@ export default function PanelProducto({
                                     </div>
                                 ) : (
                                     <>
-                                        <input
-                                            value={value ?? ''}
-                                            onChange={(e) => actualizarCampoDelFormulario(key, (e.target as HTMLInputElement).value)}
-                                            className={`record-panel__input ${errores[key] ? 'record-panel__input--error' : ''}`}
-                                        />
-                                        {errores[key] && (
-                                            <div className="record-panel__error">{errores[key]}</div>
-                                        )}
+                                        {(() => {
+                                            const normalized = String(key).toLowerCase()
+                                            // Año como select (desde 2100 hasta 1900)
+                                            if (normalized.includes('anyo') || normalized.includes('año')) {
+                                                const selected = (formulario as any)[key]
+                                                return (
+                                                    <>
+                                                        <Calendar
+                                                            value={selected ? new Date(Number(selected), 0, 1) : null}
+                                                            onChange={(e: any) => actualizarCampoDelFormulario(key, e.value ? (e.value as Date).getFullYear() : '')}
+                                                            view="year"
+                                                            dateFormat="yy"
+                                                            showIcon
+                                                            className={`record-panel__input ${errores[key] ? 'record-panel__input--error' : ''}`}
+                                                            placeholder="Selecciona año"
+                                                            maxDate={new Date(new Date().getFullYear(), 11, 31)}
+                                                            minDate={new Date(1900, 0, 1)}
+                                                            style={{ width: '100%' }}
+                                                        />
+                                                        {errores[key] && (
+                                                            <div className="record-panel__error">{errores[key]}</div>
+                                                        )}
+                                                    </>
+                                                )
+                                            }
+
+                                            // Campos tipo S/N (biodegradable, electrico, activoSN, etc.)
+                                            if (normalized.includes('esbiodegrad') || normalized.includes('esbiodegradable') || normalized.endsWith('sns') || normalized.endsWith('sn') || normalized.includes('electrico')) {
+                                                const val = String((formulario as any)[key] ?? 'N')
+                                                return (
+                                                    <>
+                                                        <select
+                                                            value={val}
+                                                            onChange={(e) => actualizarCampoDelFormulario(key, (e.target.value as 'S' | 'N'))}
+                                                            className={`record-panel__input ${errores[key] ? 'record-panel__input--error' : ''}`}
+                                                        >
+                                                            <option value="S">Sí</option>
+                                                            <option value="N">No</option>
+                                                        </select>
+                                                        {errores[key] && (
+                                                            <div className="record-panel__error">{errores[key]}</div>
+                                                        )}
+                                                    </>
+                                                )
+                                            }
+
+                                            // Por defecto, input text
+                                            return (
+                                                <>
+                                                    <input
+                                                        value={value ?? ''}
+                                                        onChange={(e) => actualizarCampoDelFormulario(key, (e.target as HTMLInputElement).value)}
+                                                        className={`record-panel__input ${errores[key] ? 'record-panel__input--error' : ''}`}
+                                                    />
+                                                    {errores[key] && (
+                                                        <div className="record-panel__error">{errores[key]}</div>
+                                                    )}
+                                                </>
+                                            )
+                                        })()}
                                     </>
                                 )
                             )}
