@@ -44,9 +44,67 @@ export default function PanelFasesProducto({ productId }: { productId?: string |
         return () => { componenteMontado = false }
     }, [])
 
-    // Cambio directo de fase activa y recarga de tareas (sin bloqueo por completadas)
-    function cambiarAFase(identificadorDeFaseDestino: number) {
+    // Cambio directo de fase activa y recarga de tareas
+    // Ahora valida de forma secuencial: no permite saltar a una fase si alguna fase previa
+    // no está completamente completada para este producto.
+    async function cambiarAFase(identificadorDeFaseDestino: number) {
+        // Si es la misma, no hacemos nada
+        if (identificadorDeFaseDestino === identificadorDeFaseActiva) return
+
+        // encontrar índices
+        const indiceDestino = listaDeFases.findIndex(f => f.id === identificadorDeFaseDestino)
+        if (indiceDestino === -1) {
+            establecerMensajeDeError('Fase no encontrada')
+            return
+        }
+
+        // comprobar cada fase previa (0 .. indiceDestino-1)
+        for (let i = 0; i < indiceDestino; i++) {
+            const fasePrev = listaDeFases[i]
+            try {
+                const completada = await isPhaseFullyCompleted(fasePrev.id)
+                if (!completada) {
+                    establecerMensajeDeError(`No puedes pasar a la fase "${listaDeFases[indiceDestino].nombre}": la fase "${fasePrev.nombre || fasePrev.id}" no está completada.`)
+                    return
+                }
+            } catch (err: any) {
+                console.error('Error comprobando completitud de fase previa', err)
+                establecerMensajeDeError('No se pudo comprobar el estado de fases previas')
+                return
+            }
+        }
+
+        // todas las previas están completas -> cambiar
+        establecerMensajeDeError(null)
         establecerIdentificadorDeFaseActiva(identificadorDeFaseDestino)
+    }
+
+    // Comprueba si una fase (por id) está completamente completada para el current productId
+    async function isPhaseFullyCompleted(faseId: number) {
+        // obtener tareas de la fase
+        const paramsT = { filter: JSON.stringify({ where: { faseId: Number(faseId) } }) }
+        const resultadoT = await (tareasFasesAPI as any).findTareasFases(paramsT)
+        const tareas = Array.isArray(resultadoT) ? resultadoT : []
+        if (!tareas.length) return true // si no hay tareas, consideramos completada
+
+        // obtener registros productos_fases_tareas para ese producto y fase
+        const filtro = { filter: JSON.stringify({ where: { productoId: Number(productId), faseId: Number(faseId) } }) }
+        const resultadoRp = await (productosFasesTareasAPI as any).findProductosFasesTareas(filtro)
+        const rp = Array.isArray(resultadoRp) ? resultadoRp : []
+        const mapa: Record<number, any> = {}
+        for (const r of rp) {
+            const tareaId = Number(r.tareaFaseId)
+            if (!Number.isNaN(tareaId)) mapa[tareaId] = r
+        }
+
+        // para cada tarea esperada, debe existir registro y estar marcado 'S'
+        for (const t of tareas) {
+            const r = mapa[Number((t as any).id)]
+            if (!r) return false
+            const key = detectCompletadaKey(r)
+            if (String(r[key] ?? '').toUpperCase() !== 'S') return false
+        }
+        return true
     }
 
     const cargarTareasPorFase = useCallback(async (identificadorDeFase: number) => {
@@ -89,6 +147,25 @@ export default function PanelFasesProducto({ productId }: { productId?: string |
     // helper to find the completada key name in an existing record
     // Use camel-case 'completadaSn' as the default because backend validation is strict
     const detectCompletadaKey = (rec: any) => (rec ? Object.keys(rec).find(k => /complet/i.test(k)) || 'completadaSn' : 'completadaSn')
+    
+        function gatherCompletedTasksForPhase(faseId: number) {
+            if (faseId !== identificadorDeFaseActiva) return []
+            const key = detectCompletadaKey(null) // default key
+            return tareasDeLaFaseActiva.filter(t => {
+                const rec = registrosProductosTareas[t.id]
+                return rec && String(rec[key] ?? '').toUpperCase() === 'S'
+            }).map(t => t.nombre || `Tarea ${t.id}`)
+        }
+    
+        function sendToSupervisors(fase: Fase) {
+            // Only operate on active phase (we only have tasks loaded for it)
+            if (fase.id !== identificadorDeFaseActiva) return
+            const completadas = gatherCompletedTasksForPhase(fase.id)
+            const faseIndex = listaDeFases.findIndex(f => f.id === fase.id)
+            const siguiente = listaDeFases[faseIndex + 1]
+            const siguienteTxt = siguiente ? `${siguiente.nombre || `Fase ${siguiente.id}`} (id:${siguiente.id})` : 'ninguna (es la última fase)'
+            console.log(`Enviar mail a Supervisores: Fase completada: ${fase.nombre || fase.id}. Tareas completadas: ${JSON.stringify(completadas)}. Pasar a: ${siguienteTxt}`)
+        }
 
     async function toggleCompletada(tarea: TareaFase, checked: boolean) {
         const existente = registrosProductosTareas[tarea.id]
@@ -130,29 +207,29 @@ export default function PanelFasesProducto({ productId }: { productId?: string |
 
                     <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 12, flexWrap: 'wrap' }}>
                         {listaDeFases.map((fase, indice) => {
-                            const estaActiva = identificadorDeFaseActiva === fase.id
-                            return (
-                                <React.Fragment key={fase.id}>
-                                    <div
-                                        onClick={() => cambiarAFase(fase.id)}
-                                        style={{
-                                            cursor: 'pointer',
-                                            fontWeight: estaActiva ? 700 : 600,
-                                            color: estaActiva ? '#0f172a' : '#374151',
-                                            padding: '6px 8px',
-                                            background: 'transparent',
-                                            borderRadius: 4,
-                                        }}
-                                        aria-current={estaActiva}
-                                    >
-                                        {fase.nombre || `Fase ${fase.id}`}
-                                    </div>
-                                    {indice < listaDeFases.length - 1 && (
-                                        <span style={{ width: 1, height: 18, background: '#e6e6e6', display: 'inline-block', marginLeft: 6, marginRight: 6 }} />
-                                    )}
-                                </React.Fragment>
-                            )
-                        })}
+                                const estaActiva = identificadorDeFaseActiva === fase.id
+                                return (
+                                    <React.Fragment key={fase.id}>
+                                        <div
+                                            onClick={() => cambiarAFase(fase.id)}
+                                            style={{
+                                                cursor: 'pointer',
+                                                fontWeight: estaActiva ? 700 : 600,
+                                                color: estaActiva ? '#0f172a' : '#374151',
+                                                padding: '6px 8px',
+                                                background: 'transparent',
+                                                borderRadius: 4,
+                                            }}
+                                            aria-current={estaActiva}
+                                        >
+                                            {fase.nombre || `Fase ${fase.id}`}
+                                        </div>
+                                        {indice < listaDeFases.length - 1 && (
+                                            <span style={{ width: 1, height: 18, background: '#e6e6e6', display: 'inline-block', marginLeft: 6, marginRight: 6 }} />
+                                        )}
+                                    </React.Fragment>
+                                )
+                            })}
                     </div>
 
             <div>
@@ -163,32 +240,58 @@ export default function PanelFasesProducto({ productId }: { productId?: string |
                         const checked = registro ? String(registro[keyName] ?? '').toUpperCase() === 'S' : false
                         const updating = updatingTareas[tarea.id] === true
                         return (
-                        <li key={tarea.id} style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '8px 0', borderBottom: '1px solid #f3f4f6' }}>
-                            <div style={{
-                                minWidth: 30,
-                                height: 30,
-                                display: 'flex',
-                                alignItems: 'center',
-                                justifyContent: 'center',
-                                backgroundColor: '#007bff',
-                                color: 'white',
-                                borderRadius: '50%',
-                                fontSize: '0.9em',
-                                fontWeight: 'bold'
-                            }}>
-                                {indice + 1}
-                            </div>
-                            <div style={{ flex: 1 }}>
-                                <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-                                    <input type="checkbox" checked={checked} disabled={updating} onChange={(e) => toggleCompletada(tarea, e.target.checked)} />
-                                    <div style={{ fontWeight: 600 }}>{tarea.nombre || `Tarea ${tarea.id}`}</div>
+                        <li key={tarea.id} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12, padding: '10px 0', borderBottom: '1px solid #f3f4f6' }}>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+                                <div style={{
+                                    minWidth: 30,
+                                    height: 30,
+                                    display: 'flex',
+                                    alignItems: 'center',
+                                    justifyContent: 'center',
+                                    backgroundColor: '#007bff',
+                                    color: 'white',
+                                    borderRadius: '50%',
+                                    fontSize: '0.9em',
+                                    fontWeight: 'bold'
+                                }}>
+                                    {indice + 1}
                                 </div>
+                                <div style={{ fontWeight: 600 }}>{tarea.nombre || `Tarea ${tarea.id}`}</div>
+                            </div>
+                            <div>
+                                <input type="checkbox" checked={checked} disabled={updating} onChange={(e) => toggleCompletada(tarea, e.target.checked)} />
                             </div>
                         </li>
                     )})}
                 </ul>
-
-                
+                {/* Global action button under tasks */}
+                {identificadorDeFaseActiva && (() => {
+                    const allCheckedActive = tareasDeLaFaseActiva.length > 0 && tareasDeLaFaseActiva.every(t => {
+                        const rec = registrosProductosTareas[t.id]
+                        const key = detectCompletadaKey(rec)
+                        return rec && String(rec[key] ?? '').toUpperCase() === 'S'
+                    })
+                    const faseActiva = listaDeFases.find(f => f.id === identificadorDeFaseActiva)
+                    return (
+                        <div style={{ marginTop: 12, display: 'flex', justifyContent: 'center' }}>
+                            <button
+                                onClick={() => faseActiva && sendToSupervisors(faseActiva)}
+                                disabled={!allCheckedActive}
+                                style={{
+                                    padding: '8px 14px',
+                                    borderRadius: 8,
+                                    background: allCheckedActive ? '#16a34a' : '#9ca3af',
+                                    color: 'white',
+                                    border: 'none',
+                                    boxShadow: allCheckedActive ? '0 4px 12px rgba(16,185,129,0.2)' : 'none',
+                                    cursor: allCheckedActive ? 'pointer' : 'not-allowed'
+                                }}
+                            >
+                                Enviar correo a Supervisores
+                            </button>
+                        </div>
+                    )
+                })()}
             </div>
         </div>
     )
