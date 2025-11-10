@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react'
 import PermisosAPI from '../api-endpoints/permisos'
+import RolesAPI from '../api-endpoints/roles'
 import { useAuth } from '../contexts/AuthContext'
 
 type Permiso = { id?: string | number; pantalla: string; accion: string; permisoSn: string; rolId: number | string }
@@ -8,6 +9,7 @@ export default function usePermisos() {
   const { user } = useAuth()
   const [permisos, setPermisos] = useState<Permiso[]>([])
   const [loading, setLoading] = useState(false)
+  const [rolActivo, setRolActivo] = useState<boolean | null>(null)
 
   // Intentar inferir rolId desde el user guardado (localStorage o contexto)
   const rolId: number | string | null = (() => {
@@ -28,10 +30,48 @@ export default function usePermisos() {
     const load = async () => {
       if (!rolId) {
         setPermisos([])
+        setRolActivo(null)
         return
       }
       setLoading(true)
       try {
+        // Intentar inferir si el rol está activo desde el user (si trae objeto rol)
+        let activo: boolean | null = null
+        try {
+          const u = user as any
+          const posibleRol = u && (u.rol || u.role)
+          if (posibleRol && (typeof posibleRol === 'object') && ('activoSn' in posibleRol)) {
+            activo = String(posibleRol.activoSn).toUpperCase() === 'S'
+          }
+        } catch (err) {
+          // ignore
+        }
+
+        // Si no lo tenemos en user, solicitar al endpoint de roles
+        if (activo === null) {
+          try {
+            const roleData: any = await RolesAPI.getRoleById(rolId)
+            if (roleData && typeof roleData === 'object' && 'activoSn' in roleData) {
+              activo = String(roleData.activoSn).toUpperCase() === 'S'
+            } else {
+              // Si no hay campo, asumimos activo por compatibilidad
+              activo = true
+            }
+          } catch (err) {
+            console.warn('usePermisos: no se pudo obtener estado del rol, asumiendo activo', err)
+            activo = true
+          }
+        }
+
+        if (!mounted) return
+        setRolActivo(activo)
+
+        // Si el rol está inactivo, no cargamos permisos y devolvemos lista vacía
+        if (!activo) {
+          setPermisos([])
+          return
+        }
+
         const data = await PermisosAPI.findPermisos({ 'filter[where][rolId]': rolId })
         if (!mounted) return
         setPermisos(Array.isArray(data) ? data : [])
@@ -44,7 +84,7 @@ export default function usePermisos() {
     }
     load()
     return () => { mounted = false }
-  }, [rolId])
+  }, [rolId, user])
 
   const hasPermission = (pantalla: string, accion: string) => {
     try {
@@ -57,6 +97,7 @@ export default function usePermisos() {
     permisos,
     loading,
     rolId,
+    rolActivo,
     hasPermission,
   }
 }
