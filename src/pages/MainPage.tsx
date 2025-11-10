@@ -49,8 +49,11 @@ export default function MainPage() {
       paginasConPermisos.push({ key: 'permisos', label: 'Permisos' })
     }
 
-    // Añadir Chat al final
-    paginasConPermisos.push({ key: "chat", label: "Chat" })
+    // Añadir Chat solo si el usuario tiene permiso para verlo
+    // Nota: el permiso actual se denomina "MensajesChat" en la configuración de permisos
+    if (tienePermiso('MensajesChat', 'Ver')) {
+      paginasConPermisos.push({ key: "chat", label: "Chat" })
+    }
 
     return paginasConPermisos;
   }, [tienePermiso])
@@ -82,7 +85,7 @@ export default function MainPage() {
     productos: tienePermiso('Productos', 'Ver') ? <ProductosPage /> : null,
     fases: tienePermiso('Fases', 'Ver') ? <FasesPage /> : null,
     permisos: (tienePermiso('Permisos', 'Ver') || tienePermiso('Permisos', 'Actualizar')) ? <PermisosPage /> : null,
-    chat: <ChatPage />,
+  chat: tienePermiso('MensajesChat', 'Ver') ? <ChatPage /> : null,
   };
 
   const getContenido = () => {
