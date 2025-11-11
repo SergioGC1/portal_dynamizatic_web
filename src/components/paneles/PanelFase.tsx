@@ -2,8 +2,12 @@ import React, { useEffect, useState } from 'react'
 import { Button } from 'primereact/button'
 import { Dialog } from 'primereact/dialog'
 import { confirmDialog } from 'primereact/confirmdialog'
+import { Toast } from 'primereact/toast'
 import '../ui/GestorPaneles.css'
 import './PanelFase.scss'
+import usePermisos from '../../hooks/usePermisos'
+import { useAuth } from '../../contexts/AuthContext'
+import RolesAPI from '../../api-endpoints/roles/index'
 
 // Interfaces con nomenclatura en español
 interface Fase {
@@ -48,6 +52,7 @@ export default function PanelFase({ mode, record = null, columns = [], onClose, 
     const [tareaQueSeEstaEditando, establecerTareaQueSeEstaEditando] = useState<TareaFase | null>(null)
     const [nombreDeLaNuevaTarea, establecerNombreDeLaNuevaTarea] = useState('')
     const [estaGuardandoLaTarea, establecerEstaGuardandoLaTarea] = useState(false)
+    const [toast, setToast] = useState<any>(null)
 
     // Inicializar formulario cuando cambie el registro
     useEffect(() => {
@@ -59,6 +64,50 @@ export default function PanelFase({ mode, record = null, columns = [], onClose, 
             establecerTareasAsociadasALaFase([])
         }
     }, [record])
+
+    // Permisos para acciones sobre tareas de fase
+    const { hasPermission } = usePermisos()
+    const { user: authUser } = useAuth()
+    const [rolActivo, setRolActivo] = useState<boolean | null>(null)
+
+    // Verificar si el rol del usuario actual está activo (activoSn = 'S')
+    useEffect(() => {
+        let mounted = true
+        const comprobarRol = async () => {
+            try {
+                // intentar extraer rolId del user guardado por AuthProvider
+                let rolId: any = undefined
+                if (authUser && (authUser as any).rolId) rolId = (authUser as any).rolId
+                else {
+                    // fallback: leer user desde localStorage
+                    try {
+                        const stored = localStorage.getItem('user')
+                        if (stored) {
+                            const parsed = JSON.parse(stored)
+                            rolId = parsed?.rolId || parsed?.rol || (Array.isArray(parsed?.roles) ? parsed.roles[0] : undefined)
+                        }
+                    } catch (e) {
+                        // ignore
+                    }
+                }
+
+                if (!rolId) {
+                    // No podemos determinar rol -> asumimos activo
+                    if (mounted) setRolActivo(true)
+                    return
+                }
+
+                const rol = await RolesAPI.getRoleById(rolId)
+                const activo = rol?.activoSn ?? rol?.activoSN ?? rol?.activo ?? 'S'
+                if (mounted) setRolActivo(String(activo).toUpperCase() === 'S')
+            } catch (err) {
+                console.warn('No se pudo comprobar el estado del rol, asumiendo activo', err)
+                if (mounted) setRolActivo(true)
+            }
+        }
+        comprobarRol()
+        return () => { mounted = false }
+    }, [authUser])
 
     // Actualiza un campo específico del formulario de la fase
     const actualizarCampoDelFormularioDeLaFase = (claveCampo: string, valorDelCampo: any) =>
@@ -118,6 +167,14 @@ export default function PanelFase({ mode, record = null, columns = [], onClose, 
 
     // Abrir diálogo para crear una nueva tarea
     const abrirDialogoParaNuevaTarea = () => {
+        if (!hasPermission('TareasFase', 'Nuevo')) {
+            if (toast && (toast as any).show) {
+                (toast as any).show({ severity: 'warn', summary: 'Permisos', detail: 'No tienes permiso para crear tareas', life: 3000 })
+            } else {
+                alert('No tienes permiso para crear tareas')
+            }
+            return
+        }
         establecerNombreDeLaNuevaTarea('')
         establecerTareaQueSeEstaEditando(null)
         establecerModoDelDialogoDeTarea('nuevo')
@@ -126,6 +183,14 @@ export default function PanelFase({ mode, record = null, columns = [], onClose, 
 
     // Abrir diálogo para editar una tarea existente
     const abrirDialogoParaEditarTarea = (tareaAEditar: TareaFase) => {
+        if (!hasPermission('TareasFase', 'Actualizar')) {
+            if (toast && (toast as any).show) {
+                (toast as any).show({ severity: 'warn', summary: 'Permisos', detail: 'No tienes permiso para editar tareas', life: 3000 })
+            } else {
+                alert('No tienes permiso para editar tareas')
+            }
+            return
+        }
         establecerNombreDeLaNuevaTarea(tareaAEditar.nombre)
         establecerTareaQueSeEstaEditando(tareaAEditar)
         establecerModoDelDialogoDeTarea('editar')
@@ -165,6 +230,14 @@ export default function PanelFase({ mode, record = null, columns = [], onClose, 
 
     // Eliminar tarea con confirmación del usuario
     const eliminarTareaConConfirmacion = (tareaAEliminar: TareaFase) => {
+        if (!hasPermission('TareasFase', 'Borrar')) {
+            if (toast && (toast as any).show) {
+                (toast as any).show({ severity: 'warn', summary: 'Permisos', detail: 'No tienes permiso para eliminar tareas', life: 3000 })
+            } else {
+                alert('No tienes permiso para eliminar tareas')
+            }
+            return
+        }
         confirmDialog({
             message: `¿Estás seguro de que deseas eliminar la tarea "${tareaAEliminar.nombre}"?`,
             header: 'Confirmar eliminación',
@@ -203,6 +276,7 @@ export default function PanelFase({ mode, record = null, columns = [], onClose, 
     return (
         <>
             <div className="record-panel">
+                <Toast ref={setToast} />
                 <div className="record-panel__header">
                     <strong className="record-panel__title">
                         {mode === 'ver' ? 'Ver fase' : 'Editar fase'}
@@ -276,20 +350,32 @@ export default function PanelFase({ mode, record = null, columns = [], onClose, 
                                 alignItems: 'center',
                                 marginBottom: 16
                             }}>
-                                <h4 style={{ margin: 0 }}>
-                                    Tareas de la Fase ({tareasAsociadasALaFase.length})
-                                </h4>
-                                {mode === 'editar' && (
-                                    <Button
-                                        label="Nueva Tarea"
-                                        icon="pi pi-plus"
-                                        onClick={abrirDialogoParaNuevaTarea}
-                                        className="p-button-sm"
-                                    />
-                                )}
+                                {/** Mostrar el contador solo si puede ver tareas y el rol está activo **/}
+                                {(() => {
+                                    const puedeVer = hasPermission('TareasFase', 'Ver') && rolActivo !== false
+                                    return (
+                                        <h4 style={{ margin: 0 }}>
+                                            Tareas de la Fase{puedeVer ? ` (${tareasAsociadasALaFase.length})` : ''}
+                                        </h4>
+                                    )
+                                })()}
+                                    {/* Mostrar botón nueva tarea solo si tiene permiso */}
+                                    {mode === 'editar' && hasPermission('TareasFase', 'Nuevo') && (
+                                        <Button
+                                            label="Nueva Tarea"
+                                            icon="pi pi-plus"
+                                            onClick={abrirDialogoParaNuevaTarea}
+                                            className="p-button-sm"
+                                        />
+                                    )}
                             </div>
 
-                            {tareasAsociadasALaFase.length === 0 ? (
+                            {/* Mostrar listado de tareas solo si el usuario tiene permiso de ver y su rol está activo */}
+                            {(!hasPermission('TareasFase', 'Ver') || rolActivo === false) ? (
+                                <div style={{ padding: 12, color: '#6c757d' }}>
+                                    No tienes permiso para ver las tareas de esta fase.
+                                </div>
+                            ) : tareasAsociadasALaFase.length === 0 ? (
                                 <div className="panel-fase__sin-tareas" style={{
                                     textAlign: 'center',
                                     padding: 20,
@@ -304,7 +390,7 @@ export default function PanelFase({ mode, record = null, columns = [], onClose, 
                                     <p style={{ margin: 0, color: '#6c757d' }}>
                                         No hay tareas definidas para esta fase.
                                     </p>
-                                    {mode === 'editar' && (
+                                    {mode === 'editar' && hasPermission('TareasFase', 'Nuevo') && (
                                         <small style={{ color: '#6c757d' }}>
                                             Haz clic en "Nueva Tarea" para agregar una.
                                         </small>
@@ -350,18 +436,22 @@ export default function PanelFase({ mode, record = null, columns = [], onClose, 
                                                     display: 'flex',
                                                     gap: 4
                                                 }}>
-                                                    <Button
-                                                        icon="pi pi-pencil"
-                                                        className="p-button-text p-button-sm"
-                                                        onClick={() => abrirDialogoParaEditarTarea(tareaActual)}
-                                                        tooltip="Editar tarea"
-                                                    />
-                                                    <Button
-                                                        icon="pi pi-trash"
-                                                        className="p-button-text p-button-sm p-button-danger"
-                                                        onClick={() => eliminarTareaConConfirmacion(tareaActual)}
-                                                        tooltip="Eliminar tarea"
-                                                    />
+                                                    {hasPermission('TareasFase', 'Actualizar') && (
+                                                        <Button
+                                                            icon="pi pi-pencil"
+                                                            className="p-button-text p-button-sm"
+                                                            onClick={() => abrirDialogoParaEditarTarea(tareaActual)}
+                                                            tooltip="Editar tarea"
+                                                        />
+                                                    )}
+                                                    {hasPermission('TareasFase', 'Borrar') && (
+                                                        <Button
+                                                            icon="pi pi-trash"
+                                                            className="p-button-text p-button-sm p-button-danger"
+                                                            onClick={() => eliminarTareaConConfirmacion(tareaActual)}
+                                                            tooltip="Eliminar tarea"
+                                                        />
+                                                    )}
                                                 </div>
                                             )}
                                         </div>
