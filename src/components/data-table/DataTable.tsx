@@ -43,6 +43,10 @@ type Props = {
     editar?: boolean | ((row: any) => boolean)
     borrar?: boolean | ((row: any) => boolean)
   }
+  // Server-side / lazy loading support
+  lazy?: boolean
+  totalRecords?: number
+  onLazyLoad?: (state: { first: number; rows: number }) => void
 }
 
 export type DataTableHandle = {
@@ -62,8 +66,12 @@ const DataTableAdaptado = forwardRef<DataTableHandle, Props>(function DataTableA
     onView,
     onEdit,
     onDelete,
-  allowDelete,
-  puede,
+    allowDelete,
+    puede,
+    // server-side / lazy props
+    lazy,
+    totalRecords,
+    onLazyLoad,
   }: Props,
   ref,
 ) {
@@ -109,6 +117,10 @@ const DataTableAdaptado = forwardRef<DataTableHandle, Props>(function DataTableA
 
   // Filtrado
   const filteredData = useMemo(() => {
+    // In lazy (server-side) mode, the data is assumed already filtered/paginated by the server
+    if (typeof lazy !== 'undefined' && lazy) {
+      return [...data]
+    }
     let result = [...data]
 
     // Filtro global
@@ -137,10 +149,13 @@ const DataTableAdaptado = forwardRef<DataTableHandle, Props>(function DataTableA
     })
 
     return result
-  }, [data, globalFilter, columnFilters, columns])
+  }, [data, globalFilter, columnFilters, columns, lazy])
 
   // Ordenamiento
   const sortedData = useMemo(() => {
+    // In lazy mode we assume the server returns already sorted data
+    if (typeof lazy !== 'undefined' && lazy) return filteredData
+
     if (!sortField) return filteredData
 
     return [...filteredData].sort((a, b) => {
@@ -163,7 +178,7 @@ const DataTableAdaptado = forwardRef<DataTableHandle, Props>(function DataTableA
       // Comparación de strings
       return String(aValue).localeCompare(String(bValue)) * sortOrder
     })
-  }, [filteredData, sortField, sortOrder])
+  }, [filteredData, sortField, sortOrder, lazy])
 
   const handleDownloadCSV = useCallback(() => {
     if (onDownloadCSV) return onDownloadCSV()
@@ -197,6 +212,10 @@ const DataTableAdaptado = forwardRef<DataTableHandle, Props>(function DataTableA
   const onPage = (e: any) => {
     setFirst(e.first)
     setRows(e.rows)
+    // If lazy (server-side) delegate page change to parent
+    if (lazy && onLazyLoad) {
+      try { onLazyLoad({ first: e.first, rows: e.rows }) } catch (err) { console.error('onLazyLoad handler error', err) }
+    }
   }
 
   // Template para el header con filtro
@@ -368,6 +387,8 @@ const DataTableAdaptado = forwardRef<DataTableHandle, Props>(function DataTableA
       sortField={sortField || undefined}
       sortOrder={sortOrder}
       onSort={onSort}
+  lazy={lazy}
+  totalRecords={totalRecords}
       onRowClick={onRowClick ? (e) => onRowClick(e.data) : undefined}
       className="tabla-datatable"
       emptyMessage="No se encontraron registros"

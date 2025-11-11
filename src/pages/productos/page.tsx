@@ -38,6 +38,8 @@ export default function PageProductos() {
   const [filtroBusquedaTemporal, establecerFiltroBusquedaTemporal] = useState<string>('')
   // Filtro a aplicar tras pulsar "Buscar" (se fija en el momento del click)
   const [filtroBusquedaAplicar, setFiltroBusquedaAplicar] = useState<string>('')
+  const [totalRecords, setTotalRecords] = useState<number | null>(null)
+  const [pageState, setPageState] = useState<{ first: number; rows: number }>({ first: 0, rows: 10 })
   // Estados del panel para ver/editar registros
   const [modoPanel, setModoPanel] = useState<'ver' | 'editar' | null>(null)
   const [registroPanel, setRegistroPanel] = useState<any | null>(null)
@@ -46,14 +48,37 @@ export default function PageProductos() {
 
   // Función para cargar productos - solo cuando el usuario busque
   const loadProductos = async () => {
-    // Congelar el valor del filtro a aplicar en esta búsqueda
-    setFiltroBusquedaAplicar(filtroBusquedaTemporal)
+    const filtro = filtroBusquedaTemporal
+    setFiltroBusquedaAplicar(filtro)
+    setPageState({ first: 0, rows: pageState.rows })
+    await loadProductosPage({ first: 0, rows: pageState.rows, filterText: filtro })
+  }
+
+  const loadProductosPage = async ({ first = 0, rows = 10, filterText = '' } : { first?: number; rows?: number; filterText?: string }) => {
     setLoading(true)
     setError(null)
     try {
-      const list = await productosAPI.findProductos()
+      let whereObj: any = {}
+      if (filterText && String(filterText).trim()) {
+        const t = String(filterText).trim()
+        whereObj = { or: [ { nombre: { like: `%${t}%`, options: 'i' } }, { descripcion: { like: `%${t}%`, options: 'i' } } ] }
+      }
+
+      // count
+      try {
+        const cnt = await productosAPI.countProductos({ where: JSON.stringify(whereObj) })
+        const total = (cnt && (cnt.count !== undefined)) ? Number(cnt.count) : Number(cnt || 0)
+        setTotalRecords(total)
+      } catch (errCount) {
+        console.warn('No se pudo obtener count de productos', errCount)
+        setTotalRecords(null)
+      }
+
+      const params: any = { filter: JSON.stringify({ where: whereObj, limit: rows, skip: first, order: 'id DESC' }) }
+      const list = await productosAPI.findProductos(params)
       setProductos(list || [])
-      setHasSearched(true) // Marcar que ya se ha realizado una búsqueda
+      setHasSearched(true)
+      setPageState({ first, rows })
     } catch (e: any) {
       console.error(e)
       setError(e?.message || 'Error cargando productos')
@@ -120,42 +145,60 @@ export default function PageProductos() {
 
             {cargando && <div style={{ textAlign: 'center', padding: 20 }}>Cargando productos...</div>}
 
-            {hasSearched && !cargando && (
-              <DataTable
-                ref={tableRef}
-                columns={columns}
-                data={productos}
-                pageSize={10}
-                onNew={() => { setModoPanel('editar'); setRegistroPanel({}) }}
-                onView={(r) => { setModoPanel('ver'); setRegistroPanel(r) }}
-                onEdit={(r) => { setModoPanel('editar'); setRegistroPanel(r) }}
-                onDelete={(row) => {
-                  if (!row) return
-                  confirmDialog({
-                    message: `¿Seguro que deseas eliminar el producto "${row?.nombre || row?.id}"?`,
-                    header: 'Confirmar eliminación',
-                    icon: 'pi pi-exclamation-triangle',
-                    acceptLabel: 'Sí, eliminar',
-                    rejectLabel: 'Cancelar',
-                    acceptClassName: 'p-button-danger',
-                    accept: async () => {
-                      try {
-                        await productosAPI.deleteProductoById(row.id)
-                        if (toast && toast.show) toast.show({ severity: 'success', summary: 'Eliminado', detail: 'Producto eliminado correctamente', life: 2000 })
-                        await loadProductos()
-                      } catch (e) {
-                        console.error(e)
-                        if (toast && toast.show) toast.show({ severity: 'error', summary: 'Error', detail: 'No se pudo eliminar el producto', life: 2500 })
+            {hasSearched && (
+              <div style={{ position: 'relative' }}>
+                <DataTable
+                  ref={tableRef}
+                  columns={columns}
+                  data={productos}
+                  pageSize={pageState.rows}
+                  lazy
+                  totalRecords={totalRecords ?? undefined}
+                  onLazyLoad={({ first, rows }) => loadProductosPage({ first, rows, filterText: filtroBusquedaAplicar })}
+                  onNew={() => { setModoPanel('editar'); setRegistroPanel({}) }}
+                  onView={(r) => { setModoPanel('ver'); setRegistroPanel(r) }}
+                  onEdit={(r) => { setModoPanel('editar'); setRegistroPanel(r) }}
+                  onDelete={(row) => {
+                    if (!row) return
+                    confirmDialog({
+                      message: `¿Seguro que deseas eliminar el producto "${row?.nombre || row?.id}"?`,
+                      header: 'Confirmar eliminación',
+                      icon: 'pi pi-exclamation-triangle',
+                      acceptLabel: 'Sí, eliminar',
+                      rejectLabel: 'Cancelar',
+                      acceptClassName: 'p-button-danger',
+                      accept: async () => {
+                        try {
+                          await productosAPI.deleteProductoById(row.id)
+                          if (toast && toast.show) toast.show({ severity: 'success', summary: 'Eliminado', detail: 'Producto eliminado correctamente', life: 2000 })
+                          await loadProductos()
+                        } catch (e) {
+                          console.error(e)
+                          if (toast && toast.show) toast.show({ severity: 'error', summary: 'Error', detail: 'No se pudo eliminar el producto', life: 2500 })
+                        }
                       }
-                    }
-                  })
-                }}
-                puede={{
-                  ver: hasPermission('Productos', 'Ver'),
-                  editar: hasPermission('Productos', 'Actualizar'),
-                  borrar: hasPermission('Productos', 'Borrar'),
-                }}
-              />
+                    })
+                  }}
+                  puede={{
+                    ver: hasPermission('Productos', 'Ver'),
+                    editar: hasPermission('Productos', 'Actualizar'),
+                    borrar: hasPermission('Productos', 'Borrar'),
+                  }}
+                />
+                {cargando && (
+                  <div style={{
+                    position: 'absolute',
+                    inset: 0,
+                    background: 'rgba(255,255,255,0.6)',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    pointerEvents: 'none'
+                  }}>
+                    <div style={{ padding: 12, background: '#fff', borderRadius: 6, boxShadow: '0 2px 8px rgba(0,0,0,0.12)' }}>Cargando...</div>
+                  </div>
+                )}
+              </div>
             )}
           </>
         )}

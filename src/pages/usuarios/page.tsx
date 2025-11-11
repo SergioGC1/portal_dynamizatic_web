@@ -107,19 +107,48 @@ export default function PageUsuarios() {
   // Filtro de búsqueda temporal (no aplica hasta pulsar "Buscar")
   const [filtroBusquedaTemporal, establecerFiltroBusquedaTemporal] = useState<string>('');
   const [filtroBusquedaAplicar, setFiltroBusquedaAplicar] = useState<string>('');
+  const [totalRecords, setTotalRecords] = useState<number | null>(null)
+  const [pageState, setPageState] = useState<{ first: number; rows: number }>({ first: 0, rows: 10 })
   // Estados locales del panel (ver / editar)
   const [modoPanel, setModoPanel] = useState<'ver' | 'editar' | null>(null);
   const [registroPanel, setRegistroPanel] = useState<any | null>(null);
 
   const refresh = async () => {
     // Congelar el valor actual del filtro para esta búsqueda
-    setFiltroBusquedaAplicar(filtroBusquedaTemporal)
+    const filtro = filtroBusquedaTemporal
+    setFiltroBusquedaAplicar(filtro)
+    // Reset pagination to first page when searching
+    setPageState({ first: 0, rows: pageState.rows })
+    await loadUsuariosPage({ first: 0, rows: pageState.rows, filterText: filtro })
+  }
+
+  const loadUsuariosPage = async ({ first = 0, rows = 10, filterText = '' } : { first?: number; rows?: number; filterText?: string }) => {
     setLoading(true)
     setError(null)
     try {
-      const list = await UsuariosAPI.findUsuarios()
+      // Build where clause for search if provided
+      let whereObj: any = {}
+      if (filterText && String(filterText).trim()) {
+        const t = String(filterText).trim()
+        whereObj = { or: [ { nombreUsuario: { like: `%${t}%`, options: 'i' } }, { email: { like: `%${t}%`, options: 'i' } }, { apellidos: { like: `%${t}%`, options: 'i' } } ] }
+      }
+
+      // Count total
+      try {
+        const cnt = await UsuariosAPI.countUsuarios({ where: JSON.stringify(whereObj) })
+        const total = (cnt && (cnt.count !== undefined)) ? Number(cnt.count) : Number(cnt || 0)
+        setTotalRecords(total)
+      } catch (errCount) {
+        console.warn('No se pudo obtener count de usuarios', errCount)
+        setTotalRecords(null)
+      }
+
+      // Fetch page
+      const params: any = { filter: JSON.stringify({ where: whereObj, limit: rows, skip: first, order: 'id DESC' }) }
+      const list = await UsuariosAPI.findUsuarios(params)
       setUsers(list || [])
-      setHasSearched(true) // Marcar que ya se ha realizado una búsqueda
+      setHasSearched(true)
+      setPageState({ first, rows })
     } catch (e: any) {
       console.error(e)
       setError(e?.message || 'Error cargando usuarios')
@@ -186,25 +215,29 @@ export default function PageUsuarios() {
 
             {cargando && <div style={{ textAlign: 'center', padding: 20 }}>Cargando usuarios...</div>}
 
-            {hasSearched && !cargando && (
-              <DataTable
-                ref={tableRef}
-                columns={columns}
-                data={usuarios}
-                pageSize={10}
-                onNew={() => {
-                  setModoPanel('editar')
-                  setRegistroPanel({})
-                }}
-                onView={(r) => {
-                  setModoPanel('ver')
-                  setRegistroPanel(r)
-                }}
-                onEdit={(r) => {
-                  setModoPanel('editar')
-                  setRegistroPanel(r)
-                }}
-                onDelete={(row) => {
+            {hasSearched && (
+              <div style={{ position: 'relative' }}>
+                <DataTable
+                  ref={tableRef}
+                  columns={columns}
+                  data={usuarios}
+                  pageSize={pageState.rows}
+                  lazy
+                  totalRecords={totalRecords ?? undefined}
+                  onLazyLoad={({ first, rows }) => loadUsuariosPage({ first, rows, filterText: filtroBusquedaAplicar })}
+                  onNew={() => {
+                    setModoPanel('editar')
+                    setRegistroPanel({})
+                  }}
+                  onView={(r) => {
+                    setModoPanel('ver')
+                    setRegistroPanel(r)
+                  }}
+                  onEdit={(r) => {
+                    setModoPanel('editar')
+                    setRegistroPanel(r)
+                  }}
+                  onDelete={(row) => {
                   if (!row) return
                   // No permitir borrar al usuario autenticado
                   const esPropio = currentEmail && String(row.email) === String(currentEmail)
@@ -277,7 +310,21 @@ export default function PageUsuarios() {
                   }
                   return true;
                 }}
-              />
+                />
+                {cargando && (
+                  <div style={{
+                    position: 'absolute',
+                    inset: 0,
+                    background: 'rgba(255,255,255,0.6)',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    pointerEvents: 'none'
+                  }}>
+                    <div style={{ padding: 12, background: '#fff', borderRadius: 6, boxShadow: '0 2px 8px rgba(0,0,0,0.12)' }}>Cargando...</div>
+                  </div>
+                )}
+              </div>
             )}
           </>
         )}
