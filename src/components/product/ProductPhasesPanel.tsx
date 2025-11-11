@@ -1,5 +1,8 @@
 import React, { useEffect, useState, useCallback } from 'react'
 import { useAuth } from '../../contexts/AuthContext'
+import usePermisos from '../../hooks/usePermisos'
+import RolesAPI from '../../api-endpoints/roles/index'
+import { Toast } from 'primereact/toast'
 
 // Adaptadores (API) con imports arriba para buenas prácticas
 import fasesAPI from '../../api-endpoints/fases'
@@ -24,6 +27,52 @@ export default function PanelFasesProducto({ productId }: { productId?: string |
     const [registrosProductosTareas, establecerRegistrosProductosTareas] = useState<Record<number, any>>({})
     const [updatingTareas, setUpdatingTareas] = useState<Record<number, boolean>>({})
     const { user } = useAuth()
+    const { hasPermission } = usePermisos()
+    const [toast, setToast] = useState<any>(null)
+    const [rolActivo, setRolActivo] = useState<boolean | null>(null)
+
+    useEffect(() => {
+        let mounted = true
+        const comprobarRol = async () => {
+            try {
+                let rolId: any = undefined
+                if (user && (user as any).rolId) rolId = (user as any).rolId
+                else {
+                    try {
+                        const stored = localStorage.getItem('user')
+                        if (stored) {
+                            const parsed = JSON.parse(stored)
+                            rolId = parsed?.rolId || parsed?.rol || (Array.isArray(parsed?.roles) ? parsed.roles[0] : undefined)
+                        }
+                    } catch (e) {}
+                }
+                if (!rolId) {
+                    if (mounted) setRolActivo(true)
+                    return
+                }
+                const rol = await RolesAPI.getRoleById(rolId)
+                const activo = rol?.activoSn ?? rol?.activoSN ?? rol?.activo ?? 'S'
+                if (mounted) setRolActivo(String(activo).toUpperCase() === 'S')
+            } catch (err) {
+                console.warn('No se pudo comprobar el estado del rol, asumiendo activo', err)
+                if (mounted) setRolActivo(true)
+            }
+        }
+        comprobarRol()
+        return () => { mounted = false }
+    }, [user])
+
+    // Compatibilidad: algunos roles usan el recurso 'TareasFase' y otros 'TareasProducto'
+    // Además permitimos ver las fases si el usuario tiene permisos generales sobre Productos
+    // (por ejemplo 'Productos:Ver' o 'Productos:Actualizar') para evitar ocultar las fases
+    // cuando el rol solo tiene permisos a nivel de producto.
+    const canViewTasks = (
+        hasPermission('TareasProducto', 'Ver') ||
+        hasPermission('TareasFase', 'Ver') ||
+        hasPermission('Productos', 'Ver') ||
+        hasPermission('Productos', 'Actualizar')
+    )
+    const canUpdateTasks = hasPermission('TareasProducto', 'Actualizar') || hasPermission('TareasFase', 'Actualizar')
 
     useEffect(() => {
         let componenteMontado = true
@@ -202,6 +251,8 @@ export default function PanelFasesProducto({ productId }: { productId?: string |
     return (
         <div style={{ marginTop: 18, borderTop: '1px solid #eee', paddingTop: 12 }}>
 
+            <Toast ref={setToast} />
+
             {estaCargando && <div>Cargando...</div>}
             {mensajeDeError && <div style={{ color: 'red' }}>{mensajeDeError}</div>}
 
@@ -234,57 +285,84 @@ export default function PanelFasesProducto({ productId }: { productId?: string |
 
             <div>
                 <ul style={{ listStyle: 'none', padding: 0 }}>
-                    {identificadorDeFaseActiva && tareasDeLaFaseActiva.map((tarea, indice) => {
-                        const registro = registrosProductosTareas[tarea.id]
-                        const keyName = detectCompletadaKey(registro)
-                        const checked = registro ? String(registro[keyName] ?? '').toUpperCase() === 'S' : false
-                        const updating = updatingTareas[tarea.id] === true
-                        return (
-                        <li key={tarea.id} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12, padding: '10px 0', borderBottom: '1px solid #f3f4f6' }}>
-                            <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-                                <div style={{
-                                    minWidth: 30,
-                                    height: 30,
-                                    display: 'flex',
-                                    alignItems: 'center',
-                                    justifyContent: 'center',
-                                    backgroundColor: '#007bff',
-                                    color: 'white',
-                                    borderRadius: '50%',
-                                    fontSize: '0.9em',
-                                    fontWeight: 'bold'
-                                }}>
-                                    {indice + 1}
-                                </div>
-                                <div style={{ fontWeight: 600 }}>{tarea.nombre || `Tarea ${tarea.id}`}</div>
-                            </div>
-                            <div>
-                                <input type="checkbox" checked={checked} disabled={updating} onChange={(e) => toggleCompletada(tarea, e.target.checked)} />
-                            </div>
-                        </li>
-                    )})}
+                    {/* Mostrar tareas solo si tiene permiso de ver y rol activo */}
+                    {(!canViewTasks || rolActivo === false) ? (
+                        <div style={{ padding: 12, color: '#6c757d' }}>No tienes permiso para ver las tareas de este producto.</div>
+                    ) : (
+                        identificadorDeFaseActiva ? (
+                            tareasDeLaFaseActiva.map((tarea, indice) => {
+                                const registro = registrosProductosTareas[tarea.id]
+                                const keyName = detectCompletadaKey(registro)
+                                const checked = registro ? String(registro[keyName] ?? '').toUpperCase() === 'S' : false
+                                const updating = updatingTareas[tarea.id] === true
+                                return (
+                                    <li key={tarea.id} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12, padding: '10px 0', borderBottom: '1px solid #f3f4f6' }}>
+                                        <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+                                            <div style={{
+                                                minWidth: 30,
+                                                height: 30,
+                                                display: 'flex',
+                                                alignItems: 'center',
+                                                justifyContent: 'center',
+                                                backgroundColor: '#007bff',
+                                                color: 'white',
+                                                borderRadius: '50%',
+                                                fontSize: '0.9em',
+                                                fontWeight: 'bold'
+                                            }}>
+                                                {indice + 1}
+                                            </div>
+                                            <div style={{ fontWeight: 600 }}>{tarea.nombre || `Tarea ${tarea.id}`}</div>
+                                        </div>
+                                        <div>
+                                            <input
+                                                type="checkbox"
+                                                checked={checked}
+                                                disabled={updating || !canUpdateTasks}
+                                                onChange={(e) => {
+                                                    if (!canUpdateTasks) {
+                                                        if (toast && toast.show) toast.show({ severity: 'warn', summary: 'Permisos', detail: 'No tienes permiso para actualizar tareas', life: 3000 })
+                                                        return
+                                                    }
+                                                    toggleCompletada(tarea, e.target.checked)
+                                                }}
+                                            />
+                                        </div>
+                                    </li>
+                                )
+                            })
+                        ) : null
+                    )}
                 </ul>
                 {/* Global action button under tasks */}
-                {identificadorDeFaseActiva && (() => {
+                {identificadorDeFaseActiva && canViewTasks && (() => {
                     const allCheckedActive = tareasDeLaFaseActiva.length > 0 && tareasDeLaFaseActiva.every(t => {
                         const rec = registrosProductosTareas[t.id]
                         const key = detectCompletadaKey(rec)
                         return rec && String(rec[key] ?? '').toUpperCase() === 'S'
                     })
                     const faseActiva = listaDeFases.find(f => f.id === identificadorDeFaseActiva)
+                    const canClickSend = allCheckedActive && canUpdateTasks
                     return (
                         <div style={{ marginTop: 12, display: 'flex', justifyContent: 'center' }}>
                             <button
-                                onClick={() => faseActiva && sendToSupervisors(faseActiva)}
-                                disabled={!allCheckedActive}
+                                onClick={() => {
+                                    if (!canUpdateTasks) {
+                                        if (toast && toast.show) toast.show({ severity: 'warn', summary: 'Permisos', detail: 'No tienes permiso para enviar notificaciones', life: 3000 })
+                                        return
+                                    }
+                                    if (faseActiva) sendToSupervisors(faseActiva)
+                                }}
+                                disabled={!canClickSend}
                                 style={{
                                     padding: '8px 14px',
                                     borderRadius: 8,
-                                    background: allCheckedActive ? '#16a34a' : '#9ca3af',
+                                    background: canClickSend ? '#16a34a' : '#9ca3af',
                                     color: 'white',
                                     border: 'none',
-                                    boxShadow: allCheckedActive ? '0 4px 12px rgba(16,185,129,0.2)' : 'none',
-                                    cursor: allCheckedActive ? 'pointer' : 'not-allowed'
+                                    boxShadow: canClickSend ? '0 4px 12px rgba(16,185,129,0.2)' : 'none',
+                                    cursor: canClickSend ? 'pointer' : 'not-allowed',
+                                    opacity: canUpdateTasks ? 1 : 0.8
                                 }}
                             >
                                 Enviar correo a Supervisores
