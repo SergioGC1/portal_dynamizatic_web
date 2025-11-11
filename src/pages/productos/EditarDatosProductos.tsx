@@ -1,5 +1,9 @@
 import React, { useEffect, useState } from 'react'
 import { Calendar } from 'primereact/calendar'
+import { InputText } from 'primereact/inputtext'
+import { InputTextarea } from 'primereact/inputtextarea'
+import { Dropdown } from 'primereact/dropdown'
+import { Button } from 'primereact/button'
 import productosAPI from '../../api-endpoints/productos/index'
 import ProductPhasesPanel from '../../components/product/ProductPhasesPanel'
 
@@ -132,7 +136,7 @@ export default function EditarDatosProductos({ productId }: Props) {
         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
           <div>
             <label style={{ display: 'block', marginBottom: 6 }}>Nombre *</label>
-            <input value={producto.nombre} onChange={e => setProducto(p => ({ ...p, nombre: e.target.value }))} style={{ width: '100%', padding: 8 }} />
+            <InputText value={producto.nombre} onChange={e => setProducto(p => ({ ...p, nombre: e.target.value }))} className="w-full" />
             {fieldErrors.nombre && <div style={{ color: 'red', marginTop: 6 }}>{fieldErrors.nombre}</div>}
           </div>
 
@@ -159,58 +163,52 @@ export default function EditarDatosProductos({ productId }: Props) {
 
           <div>
             <label style={{ display: 'block', marginBottom: 6 }}>Color</label>
-            <input value={producto.color} onChange={e => setProducto(p => ({ ...p, color: e.target.value }))} style={{ width: '100%', padding: 8 }} />
+            <InputText value={producto.color} onChange={e => setProducto(p => ({ ...p, color: e.target.value }))} className="w-full" />
           </div>
 
           <div style={{ gridColumn: '1 / -1' }}>
             <label style={{ display: 'block', marginBottom: 6 }}>Descripción</label>
-            <textarea value={producto.descripcion} onChange={e => setProducto(p => ({ ...p, descripcion: e.target.value }))} style={{ width: '100%', padding: 8, minHeight: 90 }} />
+            <InputTextarea value={producto.descripcion} onChange={e => setProducto(p => ({ ...p, descripcion: e.target.value }))} className="w-full" rows={6} />
           </div>
 
           <div>
             <label style={{ display: 'block', marginBottom: 6 }}>Tamaño</label>
-            <input value={producto.tamano} onChange={e => setProducto(p => ({ ...p, tamano: e.target.value }))} style={{ width: '100%', padding: 8 }} />
+            <InputText value={producto.tamano} onChange={e => setProducto(p => ({ ...p, tamano: e.target.value }))} className="w-full" />
           </div>
 
           <div>
             <label style={{ display: 'block', marginBottom: 6 }}>Dimensión</label>
-            <input value={producto.dimension} onChange={e => setProducto(p => ({ ...p, dimension: e.target.value }))} style={{ width: '100%', padding: 8 }} />
+            <InputText value={producto.dimension} onChange={e => setProducto(p => ({ ...p, dimension: e.target.value }))} className="w-full" />
           </div>
 
           <div>
             <label style={{ display: 'block', marginBottom: 6 }}>Material 1</label>
-            <input value={producto.material1} onChange={e => setProducto(p => ({ ...p, material1: e.target.value }))} style={{ width: '100%', padding: 8 }} />
+            <InputText value={producto.material1} onChange={e => setProducto(p => ({ ...p, material1: e.target.value }))} className="w-full" />
           </div>
 
           <div>
             <label style={{ display: 'block', marginBottom: 6 }}>Material 2</label>
-            <input value={producto.material2} onChange={e => setProducto(p => ({ ...p, material2: e.target.value }))} style={{ width: '100%', padding: 8 }} />
+            <InputText value={producto.material2} onChange={e => setProducto(p => ({ ...p, material2: e.target.value }))} className="w-full" />
           </div>
 
           <div>
             <label style={{ display: 'block', marginBottom: 6 }}>Material 3</label>
-            <input value={producto.material3} onChange={e => setProducto(p => ({ ...p, material3: e.target.value }))} style={{ width: '100%', padding: 8 }} />
+            <InputText value={producto.material3} onChange={e => setProducto(p => ({ ...p, material3: e.target.value }))} className="w-full" />
           </div>
 
           <div>
             <label style={{ display: 'block', marginBottom: 6 }}>¿Eléctrico?</label>
-            <select value={producto.esElectricoSn} onChange={e => setProducto(p => ({ ...p, esElectricoSn: (e.target.value as 'S' | 'N') }))} style={{ width: '100%', padding: 8 }}>
-              <option value="S">Sí</option>
-              <option value="N">No</option>
-            </select>
+            <Dropdown value={producto.esElectricoSn} options={[{ label: 'Sí', value: 'S' }, { label: 'No', value: 'N' }]} onChange={(e) => setProducto(p => ({ ...p, esElectricoSn: e.value }))} className="w-full" />
           </div>
 
           <div>
             <label style={{ display: 'block', marginBottom: 6 }}>¿Biodegradable?</label>
-            <select value={producto.esBiodegradableSn} onChange={e => setProducto(p => ({ ...p, esBiodegradableSn: (e.target.value as 'S' | 'N') }))} style={{ width: '100%', padding: 8 }}>
-              <option value="S">Sí</option>
-              <option value="N">No</option>
-            </select>
+            <Dropdown value={producto.esBiodegradableSn} options={[{ label: 'Sí', value: 'S' }, { label: 'No', value: 'N' }]} onChange={(e) => setProducto(p => ({ ...p, esBiodegradableSn: e.value }))} className="w-full" />
           </div>
 
           <div style={{ gridColumn: '1 / -1' }}>
             <label style={{ display: 'block', marginBottom: 6 }}>URL imagen</label>
-            <input value={producto.imagen} onChange={e => setProducto(p => ({ ...p, imagen: e.target.value }))} style={{ width: '100%', padding: 8 }} />
+            <InputText value={producto.imagen} onChange={e => setProducto(p => ({ ...p, imagen: e.target.value }))} className="w-full" />
             {producto.imagen && (
               <div style={{ marginTop: 8 }}>
                 <img src={producto.imagen} alt="preview" style={{ maxWidth: 240, maxHeight: 160, objectFit: 'contain', border: '1px solid #e5e7eb' }} />
@@ -220,8 +218,8 @@ export default function EditarDatosProductos({ productId }: Props) {
         </div>
 
         <div style={{ marginTop: 12, display: 'flex', gap: 8 }}>
-          <button type="submit" disabled={loading} style={{ padding: '8px 12px', borderRadius: 6 }}>{productId ? 'Guardar' : 'Crear'}</button>
-          <button type="button" onClick={() => { /* reset si quieres */ }} style={{ padding: '8px 12px', borderRadius: 6 }}>Cancelar</button>
+          <Button type="submit" label={productId ? 'Guardar' : 'Crear'} disabled={loading} />
+          <Button type="button" label="Cancelar" onClick={() => { /* reset si quieres */ }} className="p-button-secondary" />
         </div>
       </form>
 

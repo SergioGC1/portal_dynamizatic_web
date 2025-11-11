@@ -1,5 +1,8 @@
 import React, { useEffect, useState } from 'react';
 import { InputSwitch } from 'primereact/inputswitch';
+import { InputText } from 'primereact/inputtext';
+import { Password } from 'primereact/password';
+import { Button } from 'primereact/button';
 import UsuariosAPI from '../../api-endpoints/usuarios/index';
 
 type Props = { userId?: string };
@@ -87,40 +90,40 @@ export default function EditarDatosUsuarios({ userId }: Props) {
   }
 
   return (
-    <div style={{ maxWidth: 720 }}>
+    <div className="form-container" style={{ maxWidth: 720 }}>
       <h3>{userId ? `Editar usuario ${user?.nombreUsuario || ''}` : 'Creando usuario'}</h3>
       {loading && <div>Cargando...</div>}
-      {error && <div style={{ color: 'red' }}>{error}</div>}
+      {error && <div className="texto-error">{error}</div>}
       <form onSubmit={handleSave}>
-        <div style={{ marginBottom: 8 }}>
-          <label style={{ display: 'block', marginBottom: 4 }}>Nombre</label>
-          <input value={user.nombreUsuario || ''} onChange={e => setUser(u => ({ ...u, nombreUsuario: e.target.value }))} style={{ width: '100%', padding: 8, borderRadius: 6, border: '1px solid #e5e7eb' }} />
+        <div className="form-row">
+          <label style={{ fontWeight: 'normal' }}>Nombre</label>
+          <InputText value={user.nombreUsuario || ''} onChange={(e) => setUser(u => ({ ...u, nombreUsuario: e.target.value }))} className={`w-full ${fieldErrors.nombreUsuario ? 'p-invalid' : ''}`} />
         </div>
-        <div style={{ marginBottom: 8 }}>
-          <label style={{ display: 'block', marginBottom: 4 }}>Email</label>
-          <input value={user.email || ''} onChange={e => setUser(u => ({ ...u, email: e.target.value }))} style={{ width: '100%', padding: 8, borderRadius: 6, border: '1px solid #e5e7eb' }} />
-          {fieldErrors.email && <div style={{ color: 'red', marginTop: 6 }}>{fieldErrors.email}</div>}
+        <div className="form-row">
+          <label style={{ fontWeight: 'normal' }}>Email</label>
+          <InputText value={user.email || ''} onChange={(e) => setUser(u => ({ ...u, email: e.target.value }))} className={`w-full ${fieldErrors.email ? 'p-invalid' : ''}`} />
+          {fieldErrors.email && <div className="texto-error" style={{ marginTop: 6 }}>{fieldErrors.email}</div>}
         </div>
-        <div style={{ marginBottom: 8, display: 'flex', alignItems: 'center', gap: 12 }}>
-          <label style={{ display: 'block', marginBottom: 4, minWidth: 80 }}>Activo</label>
+        <div className="form-row" style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+          <label style={{ minWidth: 80 }}>Activo</label>
           <InputSwitch
             checked={String(user.activoSn || '').toUpperCase() === 'S'}
             onChange={(e: any) => setUser(u => ({ ...u, activoSn: e.value ? 'S' : 'N' }))}
           />
         </div>
         {(!userId) && (
-          <div style={{ marginBottom: 8 }}>
-            <label style={{ display: 'block', marginBottom: 4 }}>Contraseña (mínimo 8 caracteres)</label>
-            <input type="password" value={password} onChange={e => setPassword(e.target.value)} style={{ width: '100%', padding: 8, borderRadius: 6, border: '1px solid #e5e7eb' }} />
-            {fieldErrors.password && <div style={{ color: 'red', marginTop: 6 }}>{fieldErrors.password}</div>}
+          <div className="form-row">
+            <label style={{ fontWeight: 'normal' }}>Contraseña (mínimo 8 caracteres)</label>
+            <Password value={password} onChange={(e) => setPassword(e.target.value)} feedback={false} toggleMask className={`w-full ${fieldErrors.password ? 'p-invalid' : ''}`} />
+            {fieldErrors.password && <div className="texto-error" style={{ marginTop: 6 }}>{fieldErrors.password}</div>}
           </div>
         )}
-        <div style={{ marginBottom: 8 }}>
-          <label style={{ display: 'block', marginBottom: 4 }}>Rol</label>
-          <input value={user.rolId || ''} onChange={e => setUser(u => ({ ...u, rolId: e.target.value }))} style={{ width: '100%', padding: 8, borderRadius: 6, border: '1px solid #e5e7eb' }} />
+        <div className="form-row">
+          <label style={{ fontWeight: 'normal' }}>Rol</label>
+          <InputText value={user.rolId || ''} onChange={(e) => setUser(u => ({ ...u, rolId: e.target.value }))} className={`w-full ${fieldErrors.rolId ? 'p-invalid' : ''}`} />
         </div>
         <div style={{ display: 'flex', gap: 8 }}>
-          <button type="submit" disabled={loading} style={{ padding: '8px 12px', borderRadius: 6 }}>{userId ? 'Guardar' : 'Crear'}</button>
+          <Button type="submit" label={userId ? 'Guardar' : 'Crear'} disabled={loading} />
         </div>
       </form>
     </div>

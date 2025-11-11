@@ -1,5 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { InputSwitch } from 'primereact/inputswitch';
+import { InputText } from 'primereact/inputtext';
+import { Button } from 'primereact/button';
 import RolesAPI from '../../api-endpoints/roles/index';
 
 type Props = { rolId?: string };
@@ -59,7 +61,7 @@ export default function EditarDatosRoles({ rolId }: Props) {
       <form onSubmit={handleSave}>
         <div style={{ marginBottom: 8 }}>
           <label style={{ display: 'block', marginBottom: 4 }}>Nombre</label>
-          <input value={rol.nombre || ''} onChange={e => setRol(r => ({ ...r, nombre: e.target.value }))} style={{ width: '100%', padding: 8, borderRadius: 6, border: '1px solid #e5e7eb' }} />
+          <InputText value={rol.nombre || ''} onChange={e => setRol(r => ({ ...r, nombre: e.target.value }))} className="w-full" />
         </div>
         <div style={{ marginBottom: 8, display: 'flex', alignItems: 'center', gap: 12 }}>
           <label style={{ display: 'block', marginBottom: 4, minWidth: 80 }}>Activo</label>
@@ -69,7 +71,7 @@ export default function EditarDatosRoles({ rolId }: Props) {
           />
         </div>
         <div style={{ display: 'flex', gap: 8 }}>
-          <button type="submit" disabled={loading} style={{ padding: '8px 12px', borderRadius: 6 }}>{rolId ? 'Guardar' : 'Crear'}</button>
+          <Button type="submit" label={rolId ? 'Guardar' : 'Crear'} disabled={loading} />
         </div>
       </form>
     </div>
