@@ -388,28 +388,14 @@ export default function PanelProducto({
             <div className="record-panel__top">
                 {debeMostrarImagen && (
                     <div className="record-panel__image-box--static" style={{ position: 'relative', width: 160, height: 160 }}>
-                        {urlVistaPrevia ? (
-                            <img
-                                src={urlVistaPrevia}
-                                alt="imagen"
-                                className="record-panel__thumbnail"
-                                onError={() => actualizarCampoDelFormulario('imagen', '')}
-                                style={{ width: '100%', height: '100%', objectFit: 'contain', objectPosition: 'center', borderRadius: 6 }}
-                            />
-                        ) : (
-                            <div className="record-panel__no-image">Sin imagen</div>
-                        )}
-
-                        {/* overlay preview local */}
-                        {vistaPreviaLocal && (
+                        {/* If there's a local preview (freshly selected file), show it instead of the existing image
+                            to avoid the previous image showing through transparent areas when the new image is small. */}
+                        {vistaPreviaLocal ? (
                             <>
                                 <img
                                     src={vistaPreviaLocal}
                                     alt="Vista previa"
                                     style={{
-                                        position: 'absolute',
-                                        top: 0,
-                                        left: 0,
                                         width: '100%',
                                         height: '100%',
                                         objectFit: 'contain',
@@ -443,9 +429,19 @@ export default function PanelProducto({
                                     </div>
                                 )}
                             </>
+                        ) : urlVistaPrevia ? (
+                            <img
+                                src={urlVistaPrevia}
+                                alt="imagen"
+                                className="record-panel__thumbnail"
+                                onError={() => actualizarCampoDelFormulario('imagen', '')}
+                                style={{ width: '100%', height: '100%', objectFit: 'contain', objectPosition: 'center', borderRadius: 6 }}
+                            />
+                        ) : (
+                            <div className="record-panel__no-image">Sin imagen</div>
                         )}
 
-                        {/* botón borrar imagen existente */}
+                        {/* botón borrar imagen existente (solo si no hay preview local) */}
                         {mode === 'editar' && urlVistaPrevia && !vistaPreviaLocal && (
                             <div className="record-panel__image-delete">
                                 <Button label="" icon="pi pi-trash" onClick={eliminarImagenDelProductoConConfirmacion} className="p-button-sm p-button-rounded p-button-danger" />

@@ -493,7 +493,23 @@ export default function PanelUsuario({
                             </span>
                         </div>
                         <div className="record-panel__image-box--static" style={{ position: 'relative', width: 160, height: 160 }}>
-                            {urlDeVistaPreviaFinal ? (
+                            {/* Mostrar preview local (si existe) en lugar de la imagen guardada para evitar que la
+                                imagen anterior se vea a través de las zonas transparentes o espacios vacíos. */}
+                            {urlDeVistaPrevia ? (
+                                <img
+                                    src={urlDeVistaPrevia}
+                                    alt="Vista previa" 
+                                    className="record-panel__thumbnail"
+                                    onError={() => { 
+                                        // Si falla la vista previa, limpiarla
+                                        try { if (referenciaUrlObjetoActual.current) URL.revokeObjectURL(referenciaUrlObjetoActual.current) } catch(e){}
+                                        referenciaUrlObjetoActual.current = null
+                                        establecerUrlDeVistaPrevia(null)
+                                        actualizarCampoDelFormulario('imagen', '')
+                                    }}
+                                    style={{ width: 160, height: 160, objectFit: 'contain', borderRadius: 6 }}
+                                />
+                            ) : urlDeVistaPreviaFinal ? (
                                 <img
                                     src={urlDeVistaPreviaFinal}
                                     alt="imagen del usuario"
@@ -505,8 +521,8 @@ export default function PanelUsuario({
                                 <div className="record-panel__no-image">Sin imagen</div>
                             )}
 
-                            {/* Botón eliminar imagen existente */}
-                            {mode === 'editar' && urlDeVistaPreviaFinal && (
+                            {/* Botón eliminar imagen existente o quitar preview */}
+                            {mode === 'editar' && (urlDeVistaPrevia || urlDeVistaPreviaFinal) && (
                                 <div className="record-panel__image-delete">
                                     <Button
                                         label=""
