@@ -4,6 +4,7 @@ import '../../styles/_main.scss'
 import GestorPaneles from '../../components/ui/GestorPaneles'
 import DataTable, { ColumnDef } from '../../components/data-table/DataTable'
 import productosAPI from '../../api-endpoints/productos/index'
+import estadosAPI from '../../api-endpoints/estados/index'
 import TableToolbar from '../../components/ui/TableToolbar'
 import usePermisos from '../../hooks/usePermisos'
 import { ConfirmDialog, confirmDialog } from 'primereact/confirmdialog'
@@ -15,10 +16,44 @@ export default function PageProductos() {
   const [mensajeError, setError] = useState<string | null>(null)
   const [hasSearched, setHasSearched] = useState(false) // Indica si ya se ha realizado una búsqueda
   
-  // Columnas explícitas para Productos — ajusta las keys según tu esquema (tamaño vs tamaño con ñ)
-  const [columnasDefinicion] = useState<ColumnDef<any>[]>([
+  // Cargar lista de estados para mostrar nombre en vez de id
+  const [estados, setEstados] = useState<any[]>([])
+
+  useEffect(() => {
+    let montado = true
+    const cargarEstados = async () => {
+      try {
+        const listaEstados = await estadosAPI.findEstados()
+        if (montado) setEstados(listaEstados || [])
+      } catch (errorCarga) {
+        console.warn('No se pudieron cargar estados', errorCarga)
+      }
+    }
+    cargarEstados()
+    return () => { montado = false }
+  }, [])
+
+  const estadosMap = useMemo(() => {
+    const mapaEstados: Record<string, string> = {}
+    for (const estado of estados || []) {
+      if (estado && (estado.id !== undefined)) mapaEstados[String(estado.id)] = String(estado.nombre || estado.name || estado.titulo || estado.title || '')
+    }
+    return mapaEstados
+  }, [estados])
+
+  // Columnas explícitas para Productos — con renderizadores para Estado y campos S/N
+  const columnasDefinicion = useMemo<ColumnDef<any>[]>(() => ([
     { key: 'nombre', title: 'Nombre', sortable: true },
-    { key: 'estadoId', title: 'EstadoId', sortable: true },
+    {
+      key: 'estadoId',
+      title: 'Estado',
+      sortable: true,
+      filterOptions: (estados || []).map((e: any) => ({ label: String(e?.nombre || e?.name || e?.title || ''), value: String(e?.id) })),
+      render: (value: any) => {
+        const claveEstado = value === undefined || value === null ? '' : String(value)
+        return <span>{estadosMap[claveEstado] || claveEstado}</span>
+      }
+    },
     { key: 'anyo', title: 'Año', sortable: true },
     { key: 'descripcion', title: 'Descripción', sortable: false },
     { key: 'color', title: 'Color', sortable: true },
@@ -29,9 +64,27 @@ export default function PageProductos() {
     { key: 'material1', title: 'Material 1', sortable: true },
     { key: 'material2', title: 'Material 2', sortable: true },
     { key: 'material3', title: 'Material 3', sortable: true },
-    { key: 'esElectricoSn', title: 'Eléctrico', sortable: true },
-    { key: 'esBiodegradableSn', title: 'Biodegradable', sortable: true },
-  ])
+    {
+      key: 'esElectricoSn',
+      title: 'Eléctrico',
+      sortable: true,
+      render: (value: any) => {
+        const valor = String(value ?? '').toUpperCase()
+        const esSi = valor === 'S'
+        return <span className={`badge-estado ${esSi ? 'badge-activo' : 'badge-inactivo'}`}>{esSi ? 'Sí' : 'No'}</span>
+      }
+    },
+    {
+      key: 'esBiodegradableSn',
+      title: 'Biodegradable',
+      sortable: true,
+      render: (value: any) => {
+        const valor = String(value ?? '').toUpperCase()
+        const esSi = valor === 'S'
+        return <span className={`badge-estado ${esSi ? 'badge-activo' : 'badge-inactivo'}`}>{esSi ? 'Sí' : 'No'}</span>
+      }
+    }
+  ]), [estadosMap, estados])
   const tableRef = useRef<any | null>(null)
   const [toast, setToast] = useState<any>(null)
   // Filtro de búsqueda temporal (no aplica a la tabla hasta pulsar "Buscar")

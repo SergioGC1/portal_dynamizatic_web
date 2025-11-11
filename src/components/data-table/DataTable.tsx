@@ -17,6 +17,8 @@ export type ColumnDef<T = any> = {
   sortable?: boolean
   filterable?: boolean
   render?: (value: any, row: T) => React.ReactNode
+  // Opcional: opciones para el filtro (Dropdown) en formato { label, value }
+  filterOptions?: Array<{ label: string; value: any }>
 }
 
 type Props = {
@@ -242,24 +244,68 @@ const DataTableAdaptado = forwardRef<DataTableHandle, Props>(function DataTableA
             />
             <OverlayPanel ref={(el) => { overlayRefs.current[col.key] = el }} className="tabla-filter-panel">
               <div className="tabla-filter-content">
-                <InputText
-                  placeholder={`Buscar por ${(col.label || col.title || col.key).toLowerCase()}`}
-                  // Usar comprobación explícita contra undefined para que una cadena
-                  // vacía escrita por el usuario no vuelva a tomar el valor aplicado
-                  // en columnFilters (esto provocaba que el texto "reapareciera" al borrar).
-                  value={
-                    tempColumnFilters[col.key] !== undefined
-                      ? tempColumnFilters[col.key]
-                      : (columnFilters[col.key] ?? "")
+                {(() => {
+                  // Si la columna provee opciones explícitas, usar Dropdown con ellas
+                  if ((col as any).filterOptions && Array.isArray((col as any).filterOptions)) {
+                    const opcionesFiltro = [{ label: 'Todos', value: '' }, ...((col as any).filterOptions || [])]
+                    return (
+                      <Dropdown
+                        placeholder={`Filtrar ${(col.label || col.title || col.key).toLowerCase()}`}
+                        value={
+                          tempColumnFilters[col.key] !== undefined
+                            ? tempColumnFilters[col.key]
+                            : (columnFilters[col.key] ?? '')
+                        }
+                        options={opcionesFiltro}
+                        onChange={(evento) => setTempColumnFilters((prev) => ({ ...prev, [col.key]: evento.value }))}
+                        className="tabla-filter-input"
+                      />
+                    )
                   }
-                  onChange={(e) =>
-                    setTempColumnFilters((prev) => ({
-                      ...prev,
-                      [col.key]: e.target.value,
-                    }))
+
+                  const normalized = String(col.key).toLowerCase()
+                  const esSn = normalized.endsWith('sn') || normalized.endsWith('sns') || normalized.includes('electrico') || normalized.includes('biodegrad') || normalized.includes('embudo')
+                  if (esSn) {
+                    const options = [
+                      { label: 'Todos', value: '' },
+                      { label: 'Sí', value: 'S' },
+                      { label: 'No', value: 'N' },
+                    ]
+                    return (
+                      <Dropdown
+                        placeholder={`Filtrar ${(col.label || col.title || col.key).toLowerCase()}`}
+                        value={
+                          tempColumnFilters[col.key] !== undefined
+                            ? tempColumnFilters[col.key]
+                            : (columnFilters[col.key] ?? '')
+                        }
+                        options={options}
+                        onChange={(evento) => setTempColumnFilters((prev) => ({ ...prev, [col.key]: evento.value }))}
+                        className="tabla-filter-input"
+                      />
+                    )
                   }
-                  className="tabla-filter-input"
-                />
+                  return (
+                    <InputText
+                      placeholder={`Buscar por ${(col.label || col.title || col.key).toLowerCase()}`}
+                      // Usar comprobación explícita contra undefined para que una cadena
+                      // vacía escrita por el usuario no vuelva a tomar el valor aplicado
+                      // en columnFilters (esto provocaba que el texto "reapareciera" al borrar).
+                      value={
+                        tempColumnFilters[col.key] !== undefined
+                          ? tempColumnFilters[col.key]
+                          : (columnFilters[col.key] ?? "")
+                      }
+                      onChange={(e) =>
+                        setTempColumnFilters((prev) => ({
+                          ...prev,
+                          [col.key]: e.target.value,
+                        }))
+                      }
+                      className="tabla-filter-input"
+                    />
+                  )
+                })()}
                 <div className="tabla-filter-actions">
                   <Button
                     label="Limpiar"
