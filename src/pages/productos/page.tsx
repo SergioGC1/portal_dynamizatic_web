@@ -38,8 +38,7 @@ export default function PageProductos() {
   const [filtroBusquedaTemporal, establecerFiltroBusquedaTemporal] = useState<string>('')
   // Filtro a aplicar tras pulsar "Buscar" (se fija en el momento del click)
   const [filtroBusquedaAplicar, setFiltroBusquedaAplicar] = useState<string>('')
-  const [totalRecords, setTotalRecords] = useState<number | null>(null)
-  const [pageState, setPageState] = useState<{ first: number; rows: number }>({ first: 0, rows: 10 })
+  const [pageState] = useState<{ first: number; rows: number }>({ first: 0, rows: 10 })
   // Estados del panel para ver/editar registros
   const [modoPanel, setModoPanel] = useState<'ver' | 'editar' | null>(null)
   const [registroPanel, setRegistroPanel] = useState<any | null>(null)
@@ -48,37 +47,15 @@ export default function PageProductos() {
 
   // Función para cargar productos - solo cuando el usuario busque
   const loadProductos = async () => {
+    // congelar filtro y cargar TODOS los productos en cliente para orden/filtrado fluidos
     const filtro = filtroBusquedaTemporal
     setFiltroBusquedaAplicar(filtro)
-    setPageState({ first: 0, rows: pageState.rows })
-    await loadProductosPage({ first: 0, rows: pageState.rows, filterText: filtro })
-  }
-
-  const loadProductosPage = async ({ first = 0, rows = 10, filterText = '' } : { first?: number; rows?: number; filterText?: string }) => {
     setLoading(true)
     setError(null)
     try {
-      let whereObj: any = {}
-      if (filterText && String(filterText).trim()) {
-        const t = String(filterText).trim()
-        whereObj = { or: [ { nombre: { like: `%${t}%`, options: 'i' } }, { descripcion: { like: `%${t}%`, options: 'i' } } ] }
-      }
-
-      // count
-      try {
-        const cnt = await productosAPI.countProductos({ where: JSON.stringify(whereObj) })
-        const total = (cnt && (cnt.count !== undefined)) ? Number(cnt.count) : Number(cnt || 0)
-        setTotalRecords(total)
-      } catch (errCount) {
-        console.warn('No se pudo obtener count de productos', errCount)
-        setTotalRecords(null)
-      }
-
-      const params: any = { filter: JSON.stringify({ where: whereObj, limit: rows, skip: first, order: 'id DESC' }) }
-      const list = await productosAPI.findProductos(params)
+      const list = await productosAPI.findProductos()
       setProductos(list || [])
       setHasSearched(true)
-      setPageState({ first, rows })
     } catch (e: any) {
       console.error(e)
       setError(e?.message || 'Error cargando productos')
@@ -86,6 +63,8 @@ export default function PageProductos() {
       setLoading(false)
     }
   }
+
+  
 
   // Aplicar el filtro global a la tabla una vez que la tabla esté montada (hasSearched) y no esté cargando
   useEffect(() => {
@@ -152,9 +131,6 @@ export default function PageProductos() {
                   columns={columns}
                   data={productos}
                   pageSize={pageState.rows}
-                  lazy
-                  totalRecords={totalRecords ?? undefined}
-                  onLazyLoad={({ first, rows }) => loadProductosPage({ first, rows, filterText: filtroBusquedaAplicar })}
                   onNew={() => { setModoPanel('editar'); setRegistroPanel({}) }}
                   onView={(r) => { setModoPanel('ver'); setRegistroPanel(r) }}
                   onEdit={(r) => { setModoPanel('editar'); setRegistroPanel(r) }}

@@ -46,7 +46,8 @@ type Props = {
   // Server-side / lazy loading support
   lazy?: boolean
   totalRecords?: number
-  onLazyLoad?: (state: { first: number; rows: number }) => void
+  // onLazyLoad ahora puede recibir sortField/sortOrder opcionales para orden server-side
+  onLazyLoad?: (state: { first: number; rows: number; sortField?: string | null; sortOrder?: 1 | -1 }) => void
 }
 
 export type DataTableHandle = {
@@ -207,6 +208,10 @@ const DataTableAdaptado = forwardRef<DataTableHandle, Props>(function DataTableA
   const onSort = (e: any) => {
     setSortField(e.sortField)
     setSortOrder(e.sortOrder)
+    // En modo lazy, delegar la ordenación al servidor pasando sortField/sortOrder
+    if (lazy && onLazyLoad) {
+      try { onLazyLoad({ first, rows, sortField: e.sortField, sortOrder: e.sortOrder }) } catch (err) { console.error('onLazyLoad handler error', err) }
+    }
   }
 
   const onPage = (e: any) => {

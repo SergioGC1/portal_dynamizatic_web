@@ -107,8 +107,7 @@ export default function PageUsuarios() {
   // Filtro de búsqueda temporal (no aplica hasta pulsar "Buscar")
   const [filtroBusquedaTemporal, establecerFiltroBusquedaTemporal] = useState<string>('');
   const [filtroBusquedaAplicar, setFiltroBusquedaAplicar] = useState<string>('');
-  const [totalRecords, setTotalRecords] = useState<number | null>(null)
-  const [pageState, setPageState] = useState<{ first: number; rows: number }>({ first: 0, rows: 10 })
+  const [pageState] = useState<{ first: number; rows: number }>({ first: 0, rows: 10 })
   // Estados locales del panel (ver / editar)
   const [modoPanel, setModoPanel] = useState<'ver' | 'editar' | null>(null);
   const [registroPanel, setRegistroPanel] = useState<any | null>(null);
@@ -117,38 +116,13 @@ export default function PageUsuarios() {
     // Congelar el valor actual del filtro para esta búsqueda
     const filtro = filtroBusquedaTemporal
     setFiltroBusquedaAplicar(filtro)
-    // Reset pagination to first page when searching
-    setPageState({ first: 0, rows: pageState.rows })
-    await loadUsuariosPage({ first: 0, rows: pageState.rows, filterText: filtro })
-  }
-
-  const loadUsuariosPage = async ({ first = 0, rows = 10, filterText = '' } : { first?: number; rows?: number; filterText?: string }) => {
+    // Cargar todos los usuarios en modo cliente para permitir orden/filtrado fluido
     setLoading(true)
     setError(null)
     try {
-      // Build where clause for search if provided
-      let whereObj: any = {}
-      if (filterText && String(filterText).trim()) {
-        const t = String(filterText).trim()
-        whereObj = { or: [ { nombreUsuario: { like: `%${t}%`, options: 'i' } }, { email: { like: `%${t}%`, options: 'i' } }, { apellidos: { like: `%${t}%`, options: 'i' } } ] }
-      }
-
-      // Count total
-      try {
-        const cnt = await UsuariosAPI.countUsuarios({ where: JSON.stringify(whereObj) })
-        const total = (cnt && (cnt.count !== undefined)) ? Number(cnt.count) : Number(cnt || 0)
-        setTotalRecords(total)
-      } catch (errCount) {
-        console.warn('No se pudo obtener count de usuarios', errCount)
-        setTotalRecords(null)
-      }
-
-      // Fetch page
-      const params: any = { filter: JSON.stringify({ where: whereObj, limit: rows, skip: first, order: 'id DESC' }) }
-      const list = await UsuariosAPI.findUsuarios(params)
+      const list = await UsuariosAPI.findUsuarios()
       setUsers(list || [])
       setHasSearched(true)
-      setPageState({ first, rows })
     } catch (e: any) {
       console.error(e)
       setError(e?.message || 'Error cargando usuarios')
@@ -156,6 +130,8 @@ export default function PageUsuarios() {
       setLoading(false)
     }
   }
+
+  
 
   // Aplicar el filtro cuando la tabla esté visible (no cargando) tras una búsqueda
   useEffect(() => {
@@ -222,9 +198,6 @@ export default function PageUsuarios() {
                   columns={columns}
                   data={usuarios}
                   pageSize={pageState.rows}
-                  lazy
-                  totalRecords={totalRecords ?? undefined}
-                  onLazyLoad={({ first, rows }) => loadUsuariosPage({ first, rows, filterText: filtroBusquedaAplicar })}
                   onNew={() => {
                     setModoPanel('editar')
                     setRegistroPanel({})
