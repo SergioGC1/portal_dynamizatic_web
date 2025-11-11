@@ -189,9 +189,17 @@ export default function PanelProducto({
                 throw errorSubida
             }
 
-            if (data && data.path) {
+                if (data && data.path) {
+                // Guardar path
                 actualizarCampoDelFormulario('imagen', data.path)
-                if (data.url) actualizarCampoDelFormulario('_imagenUrl', data.url)
+                // Si el backend devuelve una URL pública para la imagen, añadir un query param
+                // cache-busting para forzar recarga inmediata en el navegador
+                if (data.url) {
+                    const safeUrl = String(data.url)
+                    const separator = safeUrl.includes('?') ? '&' : '?'
+                    const busted = `${safeUrl}${separator}cb=${Date.now()}`
+                    actualizarCampoDelFormulario('_imagenUrl', busted)
+                }
 
                 // limpiar fichero temporal del form
                 setFormulario((s: any) => {
