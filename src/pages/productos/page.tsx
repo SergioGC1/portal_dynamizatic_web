@@ -1,7 +1,7 @@
 import React, { useMemo, useState, useRef, useEffect } from 'react'
 import '../../styles/layout.scss'
 import '../../styles/_main.scss'
-import GestorPaneles from '../../components/ui/GestorPaneles'
+import GestorEditores from '../../components/ui/GestorEditores'
 import DataTable, { ColumnDef } from '../../components/data-table/DataTable'
 import productosAPI from '../../api-endpoints/productos/index'
 import estadosAPI from '../../api-endpoints/estados/index'
@@ -239,7 +239,7 @@ export default function PageProductos() {
           </>
         )}
         {modoPanel && registroPanel && (
-            <GestorPaneles
+            <GestorEditores
               mode={modoPanel}
               record={registroPanel}
               entityType="producto"

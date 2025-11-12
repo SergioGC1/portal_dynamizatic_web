@@ -1,7 +1,7 @@
 import React, { useMemo, useState, useEffect } from 'react';
 import '../../styles/layout.scss';
 import '../../styles/_main.scss';
-import GestorPaneles from '../../components/ui/GestorPaneles';
+import GestorEditores from '../../components/ui/GestorEditores';
 import TableToolbar from '../../components/ui/TableToolbar';
 import usePermisos from '../../hooks/usePermisos';
 import { DataTableHandle } from '../../components/data-table/DataTable';
@@ -184,7 +184,7 @@ export default function PageRoles() {
           </>
         )}
         {modoPanel && registroPanel && (
-            <GestorPaneles
+            <GestorEditores
               mode={modoPanel}
               record={registroPanel}
               columns={columns}

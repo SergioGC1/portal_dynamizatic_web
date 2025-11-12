@@ -1,17 +1,14 @@
 import React from 'react'
 import { ColumnDef } from '../../components/data-table/DataTable'
 // Importar los paneles específicos
-import PanelUsuario from '../paneles/PanelUsuario'
-import PanelProducto from '../paneles/PanelProducto'
-import PanelRol from '../paneles/PanelRol'
-import PanelFase from '../paneles/PanelFase'
-
-// GestorPaneles: Enrutador ligero que delega a paneles específicos según el tipo de entidad
-// Mejora el rendimiento cargando solo el código necesario para cada entidad
+import PanelUsuario from '../../pages/usuarios/EditarDatosUsuarios'
+import PanelProducto from '../../pages/productos/EditarDatosProductos'
+import PanelRol from '../../pages/roles/EditarDatosRoles'
+import PanelFase from '../../pages/fases/EditarDatosFases'
 
 type ModoDeOperacionDelPanel = 'ver' | 'editar'
 
-type PropiedadesDelGestorPaneles<TipoDeRegistro = any> = {
+type PropiedadesDelGestorEditores<TipoDeRegistro = any> = {
     mode: ModoDeOperacionDelPanel
     record?: TipoDeRegistro | null
     columns?: ColumnDef<any>[]
@@ -22,18 +19,9 @@ type PropiedadesDelGestorPaneles<TipoDeRegistro = any> = {
 }
 
 /**
- * GestorPaneles - Componente gestor que delega a paneles específicos
- * Mejora el rendimiento cargando solo el código necesario para cada entidad
- * 
- * @param mode - Modo de operación: 'ver' o 'editar'
- * @param record - Registro a mostrar/editar
- * @param columns - Definición de columnas para renderizado
- * @param onClose - Callback para cerrar el panel
- * @param onSave - Callback para guardar cambios
- * @param onUploadSuccess - Callback para éxito en subida de archivos
- * @param entityType - Tipo de entidad para determinar qué panel usar
+ * GestorEditores - Nombre solicitado para el gestor de paneles
  */
-export default function GestorPaneles<TipoDeRegistro = any>({
+export default function GestorEditores<TipoDeRegistro = any>({
     mode,
     record = null,
     columns = [],
@@ -41,11 +29,9 @@ export default function GestorPaneles<TipoDeRegistro = any>({
     onSave,
     onUploadSuccess,
     entityType
-}: PropiedadesDelGestorPaneles<TipoDeRegistro>) {
-    // Si no hay registro disponible, no renderizar ningún panel
+}: PropiedadesDelGestorEditores<TipoDeRegistro>) {
     if (!record) return null
 
-    // Determinar qué panel específico usar basándose en el tipo de entidad recibido
     switch (entityType) {
         case 'usuario':
             return (
@@ -94,7 +80,6 @@ export default function GestorPaneles<TipoDeRegistro = any>({
             )
 
         default:
-            // Panel genérico de respaldo para entidades que aún no tienen implementación específica
             return (
                 <div className="record-panel">
                     <div className="record-panel__header">
@@ -127,3 +112,13 @@ export default function GestorPaneles<TipoDeRegistro = any>({
             )
     }
 }
+
+// Re-export del mapa de paneles para compatibilidad con la API anterior
+export const PANELES_DISPONIBLES = {
+    usuario: 'PanelUsuario',
+    producto: 'PanelProducto',
+    fase: 'PanelFase',
+    rol: 'PanelRol'
+} as const;
+
+export type TipoEntidad = keyof typeof PANELES_DISPONIBLES

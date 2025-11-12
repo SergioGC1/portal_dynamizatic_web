@@ -2,7 +2,7 @@ import React, { useMemo, useState, useRef, useEffect } from 'react';
 // Estilos globales para páginas y componentes
 import '../../styles/layout.scss';
 import '../../styles/_main.scss';
-import GestorPaneles from '../../components/ui/GestorPaneles';
+import GestorEditores from '../../components/ui/GestorEditores';
 import DataTable, { ColumnDef } from '../../components/data-table/DataTable';
 import { DataTableHandle } from '../../components/data-table/DataTable';
 import UsuariosAPI from '../../api-endpoints/usuarios/index';
@@ -303,12 +303,12 @@ export default function PageUsuarios() {
         )}
 
         {modoPanel && registroPanel && (
-          <GestorPaneles
+          <GestorEditores
             mode={modoPanel}
             record={registroPanel}
             entityType="usuario"
             columns={columns}
-            // cuando GestorPaneles suba una imagen correctamente, refrescamos la lista
+                  // cuando GestorEditores suba una imagen correctamente, refrescamos la lista
             onUploadSuccess={async (userId: number) => {
               try {
                 // recargar la lista desde el servidor
@@ -324,7 +324,7 @@ export default function PageUsuarios() {
             }}
             onSave={async (updated) => {
               try {
-                // extraer roles asignados (desde GestorPaneles) y limpiar el payload
+                // extraer roles asignados (desde GestorEditores) y limpiar el payload
                 const assignedRoles = (updated as any)._assignedRoles || []
                 const payload: any = { ...updated }
                 delete payload._assignedRoles
@@ -358,7 +358,7 @@ export default function PageUsuarios() {
                   resultado = { id: updated.id }
                 } else {
                   // Para creación de usuario usamos el flujo de registro que acepta contraseña
-                  // El GestorPaneles añade `password` al form cuando entityType === 'usuario'
+                  // El GestorEditores añade `password` al form cuando entityType === 'usuario'
                   const creado = await UsuariosAPI.register(payload)
                   // devolver el usuario creado (o al menos su id) para que el Panel suba la imagen
                   resultado = creado
