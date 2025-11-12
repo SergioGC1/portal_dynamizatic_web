@@ -6,6 +6,7 @@ import { Dropdown } from 'primereact/dropdown'
 import { Button } from 'primereact/button'
 import productosAPI from '../../api-endpoints/productos/index'
 import ProductPhasesPanel from '../../components/product/ProductPhasesPanel'
+import estadosAPI from '../../api-endpoints/estados/index'
 
 type Props = { productId?: string }
 
@@ -27,6 +28,7 @@ type ProductoForm = {
 
 export default function EditarDatosProductos({ productId }: Props) {
   const [loading, setLoading] = useState(false)
+  const [estados, setEstados] = useState<any[]>([])
   const [producto, setProducto] = useState<ProductoForm>({
     nombre: '',
     estadoId: 1,
@@ -76,6 +78,21 @@ export default function EditarDatosProductos({ productId }: Props) {
       .finally(() => { if (mounted) setLoading(false) })
     return () => { mounted = false }
   }, [productId])
+
+  // Cargar lista de estados para mostrar nombres en el select
+  useEffect(() => {
+    let montado = true
+    const cargarEstados = async () => {
+      try {
+        const lista = await estadosAPI.findEstados()
+        if (montado) setEstados(Array.isArray(lista) ? lista : [])
+      } catch (err) {
+        console.warn('No se pudieron cargar estados', err)
+      }
+    }
+    cargarEstados()
+    return () => { montado = false }
+  }, [])
 
   function validate(): boolean {
     const errs: Record<string, string> = {}
@@ -157,8 +174,14 @@ export default function EditarDatosProductos({ productId }: Props) {
           </div>
 
           <div>
-            <label style={{ display: 'block', marginBottom: 6 }}>Estado (ID)</label>
-            <input type="number" value={producto.estadoId} onChange={e => setProducto(p => ({ ...p, estadoId: Number(e.target.value) }))} style={{ width: '100%', padding: 8 }} />
+            <label style={{ display: 'block', marginBottom: 6 }}>Estado</label>
+            <Dropdown
+              value={producto.estadoId}
+              options={(estados || []).map((e: any) => ({ label: String(e?.nombre || e?.name || e?.title || `Estado ${e?.id}`), value: Number(e?.id) }))}
+              onChange={(e) => setProducto(p => ({ ...p, estadoId: e.value }))}
+              placeholder="Selecciona estado"
+              className="w-full"
+            />
           </div>
 
           <div>
@@ -225,7 +248,7 @@ export default function EditarDatosProductos({ productId }: Props) {
 
       {/* Panel de fases: sólo en edición (producto existente) */}
       {productId && (
-        <ProductPhasesPanel productId={productId} />
+        <ProductPhasesPanel productId={productId} selectedEstadoId={producto.estadoId} />
       )}
     </div>
   )

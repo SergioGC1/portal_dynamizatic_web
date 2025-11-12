@@ -1,10 +1,10 @@
 import React, { useEffect, useState, useCallback } from 'react'
+import estadosAPI from '../../api-endpoints/estados/index'
+import productosAPI from '../../api-endpoints/productos/index'
 import { useAuth } from '../../contexts/AuthContext'
 import usePermisos from '../../hooks/usePermisos'
 import RolesAPI from '../../api-endpoints/roles/index'
 import { Toast } from 'primereact/toast'
-
-// Adaptadores (API) con imports arriba para buenas prácticas
 import fasesAPI from '../../api-endpoints/fases'
 import tareasFasesAPI from '../../api-endpoints/tareas-fases'
 import productosFasesTareasAPI from '../../api-endpoints/productos-fases-tareas'
@@ -18,7 +18,7 @@ type TareaFase = {
 
 type Fase = { id: number; codigo?: string; nombre?: string }
 
-export default function PanelFasesProducto({ productId }: { productId?: string | number }) {
+export default function PanelFasesProducto({ productId, selectedEstadoId, onEstadoChange }: { productId?: string | number, selectedEstadoId?: string | number, onEstadoChange?: (nuevoNombre: string) => void }) {
     const [listaDeFases, establecerListaDeFases] = useState<Fase[]>([])
     const [identificadorDeFaseActiva, establecerIdentificadorDeFaseActiva] = useState<number | null>(null)
     const [tareasDeLaFaseActiva, establecerTareasDeLaFaseActiva] = useState<TareaFase[]>([])
@@ -31,30 +31,22 @@ export default function PanelFasesProducto({ productId }: { productId?: string |
     const [toast, setToast] = useState<any>(null)
     const [rolActivo, setRolActivo] = useState<boolean | null>(null)
 
+    // compact toast helper
+    const showToast = (severity: 'success' | 'info' | 'warn' | 'error', summary: string, detail = '', life = 4000) => void (toast && toast.show && toast.show({ severity, summary, detail, life }))
+
     useEffect(() => {
         let mounted = true
         const comprobarRol = async () => {
             try {
-                let rolId: any = undefined
-                if (user && (user as any).rolId) rolId = (user as any).rolId
-                else {
-                    try {
-                        const stored = localStorage.getItem('user')
-                        if (stored) {
-                            const parsed = JSON.parse(stored)
-                            rolId = parsed?.rolId || parsed?.rol || (Array.isArray(parsed?.roles) ? parsed.roles[0] : undefined)
-                        }
-                    } catch (e) {}
-                }
+                let rolId = (user as any)?.rolId
                 if (!rolId) {
-                    if (mounted) setRolActivo(true)
-                    return
+                    try { rolId = JSON.parse(localStorage.getItem('user') || '{}').rolId } catch { /* ignore */ }
                 }
+                if (!rolId) { if (mounted) setRolActivo(true); return }
                 const rol = await RolesAPI.getRoleById(rolId)
                 const activo = rol?.activoSn ?? rol?.activoSN ?? rol?.activo ?? 'S'
                 if (mounted) setRolActivo(String(activo).toUpperCase() === 'S')
             } catch (err) {
-                console.warn('No se pudo comprobar el estado del rol, asumiendo activo', err)
                 if (mounted) setRolActivo(true)
             }
         }
@@ -82,16 +74,33 @@ export default function PanelFasesProducto({ productId }: { productId?: string |
                     ? await (fasesAPI as any).findFases()
                     : await (typeof (fasesAPI as any).find === 'function' ? (fasesAPI as any).find() : [])
                 if (!componenteMontado) return
-                const listaMapeada: Fase[] = (Array.isArray(listaRemota) ? listaRemota : []).map((fase: any) => ({ id: Number(fase.id), codigo: fase.codigo, nombre: fase.nombre }))
+                const listaMapeada: Fase[] = (listaRemota || []).map((fase: any) => ({ id: Number(fase.id), codigo: fase.codigo, nombre: fase.nombre }))
                 establecerListaDeFases(listaMapeada)
-                if (listaMapeada.length) establecerIdentificadorDeFaseActiva(listaMapeada[0].id)
+                if (!listaMapeada.length) return
+                // mapear selectedEstadoId a fase (fallback a primera)
+                if (selectedEstadoId !== undefined && selectedEstadoId !== null) {
+                    try {
+                        const estadoRemoto = typeof (estadosAPI as any).getEstadoById === 'function' ? await (estadosAPI as any).getEstadoById(selectedEstadoId) : null
+                        const nombreEstado = estadoRemoto ? (estadoRemoto.nombre || estadoRemoto.name || '') : ''
+                        const buscado = String(nombreEstado || selectedEstadoId).toLowerCase()
+                        const match = listaMapeada.find((fase) => {
+                            const codigo = String(fase.codigo || '').toLowerCase()
+                            const nombreFase = String(fase.nombre || '').toLowerCase()
+                            return codigo === buscado || nombreFase.includes(buscado) || String(fase.id) === String(selectedEstadoId)
+                        })
+                        establecerIdentificadorDeFaseActiva(match ? match.id : listaMapeada[0].id)
+                    } catch {
+                        establecerIdentificadorDeFaseActiva(listaMapeada[0].id)
+                    }
+                } else {
+                    establecerIdentificadorDeFaseActiva(listaMapeada[0].id)
+                }
             } catch (error: any) {
-                console.error(error)
                 if (componenteMontado) establecerMensajeDeError(error?.message || 'Error cargando fases')
             }
         })()
         return () => { componenteMontado = false }
-    }, [])
+    }, [selectedEstadoId])
 
     // Cambio directo de fase activa y recarga de tareas
     // Ahora valida de forma secuencial: no permite saltar a una fase si alguna fase previa
@@ -193,41 +202,66 @@ export default function PanelFasesProducto({ productId }: { productId?: string |
 
     if (!productId) return null
 
-    // helper to find the completada key name in an existing record
-    // Use camel-case 'completadaSn' as the default because backend validation is strict
-    const detectCompletadaKey = (rec: any) => (rec ? Object.keys(rec).find(k => /complet/i.test(k)) || 'completadaSn' : 'completadaSn')
+    const detectCompletadaKey = (rec: any) => (rec ? Object.keys(rec).find(k => /complet/i.test(k)) : undefined) || 'completadaSn'
     
-        function gatherCompletedTasksForPhase(faseId: number) {
-            if (faseId !== identificadorDeFaseActiva) return []
-            const key = detectCompletadaKey(null) // default key
-            return tareasDeLaFaseActiva.filter(t => {
-                const rec = registrosProductosTareas[t.id]
-                return rec && String(rec[key] ?? '').toUpperCase() === 'S'
-            }).map(t => t.nombre || `Tarea ${t.id}`)
-        }
-    
-        function sendToSupervisors(fase: Fase) {
+        async function sendToSupervisors(fase: Fase) {
             // Only operate on active phase (we only have tasks loaded for it)
             if (fase.id !== identificadorDeFaseActiva) return
-            const completadas = gatherCompletedTasksForPhase(fase.id)
+            const keyDefault = detectCompletadaKey(null)
+            const completadas = tareasDeLaFaseActiva.filter(t => {
+                const rec = registrosProductosTareas[t.id]
+                return rec && String(rec[keyDefault] ?? '').toUpperCase() === 'S'
+            }).map(t => t.nombre || `Tarea ${t.id}`)
             const faseIndex = listaDeFases.findIndex(f => f.id === fase.id)
             const siguiente = listaDeFases[faseIndex + 1]
-            const siguienteTxt = siguiente ? `${siguiente.nombre || `Fase ${siguiente.id}`} (id:${siguiente.id})` : 'ninguna (es la última fase)'
-            console.log(`Enviar mail a Supervisores: Fase completada: ${fase.nombre || fase.id}. Tareas completadas: ${JSON.stringify(completadas)}. Pasar a: ${siguienteTxt}`)
+
+            // Informational fallback if it's the last phase
+            if (!siguiente) {
+                showToast('info', 'Enviar notificación', 'Esta es la última fase; no hay fase siguiente para mapear a un Estado.', 5000)
+                console.log(`Enviar mail a Supervisores: Fase completada: ${fase.nombre || fase.id}. Tareas completadas: ${JSON.stringify(completadas)}. No hay siguiente fase.`)
+                return
+            }
+
+            // Buscar en la lista de estados uno que coincida con la siguiente fase
+            try {
+                const arrEstados = typeof (estadosAPI as any).findEstados === 'function'
+                    ? await (estadosAPI as any).findEstados()
+                    : await (typeof (estadosAPI as any).find === 'function' ? (estadosAPI as any).find() : [])
+                const buscado = String(siguiente.nombre || siguiente.codigo || siguiente.id).toLowerCase()
+                const match = arrEstados.find((e: any) => {
+                    const nombre = String(e.nombre || e.name || e.title || '').toLowerCase()
+                    const codigo = String(e.codigo || e.codigoEstado || '').toLowerCase()
+                    return nombre === buscado || codigo === buscado || nombre.includes(buscado)
+                })
+
+                if (!match) {
+                    showToast('warn', 'Estado no encontrado', `No se encontró un Estado que coincida con la fase siguiente: "${siguiente.nombre}". Ningún cambio en el producto.`, 6000)
+                    return
+                }
+                try {
+                    await (productosAPI as any).updateProductoById(productId, { estadoId: Number(match.id) })
+                    showToast('success', 'Estado actualizado', `Producto actualizado al estado: ${match.nombre || match.name}`, 4000)
+                    if (typeof onEstadoChange === 'function') onEstadoChange(match.nombre || match.name || String(match.id))
+                } catch (errUpd: any) {
+                    showToast('error', 'Error', 'No se pudo actualizar el estado del producto en el servidor.', 6000)
+                }
+            } catch (err: any) {
+                console.error('Error buscando estados', err)
+                showToast('error', 'Error', 'No se pudieron consultar los estados para mapear la siguiente fase.', 6000)
+            }
         }
 
     async function toggleCompletada(tarea: TareaFase, checked: boolean) {
         const existente = registrosProductosTareas[tarea.id]
         const keyName = detectCompletadaKey(existente)
         const prev = existente ? { ...existente } : undefined
-
         setUpdatingTareas(u => ({ ...u, [tarea.id]: true }))
         establecerRegistrosProductosTareas(p => ({ ...p, [tarea.id]: { ...(p[tarea.id] || {}), [keyName]: checked ? 'S' : 'N' } }))
 
         try {
             if (existente && existente.id) {
                 await (productosFasesTareasAPI as any).updateProductosFasesTareasById(existente.id, { [keyName]: checked ? 'S' : 'N' })
-                } else {
+            } else {
                 const payload: any = { productoId: Number(productId), faseId: Number(identificadorDeFaseActiva), tareaFaseId: Number(tarea.id), [keyName]: checked ? 'S' : 'N' }
                 const userId = (user as any)?.id ?? (user as any)?.usuarioId ?? (user as any)?.userId
                 if (userId) payload.usuarioId = Number(userId)
@@ -246,6 +280,9 @@ export default function PanelFasesProducto({ productId }: { productId?: string |
         } finally {
             setUpdatingTareas(u => ({ ...u, [tarea.id]: false }))
         }
+
+        // No avanzamos automáticamente ni notificamos aquí. El avance/actualización del estado
+        // se realizará solo cuando el usuario pulse el botón "Enviar correo a Supervisores".
     }
 
     return (
@@ -321,7 +358,7 @@ export default function PanelFasesProducto({ productId }: { productId?: string |
                                                 disabled={updating || !canUpdateTasks}
                                                 onChange={(e) => {
                                                     if (!canUpdateTasks) {
-                                                        if (toast && toast.show) toast.show({ severity: 'warn', summary: 'Permisos', detail: 'No tienes permiso para actualizar tareas', life: 3000 })
+                                                        showToast('warn', 'Permisos', 'No tienes permiso para actualizar tareas', 3000)
                                                         return
                                                     }
                                                     toggleCompletada(tarea, e.target.checked)
@@ -347,10 +384,7 @@ export default function PanelFasesProducto({ productId }: { productId?: string |
                         <div style={{ marginTop: 12, display: 'flex', justifyContent: 'center' }}>
                             <button
                                 onClick={() => {
-                                    if (!canUpdateTasks) {
-                                        if (toast && toast.show) toast.show({ severity: 'warn', summary: 'Permisos', detail: 'No tienes permiso para enviar notificaciones', life: 3000 })
-                                        return
-                                    }
+                                    if (!canUpdateTasks) { showToast('warn', 'Permisos', 'No tienes permiso para enviar notificaciones', 3000); return }
                                     if (faseActiva) sendToSupervisors(faseActiva)
                                 }}
                                 disabled={!canClickSend}

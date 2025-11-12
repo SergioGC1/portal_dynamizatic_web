@@ -9,6 +9,7 @@ import usePermisos from '../../hooks/usePermisos'
 import '../ui/GestorPaneles.css'
 import './PanelProducto.scss'
 import productosAPI from '../../api-endpoints/productos/index'
+import estadosAPI from '../../api-endpoints/estados/index'
 
 
 /* === Tipos === */
@@ -132,6 +133,27 @@ export default function PanelProducto({
         if (definicionColumna.key === claveTitulo) return false
         return true
     })
+
+    // Cargar estados para mostrar nombre en vez de id
+    const [estados, setEstados] = useState<any[]>([])
+    useEffect(() => {
+        let montado = true
+        const cargar = async () => {
+            try {
+                const lista = await estadosAPI.findEstados()
+                if (montado) setEstados(Array.isArray(lista) ? lista : [])
+            } catch (err) {
+                console.warn('No se pudieron cargar estados en PanelProducto', err)
+            }
+        }
+        cargar()
+        return () => { montado = false }
+    }, [])
+
+    const estadosMap: Record<string, string> = {}
+    for (const est of estados || []) {
+        if (est && est.id !== undefined) estadosMap[String(est.id)] = String(est.nombre || est.name || est.title || '')
+    }
 
     /* === Manejo de selección de fichero === */
     const alSeleccionarArchivo = (archivo?: File) => {
@@ -321,11 +343,13 @@ export default function PanelProducto({
 
         const archivoPendiente: File | undefined = (formulario as any)?._imagenFile
 
-        // construir payload limpio
-        const payload: any = { ...(formulario as any) }
+    // construir payload limpio
+    const payload: any = { ...(formulario as any) }
         delete payload._imagenFile
         delete payload._imagenPreview
         delete payload._imagenUrl
+    // Quitar campos auxiliares internos que no pertenecen al modelo del backend
+    if (payload._estadoNombre !== undefined) delete payload._estadoNombre
         if (payload._cb !== undefined) delete payload._cb
 
         // Normalizaciones de tipos requeridas por el backend
@@ -367,6 +391,30 @@ export default function PanelProducto({
     if (!record) return null
 
     const valorTitulo = (formulario as any)?.[claveTitulo]
+
+    // Handler para actualizar el estado en la UI (sin tocar backend):
+    // - actualiza `_estadoNombre` para mostrar la etiqueta
+    // - si encuentra un estado que coincida por nombre/código, también actualiza `estadoId` localmente
+    const handleEstadoCambio = (nuevoNombre: string) => {
+        setFormulario((f: any) => {
+            const nueva = { ...f, _estadoNombre: nuevoNombre }
+            try {
+                const buscado = String(nuevoNombre || '').toLowerCase()
+                const encontrado = (estados || []).find((s: any) => {
+                    const nombre = String(s?.nombre || s?.name || s?.title || '')
+                    const codigo = String(s?.codigo || '')
+                    if (codigo && codigo.toLowerCase() === buscado) return true
+                    if (nombre && nombre.toLowerCase() === buscado) return true
+                    if (nombre && buscado && nombre.toLowerCase().includes(buscado)) return true
+                    return false
+                })
+                if (encontrado && encontrado.id !== undefined) nueva.estadoId = encontrado.id
+            } catch (e) {
+                // ignore
+            }
+            return nueva
+        })
+    }
 
     // Mostrar caja de imagen para productos siempre en edición, aunque no exista columna 'imagen' en la tabla
     // y también en modo ver si el registro ya tiene una imagen
@@ -520,6 +568,7 @@ export default function PanelProducto({
                     const label = (col as any).title || (col as any).label || key
                     const value = (formulario as any)?.[key]
                     const isActivo = key.toLowerCase().includes('activo') || key.toLowerCase().includes('activoSn') || key.toLowerCase() === 'activo'
+                    const normalized = String(key).toLowerCase()
 
                     return (
                         <div key={key} className="record-panel__field">
@@ -531,7 +580,12 @@ export default function PanelProducto({
                                         <span style={{ fontSize: 14 }}>{String(value ?? '').toUpperCase() === 'S' ? 'Activo' : 'Inactivo'}</span>
                                     </div>
                                 ) : (
-                                    <div className="record-panel__value record-panel__Value--view">{String(value ?? '')}</div>
+                                    // Si es campo estado, mostrar nombre en vez de id
+                                    normalized.includes('estado') ? (
+                                        <div className="record-panel__value record-panel__Value--view">{estadosMap[String(value ?? '')] || (formulario as any)?._estadoNombre || String(value ?? '')}</div>
+                                    ) : (
+                                        <div className="record-panel__value record-panel__Value--view">{String(value ?? '')}</div>
+                                    )
                                 )
                             ) : (
                                 isActivo ? (
@@ -547,6 +601,15 @@ export default function PanelProducto({
                                     <>
                                         {(() => {
                                             const normalized = String(key).toLowerCase()
+                                            // Si es campo 'estado' mostrar nombre en vez de id (ver) o Dropdown (editar)
+                                            if (normalized.includes('estado')) {
+                                                const selectedEstado = (formulario as any)[key]
+                                                const etiqueta = estadosMap[String(selectedEstado ?? '')] || (formulario as any)?._estadoNombre || String(selectedEstado ?? '')
+                                                return (
+                                                    <div className="record-panel__value record-panel__Value--view">{etiqueta}</div>
+                                                )
+                                            }
+
                                             // Año como select (desde 2100 hasta 1900)
                                             if (normalized.includes('anyo') || normalized.includes('año')) {
                                                 const selected = (formulario as any)[key]
@@ -625,8 +688,8 @@ export default function PanelProducto({
 
             {/* Panel de fases (si es producto y tiene id) */}
             {esRegistroDeProducto && (formulario as any)?.id && (
-                <ProductPhasesPanel productId={(formulario as any).id} />
-            )}
+                        <ProductPhasesPanel productId={(formulario as any).id} selectedEstadoId={(formulario as any).estadoId} onEstadoChange={handleEstadoCambio} />
+                    )}
 
             <ConfirmDialog />
         </div>

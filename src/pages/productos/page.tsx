@@ -49,9 +49,16 @@ export default function PageProductos() {
       title: 'Estado',
       sortable: true,
       filterOptions: (estados || []).map((e: any) => ({ label: String(e?.nombre || e?.name || e?.title || ''), value: String(e?.id) })),
-      render: (value: any) => {
-        const claveEstado = value === undefined || value === null ? '' : String(value)
-        return <span>{estadosMap[claveEstado] || claveEstado}</span>
+      render: (value: any, row: any) => {
+        // value puede ser el id, o la fila puede traer la entidad completa en row.estado
+        let claveEstado: string | number | undefined = value
+        if ((claveEstado === undefined || claveEstado === null) && row && row.estado) {
+          // row.estado puede ser objeto { id, nombre } o simplemente un string
+          if (typeof row.estado === 'object' && row.estado !== null) claveEstado = row.estado.id ?? row.estado?.estadoId ?? row.estado?.id
+          else claveEstado = row.estado
+        }
+        const claveStr = claveEstado === undefined || claveEstado === null ? '' : String(claveEstado)
+        return <span>{estadosMap[claveStr] || claveStr}</span>
       }
     },
     { key: 'anyo', title: 'Año', sortable: true },
