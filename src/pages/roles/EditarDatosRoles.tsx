@@ -1,6 +1,8 @@
 import React, { useEffect, useState } from 'react'
 import { InputSwitch } from 'primereact/inputswitch'
 import { Button } from 'primereact/button'
+import { confirmDialog } from 'primereact/confirmdialog'
+import UsuariosAPI from '../../api-endpoints/usuarios/index'
 import RolesAPI from '../../api-endpoints/roles/index'
 import '../../styles/paneles/PanelRol.scss'
 
@@ -166,7 +168,7 @@ export default function EditarDatosRoles(props: PropsPagina | PropsPanel) {
       {cargando && <div style={{ padding: 8 }}>Cargando...</div>}
       {errores.general && <div style={{ color: 'red', padding: 8 }}>{errores.general}</div>}
 
-      <div className="record-panel__top">
+  <div className="record-panel__top">
         <div className="record-panel__main-title record-panel__main-title--full">
           <label className="record-panel__label">Nombre del rol</label>
           <input
@@ -184,7 +186,41 @@ export default function EditarDatosRoles(props: PropsPagina | PropsPanel) {
         <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
           <InputSwitch
             checked={String(formulario?.activoSn ?? '').toUpperCase() === 'S' || formulario?.activo === true}
-            onChange={(e: any) => actualizarCampo('activoSn', e.value ? 'S' : 'N')}
+            onChange={async (e: any) => {
+              const nuevoValor = e.value ? 'S' : 'N'
+
+              // Si estamos desactivando el rol, comprobamos cuántos usuarios lo tienen
+              if (nuevoValor === 'N' && formulario?.id) {
+                try {
+                  const listaUsuarios = await UsuariosAPI.findUsuarios()
+                  const contador = Array.isArray(listaUsuarios)
+                    ? listaUsuarios.filter((u: any) => Number(u?.rolId) === Number(formulario.id)).length
+                    : 0
+
+                  if (contador > 1) {
+                    confirmDialog({
+                      message: `Hay ${contador} usuarios con este rol. Les vas a dejar sin permisos, ¿estás seguro?`,
+                      header: 'Confirmar desactivación de rol',
+                      icon: 'pi pi-exclamation-triangle',
+                      acceptLabel: 'Aceptar',
+                      rejectLabel: 'Cancelar',
+                      acceptClassName: 'p-button-danger',
+                      accept: () => actualizarCampo('activoSn', 'N'),
+                      reject: () => {
+                        // no hacer nada, cancelar
+                      },
+                    })
+                    return
+                  }
+                } catch (err) {
+                  console.error('Error contando usuarios del rol:', err)
+                  // En caso de error, continuar con el cambio para no bloquear la UX
+                }
+              }
+
+              // Por defecto, aplicamos el cambio
+              actualizarCampo('activoSn', nuevoValor)
+            }}
             disabled={esPanel && (props as PropsPanel).mode === 'ver'}
           />
           <span style={{ fontSize: 14 }}>{String(formulario?.activoSn ?? '').toUpperCase() === 'S' || formulario?.activo === true ? 'Activo' : 'Inactivo'}</span>
