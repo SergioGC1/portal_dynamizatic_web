@@ -18,7 +18,17 @@ type TareaFase = {
 
 type Fase = { id: number; codigo?: string; nombre?: string }
 
-export default function PanelFasesProducto({ productId, selectedEstadoId, onEstadoChange }: { productId?: string | number, selectedEstadoId?: string | number, onEstadoChange?: (nuevoNombre: string) => void }) {
+export default function PanelFasesProducto({
+    productId,
+    selectedEstadoId,
+    onEstadoChange,
+    readOnly = false
+}: {
+    productId?: string | number
+    selectedEstadoId?: string | number
+    onEstadoChange?: (nuevoNombre: string) => void
+    readOnly?: boolean
+}) {
     const [listaDeFases, establecerListaDeFases] = useState<Fase[]>([])
     const [identificadorDeFaseActiva, establecerIdentificadorDeFaseActiva] = useState<number | null>(null)
     const [tareasDeLaFaseActiva, establecerTareasDeLaFaseActiva] = useState<TareaFase[]>([])
@@ -64,7 +74,7 @@ export default function PanelFasesProducto({ productId, selectedEstadoId, onEsta
         hasPermission('Productos', 'Ver') ||
         hasPermission('Productos', 'Actualizar')
     )
-    const canUpdateTasks = hasPermission('TareasProducto', 'Actualizar') || hasPermission('TareasFase', 'Actualizar')
+    const canUpdateTasks = !readOnly && (hasPermission('TareasProducto', 'Actualizar') || hasPermission('TareasFase', 'Actualizar'))
 
     useEffect(() => {
         let componenteMontado = true
@@ -106,6 +116,7 @@ export default function PanelFasesProducto({ productId, selectedEstadoId, onEsta
     // Ahora valida de forma secuencial: no permite saltar a una fase si alguna fase previa
     // no está completamente completada para este producto.
     async function cambiarAFase(identificadorDeFaseDestino: number) {
+        if (readOnly) return
         // Si es la misma, no hacemos nada
         if (identificadorDeFaseDestino === identificadorDeFaseActiva) return
 
@@ -299,14 +310,18 @@ export default function PanelFasesProducto({ productId, selectedEstadoId, onEsta
                                 return (
                                     <React.Fragment key={fase.id}>
                                         <div
-                                            onClick={() => cambiarAFase(fase.id)}
+                                            onClick={() => {
+                                                if (readOnly) return
+                                                cambiarAFase(fase.id)
+                                            }}
                                             style={{
-                                                cursor: 'pointer',
+                                                cursor: readOnly ? 'default' : 'pointer',
                                                 fontWeight: estaActiva ? 700 : 600,
                                                 color: estaActiva ? '#0f172a' : '#374151',
                                                 padding: '6px 8px',
                                                 background: 'transparent',
                                                 borderRadius: 4,
+                                                opacity: readOnly && !estaActiva ? 0.7 : 1
                                             }}
                                             aria-current={estaActiva}
                                         >

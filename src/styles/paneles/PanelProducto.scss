@@ -195,3 +195,11 @@
     padding: 8px;
   }
 }
+
+.record-panel--readonly .record-panel__input,
+.record-panel--readonly select,
+.record-panel--readonly textarea {
+  background-color: #f3f4f6 !important;
+  color: #576071 !important;
+  border-color: #dfe3eb !important;
+}

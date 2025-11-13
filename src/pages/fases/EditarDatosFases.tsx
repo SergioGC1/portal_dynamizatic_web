@@ -1,523 +1,250 @@
-import React, { useEffect, useState } from 'react'
-import { Button } from 'primereact/button'
-import { Dialog } from 'primereact/dialog'
-import { confirmDialog } from 'primereact/confirmdialog'
-import { Toast } from 'primereact/toast'
-import '../../components/ui/GestorEditores.css'
-import '../../styles/paneles/PanelFase.scss'
-import usePermisos from '../../hooks/usePermisos'
-import { useAuth } from '../../contexts/AuthContext'
-import RolesAPI from '../../api-endpoints/roles/index'
+import React from 'react';
+import { Button } from 'primereact/button';
+import { Dialog } from 'primereact/dialog';
+import { Toast } from 'primereact/toast';
+import '../../components/ui/GestorEditores.css';
+import '../../styles/paneles/PanelFase.scss';
 
-// Interfaces con nomenclatura en español
-interface Fase {
-    id?: number
-    nombre: string
-    codigo?: string
-    descripcion?: string
-    activo?: string
-    activoSn?: string
-    orden?: number
+interface FaseFormulario {
+  id?: number;
+  nombre?: string;
+  codigo?: string;
+  descripcion?: string;
+  activo?: string;
+  activoSn?: string;
+  orden?: number;
+  [clave: string]: any;
 }
 
 interface TareaFase {
-    id?: number
-    faseId: number
-    nombre: string
+  id?: number;
+  faseId: number;
+  nombre: string;
 }
 
-interface PropiedadesPanelFase {
-    mode?: 'ver' | 'editar'
-    record?: Fase | null
-    columns?: Array<{
-        key: string
-        title?: string
-        label?: string
-    }>
-    onClose?: () => void
-    onSave?: (fase: Fase) => Promise<void>
-}
+type ModoDialogo = 'nuevo' | 'editar' | null;
 
+type PropsVistaFase = {
+  modo: 'ver' | 'editar';
+  formulario: FaseFormulario;
+  errores: Record<string, string>;
+  onCampoChange: (campo: string, valor: any) => void;
+  onGuardarClick: () => void;
+  onCerrarClick?: () => void;
+  puedeVerTareas: boolean;
+  puedeCrearTareas: boolean;
+  puedeEditarTareas: boolean;
+  puedeEliminarTareas: boolean;
+  hayFaseSeleccionada: boolean;
+  tareas: TareaFase[];
+  onNuevaTareaClick: () => void;
+  onEditarTareaClick: (tarea: TareaFase) => void;
+  onEliminarTareaClick: (tarea: TareaFase) => void;
+  dialogoVisible: boolean;
+  modoDialogo: ModoDialogo;
+  nombreTarea: string;
+  onNombreTareaChange: (valor: string) => void;
+  onDialogoGuardar: () => void;
+  onDialogoCerrar: () => void;
+  guardandoTarea: boolean;
+  toastRef: React.RefObject<Toast | null>;
+};
 
-export default function EditarDatosFases({ mode = 'ver', record = null, columns = [], onClose = () => {}, onSave }: PropiedadesPanelFase) {
+export default function EditarDatosFasesVista({
+  modo,
+  formulario,
+  errores,
+  onCampoChange,
+  onGuardarClick,
+  onCerrarClick = () => {},
+  puedeVerTareas,
+  puedeCrearTareas,
+  puedeEditarTareas,
+  puedeEliminarTareas,
+  hayFaseSeleccionada,
+  tareas,
+  onNuevaTareaClick,
+  onEditarTareaClick,
+  onEliminarTareaClick,
+  dialogoVisible,
+  modoDialogo,
+  nombreTarea,
+  onNombreTareaChange,
+  onDialogoGuardar,
+  onDialogoCerrar,
+  guardandoTarea,
+  toastRef,
+}: PropsVistaFase) {
+  const textoContadorTareas = puedeVerTareas ? ` (${tareas.length})` : '';
 
-    // Estados del formulario con nombres descriptivos en español
-    const [formularioDeLaFase, establecerFormularioDeLaFase] = useState<Fase | Record<string, any>>({})
-    const [erroresDeValidacionDeLaFase, establecerErroresDeValidacionDeLaFase] = useState<Record<string, string>>({})
+  return (
+    <>
+      <div className="record-panel">
+        <Toast ref={toastRef} />
+        <div className="record-panel__header">
+          <strong className="record-panel__title">{modo === 'ver' ? 'Ver fase' : 'Editar fase'}</strong>
+          <div className="record-panel__controls">
+            {modo === 'editar' && (
+              <Button label="Guardar" onClick={onGuardarClick} style={{ marginRight: 8 }} />
+            )}
+            <Button label="Cerrar" onClick={onCerrarClick} className="p-button-secondary" />
+          </div>
+        </div>
 
-    // Estados específicos para gestión de tareas con nombres descriptivos
-    const [tareasAsociadasALaFase, establecerTareasAsociadasALaFase] = useState<TareaFase[]>([])
-    const [estaVisibleElDialogoDeTarea, establecerEstaVisibleElDialogoDeTarea] = useState(false)
-    const [modoDelDialogoDeTarea, establecerModoDelDialogoDeTarea] = useState<'nuevo' | 'editar' | null>(null)
-    const [tareaQueSeEstaEditando, establecerTareaQueSeEstaEditando] = useState<TareaFase | null>(null)
-    const [nombreDeLaNuevaTarea, establecerNombreDeLaNuevaTarea] = useState('')
-    const [estaGuardandoLaTarea, establecerEstaGuardandoLaTarea] = useState(false)
-    const [toast, setToast] = useState<any>(null)
+        <div className="record-panel__top">
+          <div className="record-panel__main-title record-panel__main-title--full">
+            <label className="record-panel__label">Nombre de la fase</label>
+            <input
+              value={formulario?.nombre ?? ''}
+              onChange={(evento: React.ChangeEvent<HTMLInputElement>) =>
+                onCampoChange('nombre', evento.target.value)
+              }
+              className={`record-panel__input record-panel__product-name-input ${
+                errores.nombre ? 'record-panel__input--error' : ''
+              }`}
+              disabled={modo === 'ver'}
+            />
+            {errores.nombre && <div className="record-panel__error">{errores.nombre}</div>}
+          </div>
+        </div>
 
-    // Inicializar formulario cuando cambie el registro
-    useEffect(() => {
-        establecerFormularioDeLaFase((record as any) || {})
-        // Cargar tareas si hay un ID de fase
-        if ((record as any)?.id) {
-            cargarTareasAsociadasALaFase((record as any).id)
-        } else {
-            establecerTareasAsociadasALaFase([])
-        }
-    }, [record])
+        <div className="record-panel__grid">
+          <div className="record-panel__field" style={{ gridColumn: '1 / -1' }}>
+            <label className="record-panel__label">Código de la Fase</label>
+            <input
+              value={formulario?.codigo ?? ''}
+              onChange={(evento) => onCampoChange('codigo', evento.target.value)}
+              className="record-panel__input"
+              style={{ width: '100%' }}
+              disabled={modo === 'ver'}
+            />
+            {errores.codigo && <div style={{ color: 'red', marginTop: 6 }}>{errores.codigo}</div>}
+          </div>
+        </div>
 
-    // Permisos para acciones sobre tareas de fase
-    const { hasPermission } = usePermisos()
-    const { user: authUser } = useAuth()
-    const [rolActivo, setRolActivo] = useState<boolean | null>(null)
+        {hayFaseSeleccionada && (
+          <div className="record-panel__grid" style={{ marginTop: 20, gridColumn: '1 / -1', width: '100%' }}>
+            <div className="panel-fase__gestion-tareas" style={{ gridColumn: '1 / -1' }}>
+              <div
+                className="panel-fase__encabezado-tareas"
+                style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}
+              >
+                <h4 style={{ margin: 0 }}>Tareas de la Fase{textoContadorTareas}</h4>
+                {puedeCrearTareas && (
+                  <Button label="Nueva Tarea" icon="pi pi-plus" onClick={onNuevaTareaClick} className="p-button-sm" />
+                )}
+              </div>
 
-    // Verificar si el rol del usuario actual está activo (activoSn = 'S')
-    useEffect(() => {
-        let mounted = true
-        const comprobarRol = async () => {
-            try {
-                // intentar extraer rolId del user guardado por AuthProvider
-                let rolId: any = undefined
-                if (authUser && (authUser as any).rolId) rolId = (authUser as any).rolId
-                else {
-                    // fallback: leer user desde localStorage
-                    try {
-                        const stored = localStorage.getItem('user')
-                        if (stored) {
-                            const parsed = JSON.parse(stored)
-                            rolId = parsed?.rolId || parsed?.rol || (Array.isArray(parsed?.roles) ? parsed.roles[0] : undefined)
-                        }
-                    } catch (e) {
-                        // ignore
-                    }
-                }
-
-                if (!rolId) {
-                    // No podemos determinar rol -> asumimos activo
-                    if (mounted) setRolActivo(true)
-                    return
-                }
-
-                const rol = await RolesAPI.getRoleById(rolId)
-                const activo = rol?.activoSn ?? rol?.activoSN ?? rol?.activo ?? 'S'
-                if (mounted) setRolActivo(String(activo).toUpperCase() === 'S')
-            } catch (err) {
-                console.warn('No se pudo comprobar el estado del rol, asumiendo activo', err)
-                if (mounted) setRolActivo(true)
-            }
-        }
-        comprobarRol()
-        return () => { mounted = false }
-    }, [authUser])
-
-    // Actualiza un campo específico del formulario de la fase
-    const actualizarCampoDelFormularioDeLaFase = (claveCampo: string, valorDelCampo: any) =>
-        establecerFormularioDeLaFase((formularioActual: any) => ({
-            ...formularioActual,
-            [claveCampo]: valorDelCampo
-        }))
-
-    // Validar y guardar la fase con validaciones específicas
-    const guardarFaseConValidaciones = async () => {
-        establecerErroresDeValidacionDeLaFase({})
-
-        // Validar nombre de la fase
-        const nombreDeLaFase = String(formularioDeLaFase.nombre || '').trim()
-        if (!nombreDeLaFase || nombreDeLaFase.length < 2) {
-            establecerErroresDeValidacionDeLaFase({ nombre: 'El nombre de la fase debe tener al menos 2 caracteres' })
-            return
-        }
-
-        // Validar código de la fase
-        const codigoDeLaFase = String(formularioDeLaFase.codigo || '').trim()
-        if (codigoDeLaFase && codigoDeLaFase.length < 2) {
-            establecerErroresDeValidacionDeLaFase({ codigo: 'El código debe tener al menos 2 caracteres' })
-            return
-        }
-
-        // Validar orden de la fase
-        const ordenDeLaFase = Number(formularioDeLaFase.orden || 0)
-        if (ordenDeLaFase < 0) {
-            establecerErroresDeValidacionDeLaFase({ orden: 'El orden no puede ser negativo' })
-            return
-        }
-
-        // Limpiar datos temporales antes de enviar al servidor
-        const datosLimpiosDeLaFase: any = { ...formularioDeLaFase }
-        if (datosLimpiosDeLaFase._cb !== undefined) delete datosLimpiosDeLaFase._cb
-
-        if (onSave) await onSave(datosLimpiosDeLaFase as Fase)
-    }
-
-    // Cargar tareas asociadas a la fase desde el servidor (API oficial tareas-fases)
-    const cargarTareasAsociadasALaFase = async (identificadorDeLaFase: number) => {
-        try {
-            const TareasFasesAPI = require('../../api-endpoints/tareas-fases/index')
-            const params = {
-                filter: JSON.stringify({
-                    where: { faseId: Number(identificadorDeLaFase) }
-                })
-            }
-            const lista = await TareasFasesAPI.findTareasFases(params)
-            establecerTareasAsociadasALaFase(Array.isArray(lista) ? lista : [])
-        } catch (error) {
-            console.error('Error cargando tareas de la fase:', error)
-            establecerTareasAsociadasALaFase([])
-        }
-    }
-
-    // Abrir diálogo para crear una nueva tarea
-    const abrirDialogoParaNuevaTarea = () => {
-        if (!hasPermission('TareasFase', 'Nuevo')) {
-            if (toast && (toast as any).show) {
-                (toast as any).show({ severity: 'warn', summary: 'Permisos', detail: 'No tienes permiso para crear tareas', life: 3000 })
-            } else {
-                alert('No tienes permiso para crear tareas')
-            }
-            return
-        }
-        establecerNombreDeLaNuevaTarea('')
-        establecerTareaQueSeEstaEditando(null)
-        establecerModoDelDialogoDeTarea('nuevo')
-        establecerEstaVisibleElDialogoDeTarea(true)
-    }
-
-    // Abrir diálogo para editar una tarea existente
-    const abrirDialogoParaEditarTarea = (tareaAEditar: TareaFase) => {
-        if (!hasPermission('TareasFase', 'Actualizar')) {
-            if (toast && (toast as any).show) {
-                (toast as any).show({ severity: 'warn', summary: 'Permisos', detail: 'No tienes permiso para editar tareas', life: 3000 })
-            } else {
-                alert('No tienes permiso para editar tareas')
-            }
-            return
-        }
-        establecerNombreDeLaNuevaTarea(tareaAEditar.nombre)
-        establecerTareaQueSeEstaEditando(tareaAEditar)
-        establecerModoDelDialogoDeTarea('editar')
-        establecerEstaVisibleElDialogoDeTarea(true)
-    }
-
-    // Guardar tarea (nueva o editada) en el servidor
-    const guardarTareaEnElServidor = async () => {
-        if (!nombreDeLaNuevaTarea.trim() || !formularioDeLaFase?.id) return
-
-        establecerEstaGuardandoLaTarea(true)
-        try {
-            const TareasFasesAPI = require('../../api-endpoints/tareas-fases/index')
-            const payload = {
-                faseId: Number(formularioDeLaFase.id),
-                nombre: nombreDeLaNuevaTarea.trim()
-            }
-
-            if (modoDelDialogoDeTarea === 'nuevo') {
-                await TareasFasesAPI.createTareasFase(payload)
-            } else if (modoDelDialogoDeTarea === 'editar' && tareaQueSeEstaEditando?.id) {
-                await TareasFasesAPI.updateTareasFaseById(tareaQueSeEstaEditando.id, payload)
-            }
-
-            // Recargar tareas después de guardar
-            if (formularioDeLaFase?.id) {
-                await cargarTareasAsociadasALaFase(formularioDeLaFase.id)
-            }
-
-            cerrarDialogoDeTarea()
-        } catch (error) {
-            console.error('Error guardando tarea:', error)
-        } finally {
-            establecerEstaGuardandoLaTarea(false)
-        }
-    }
-
-    // Eliminar tarea con confirmación del usuario
-    const eliminarTareaConConfirmacion = (tareaAEliminar: TareaFase) => {
-        if (!hasPermission('TareasFase', 'Borrar')) {
-            if (toast && (toast as any).show) {
-                (toast as any).show({ severity: 'warn', summary: 'Permisos', detail: 'No tienes permiso para eliminar tareas', life: 3000 })
-            } else {
-                alert('No tienes permiso para eliminar tareas')
-            }
-            return
-        }
-        confirmDialog({
-            message: `¿Estás seguro de que deseas eliminar la tarea "${tareaAEliminar.nombre}"?`,
-            header: 'Confirmar eliminación',
-            icon: 'pi pi-exclamation-triangle',
-            acceptLabel: 'Sí, eliminar',
-            rejectLabel: 'Cancelar',
-            acceptClassName: 'p-button-danger',
-            rejectClassName: 'p-button-secondary',
-            accept: async () => {
-                try {
-                    const TareasFasesAPI = require('../../api-endpoints/tareas-fases/index')
-                    if (tareaAEliminar.id) {
-                        await TareasFasesAPI.deleteTareasFaseById(tareaAEliminar.id)
-                        if (formularioDeLaFase?.id) await cargarTareasAsociadasALaFase(formularioDeLaFase.id)
-                    }
-                } catch (error) {
-                    console.error('Error eliminando tarea:', error)
-                }
-            }
-        })
-    }
-
-    // Cerrar diálogo de tarea y limpiar estados
-    const cerrarDialogoDeTarea = () => {
-        establecerEstaVisibleElDialogoDeTarea(false)
-        establecerModoDelDialogoDeTarea(null)
-        establecerTareaQueSeEstaEditando(null)
-        establecerNombreDeLaNuevaTarea('')
-    }
-
-
-
-    // No renderizar si no hay registro
-    if (!record) return null
-
-    return (
-        <>
-            <div className="record-panel">
-                <Toast ref={setToast} />
-                <div className="record-panel__header">
-                    <strong className="record-panel__title">
-                        {mode === 'ver' ? 'Ver fase' : 'Editar fase'}
-                    </strong>
-                    <div className="record-panel__controls">
-                        {mode === 'editar' && (
-                            <Button
-                                label="Guardar"
-                                onClick={guardarFaseConValidaciones}
-                                style={{ marginRight: 8 }}
-                            />
-                        )}
-                        <Button
-                            label="Cerrar"
-                            onClick={onClose}
-                            className="p-button-secondary"
-                        />
-                    </div>
+              {!puedeVerTareas ? (
+                <div style={{ padding: 12, color: '#6c757d' }}>No tienes permiso para ver las tareas de esta fase.</div>
+              ) : tareas.length === 0 ? (
+                <div
+                  className="panel-fase__sin-tareas"
+                  style={{ textAlign: 'center', padding: 20, backgroundColor: '#f8f9fa', borderRadius: 6 }}
+                >
+                  <i className="pi pi-list" style={{ fontSize: '2em', color: '#6c757d', marginBottom: 8 }}></i>
+                  <p style={{ margin: 0, color: '#6c757d' }}>No hay tareas definidas para esta fase.</p>
+                  {puedeCrearTareas && (
+                    <small style={{ color: '#6c757d' }}>Haz clic en "Nueva Tarea" para agregar una.</small>
+                  )}
                 </div>
-
-                {/* Sección superior: título de la fase */}
-                <div className="record-panel__top">
-                    <div className="record-panel__main-title record-panel__main-title--full">
-                        <label className="record-panel__label">Nombre de la fase</label>
-                        <input
-                            value={formularioDeLaFase?.nombre ?? ''}
-                            onChange={(evento: React.ChangeEvent<HTMLInputElement>) =>
-                                actualizarCampoDelFormularioDeLaFase('nombre', evento.target.value)
-                            }
-                            className={`record-panel__input record-panel__product-name-input ${erroresDeValidacionDeLaFase.nombre ? 'record-panel__input--error' : ''}`}
-                            disabled={mode === 'ver'}
-                        />
-
-                        {erroresDeValidacionDeLaFase.nombre && <div className="record-panel__error">{erroresDeValidacionDeLaFase.nombre}</div>}
-                    </div>
-                </div>
-
-                {/* Campos específicos y controlados de la fase */}
-                <div className="record-panel__grid">
-                    {/* Campo Código (ocupa toda la fila) */}
-                    <div className="record-panel__field" style={{ gridColumn: '1 / -1' }}>
-                        <label className="record-panel__label">Código de la Fase</label>
-                        <input
-                            value={formularioDeLaFase?.codigo ?? ''}
-                            onChange={(evento) =>
-                                actualizarCampoDelFormularioDeLaFase('codigo', evento.target.value)
-                            }
-                            className="record-panel__input"
-                            style={{ width: '100%' }}
-                            disabled={mode === 'ver'}
-                        />
-                        {erroresDeValidacionDeLaFase.codigo && (
-                            <div style={{ color: 'red', marginTop: 6 }}>
-                                {erroresDeValidacionDeLaFase.codigo}
-                            </div>
-                        )}
-                    </div>
-                </div>
-
-                {/* Gestión de tareas - específico de fases */}
-                {formularioDeLaFase?.id ? (
-                    <div className="record-panel__grid" style={{ marginTop: 20, gridColumn: '1 / -1', width: '100%' }}>
-                        <div className="panel-fase__gestion-tareas" style={{ gridColumn: '1 / -1' }}>
-                            <div className="panel-fase__encabezado-tareas" style={{
-                                display: 'flex',
-                                justifyContent: 'space-between',
-                                alignItems: 'center',
-                                marginBottom: 16
-                            }}>
-                                {/** Mostrar el contador solo si puede ver tareas y el rol está activo **/}
-                                {(() => {
-                                    const puedeVer = hasPermission('TareasFase', 'Ver') && rolActivo !== false
-                                    return (
-                                        <h4 style={{ margin: 0 }}>
-                                            Tareas de la Fase{puedeVer ? ` (${tareasAsociadasALaFase.length})` : ''}
-                                        </h4>
-                                    )
-                                })()}
-                                    {/* Mostrar botón nueva tarea solo si tiene permiso */}
-                                    {mode === 'editar' && hasPermission('TareasFase', 'Nuevo') && (
-                                        <Button
-                                            label="Nueva Tarea"
-                                            icon="pi pi-plus"
-                                            onClick={abrirDialogoParaNuevaTarea}
-                                            className="p-button-sm"
-                                        />
-                                    )}
-                            </div>
-
-                            {/* Mostrar listado de tareas solo si el usuario tiene permiso de ver y su rol está activo */}
-                            {(!hasPermission('TareasFase', 'Ver') || rolActivo === false) ? (
-                                <div style={{ padding: 12, color: '#6c757d' }}>
-                                    No tienes permiso para ver las tareas de esta fase.
-                                </div>
-                            ) : tareasAsociadasALaFase.length === 0 ? (
-                                <div className="panel-fase__sin-tareas" style={{
-                                    textAlign: 'center',
-                                    padding: 20,
-                                    backgroundColor: '#f8f9fa',
-                                    borderRadius: 6
-                                }}>
-                                    <i className="pi pi-list" style={{
-                                        fontSize: '2em',
-                                        color: '#6c757d',
-                                        marginBottom: 8
-                                    }}></i>
-                                    <p style={{ margin: 0, color: '#6c757d' }}>
-                                        No hay tareas definidas para esta fase.
-                                    </p>
-                                    {mode === 'editar' && hasPermission('TareasFase', 'Nuevo') && (
-                                        <small style={{ color: '#6c757d' }}>
-                                            Haz clic en "Nueva Tarea" para agregar una.
-                                        </small>
-                                    )}
-                                </div>
-                            ) : (
-                                <div className="panel-fase__lista-tareas" style={{
-                                    display: 'flex',
-                                    flexDirection: 'column',
-                                    gap: 8
-                                }}>
-                                    {tareasAsociadasALaFase.map((tareaActual, indiceDeListaTarea) => (
-                                        <div key={tareaActual.id || indiceDeListaTarea} className="panel-fase__item-tarea" style={{
-                                            display: 'flex',
-                                            alignItems: 'center',
-                                            gap: 12,
-                                            padding: 12,
-                                            backgroundColor: '#f8f9fa',
-                                            borderRadius: 6,
-                                            border: '1px solid #dee2e6'
-                                        }}>
-                                            <div className="panel-fase__numero-tarea" style={{
-                                                minWidth: 30,
-                                                height: 30,
-                                                display: 'flex',
-                                                alignItems: 'center',
-                                                justifyContent: 'center',
-                                                backgroundColor: '#007bff',
-                                                color: 'white',
-                                                borderRadius: '50%',
-                                                fontSize: '0.9em',
-                                                fontWeight: 'bold'
-                                            }}>
-                                                {indiceDeListaTarea + 1}
-                                            </div>
-                                            <div className="panel-fase__contenido-tarea" style={{ flex: 1 }}>
-                                                <div className="panel-fase__nombre-tarea" style={{ fontWeight: 500 }}>
-                                                    {tareaActual.nombre}
-                                                </div>
-                                            </div>
-                                            {mode === 'editar' && (
-                                                <div className="panel-fase__acciones-tarea" style={{
-                                                    display: 'flex',
-                                                    gap: 4
-                                                }}>
-                                                    {hasPermission('TareasFase', 'Actualizar') && (
-                                                        <Button
-                                                            icon="pi pi-pencil"
-                                                            className="p-button-text p-button-sm"
-                                                            onClick={() => abrirDialogoParaEditarTarea(tareaActual)}
-                                                            tooltip="Editar tarea"
-                                                        />
-                                                    )}
-                                                    {hasPermission('TareasFase', 'Borrar') && (
-                                                        <Button
-                                                            icon="pi pi-trash"
-                                                            className="p-button-text p-button-sm p-button-danger"
-                                                            onClick={() => eliminarTareaConConfirmacion(tareaActual)}
-                                                            tooltip="Eliminar tarea"
-                                                        />
-                                                    )}
-                                                </div>
-                                            )}
-                                        </div>
-                                    ))}
-                                </div>
-                            )}
-                        </div>
-                    </div>
-                ) : null}
-            </div>
-
-            {/* Diálogo para nueva/editar tarea */}
-            <Dialog
-                header={modoDelDialogoDeTarea === 'nuevo' ? 'Nueva Tarea' : 'Editar Tarea'}
-                visible={estaVisibleElDialogoDeTarea}
-                style={{ width: '400px' }}
-                onHide={cerrarDialogoDeTarea}
-            >
-                <div className="panel-fase__dialogo-tarea" style={{
-                    display: 'flex',
-                    flexDirection: 'column',
-                    gap: 16
-                }}>
-                    <div>
-                        <label style={{
-                            display: 'block',
-                            marginBottom: 8,
-                            fontWeight: 500
-                        }}>
-                            Nombre de la Tarea *
-                        </label>
-                        <input
-                            type="text"
-                            value={nombreDeLaNuevaTarea}
-                            onChange={(evento) => establecerNombreDeLaNuevaTarea(evento.target.value)}
-                            placeholder="Ingresa el nombre de la tarea"
-                            style={{
-                                width: '100%',
-                                padding: '8px 12px',
-                                border: '1px solid #ced4da',
-                                borderRadius: '4px',
-                                fontSize: '1em'
-                            }}
-                        />
-                    </div>
-
-                    <div className="panel-fase__botones-dialogo" style={{
+              ) : (
+                <div className="panel-fase__lista-tareas" style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+                  {tareas.map((tareaActual, indice) => (
+                    <div
+                      key={tareaActual.id || indice}
+                      className="panel-fase__item-tarea"
+                      style={{
                         display: 'flex',
-                        justifyContent: 'flex-end',
-                        gap: 8,
-                        marginTop: 16
-                    }}>
-                        <Button
-                            label="Cancelar"
-                            icon="pi pi-times"
-                            className="p-button-secondary"
-                            onClick={cerrarDialogoDeTarea}
-                        />
-                        <Button
-                            label="Guardar"
-                            icon="pi pi-check"
-                            onClick={guardarTareaEnElServidor}
-                            disabled={!nombreDeLaNuevaTarea.trim() || estaGuardandoLaTarea}
-                            loading={estaGuardandoLaTarea}
-                        />
+                        alignItems: 'center',
+                        gap: 12,
+                        padding: 12,
+                        backgroundColor: '#f8f9fa',
+                        borderRadius: 6,
+                        border: '1px solid #dee2e6',
+                      }}
+                    >
+                      <div
+                        className="panel-fase__numero-tarea"
+                        style={{
+                          minWidth: 30,
+                          height: 30,
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'center',
+                          backgroundColor: '#007bff',
+                          color: 'white',
+                          borderRadius: '50%',
+                          fontSize: '0.9em',
+                          fontWeight: 'bold',
+                        }}
+                      >
+                        {indice + 1}
+                      </div>
+                      <div className="panel-fase__contenido-tarea" style={{ flex: 1 }}>
+                        <div className="panel-fase__nombre-tarea" style={{ fontWeight: 500 }}>
+                          {tareaActual.nombre}
+                        </div>
+                      </div>
+                      {(puedeEditarTareas || puedeEliminarTareas) && (
+                        <div className="panel-fase__acciones-tarea" style={{ display: 'flex', gap: 4 }}>
+                          {puedeEditarTareas && (
+                            <Button
+                              icon="pi pi-pencil"
+                              className="p-button-text p-button-sm"
+                              onClick={() => onEditarTareaClick(tareaActual)}
+                              tooltip="Editar tarea"
+                            />
+                          )}
+                          {puedeEliminarTareas && (
+                            <Button
+                              icon="pi pi-trash"
+                              className="p-button-text p-button-sm p-button-danger"
+                              onClick={() => onEliminarTareaClick(tareaActual)}
+                              tooltip="Eliminar tarea"
+                            />
+                          )}
+                        </div>
+                      )}
                     </div>
+                  ))}
                 </div>
-            </Dialog>
+              )}
+            </div>
+          </div>
+        )}
+      </div>
 
-            {/* ConfirmDialog global se renderiza en la página padre; evitamos duplicarlo aquí */}
-        </>
-    )
+      <Dialog
+        header={modoDialogo === 'nuevo' ? 'Nueva Tarea' : 'Editar Tarea'}
+        visible={dialogoVisible}
+        style={{ width: '400px' }}
+        onHide={onDialogoCerrar}
+      >
+        <div className="panel-fase__dialogo-tarea" style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+          <div>
+            <label style={{ display: 'block', marginBottom: 8, fontWeight: 500 }}>Nombre de la Tarea *</label>
+            <input
+              type="text"
+              value={nombreTarea}
+              onChange={(evento) => onNombreTareaChange(evento.target.value)}
+              placeholder="Ingresa el nombre de la tarea"
+              style={{ width: '100%', padding: '8px 12px', border: '1px solid #ced4da', borderRadius: '4px', fontSize: '1em' }}
+            />
+          </div>
+
+          <div className="panel-fase__botones-dialogo" style={{ display: 'flex', justifyContent: 'flex-end', gap: 8, marginTop: 16 }}>
+            <Button label="Cancelar" icon="pi pi-times" className="p-button-secondary" onClick={onDialogoCerrar} />
+            <Button
+              label="Guardar"
+              icon="pi pi-check"
+              onClick={onDialogoGuardar}
+              disabled={!nombreTarea.trim() || guardandoTarea}
+              loading={guardandoTarea}
+            />
+          </div>
+        </div>
+      </Dialog>
+    </>
+  );
 }
