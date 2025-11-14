@@ -80,6 +80,7 @@ export default function EditarDatosUsuariosVista({
 }: PropsVistaUsuario) {
     const esNuevo = !formulario?.id;
     const titulo = modo === 'ver' ? 'Ver usuario' : 'Editar usuario';
+    const debeMostrarBloqueImagen = mostrarImagen || modo === 'ver';
 
     return (
         <div className="record-panel">
@@ -98,7 +99,7 @@ export default function EditarDatosUsuariosVista({
             )}
 
             <div className="record-panel__top" style={{ display: 'flex', gap: 24, flexWrap: 'wrap', alignItems: 'flex-start' }}>
-                {mostrarImagen && (
+                {debeMostrarBloqueImagen && (
                     <div style={{ position: 'relative', width: 180 }}>
                         <div style={{ position: 'absolute', top: -20, left: 0 }}>
                             <span className={`badge-estado ${estaActivo ? 'badge-activo' : 'badge-inactivo'}`}>
@@ -121,7 +122,23 @@ export default function EditarDatosUsuariosVista({
                                     style={{ width: '100%', height: '100%', objectFit: 'cover', borderRadius: 6 }}
                                 />
                             ) : (
-                                <div className="record-panel__no-image">Sin imagen</div>
+                                <div
+                                    className="record-panel__no-image"
+                                    style={{
+                                        backgroundColor: '#f2f2f2',
+                                        color: '#6c757d',
+                                        width: '100%',
+                                        height: '100%',
+                                        display: 'flex',
+                                        alignItems: 'center',
+                                        justifyContent: 'center',
+                                        borderRadius: 6,
+                                        textTransform: 'uppercase',
+                                        fontWeight: 600,
+                                    }}
+                                >
+                                    Sin imagen
+                                </div>
                             )}
                             {modo === 'editar' && (urlVistaPrevia || urlImagen) && (
                                 <div className="record-panel__image-delete">
@@ -143,7 +160,7 @@ export default function EditarDatosUsuariosVista({
                     </div>
                 )}
 
-                <div className={`record-panel__main-title ${mostrarImagen ? '' : 'record-panel__main-title--full'}`}>
+                <div className={`record-panel__main-title ${debeMostrarBloqueImagen ? '' : 'record-panel__main-title--full'}`}>
                     <label className="record-panel__label">Nombre de usuario</label>
                     <input
                         value={formulario?.nombreUsuario ?? ''}
