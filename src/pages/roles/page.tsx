@@ -37,8 +37,8 @@ export default function PageRoles() {
         const isActive = String(value) === 'S';
         return (
           <span className={`badge-estado ${isActive ? 'badge-activo' : 'badge-inactivo'}`}>
-            {isActive ? 'Activo' : 'Inactivo'}
-          </span>
+              {isActive ? 'Sí' : 'No'}
+            </span>
         );
       },
     },

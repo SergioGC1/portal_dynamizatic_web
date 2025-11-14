@@ -81,7 +81,7 @@ export default function EditarDatosRolesVista({
             }}
             disabled={cargando || estaEnModoVer}
           />
-          <span style={{ fontSize: 14 }}>{estaActivo ? 'Activo' : 'Inactivo'}</span>
+          <span style={{ fontSize: 14 }}>{estaActivo ? 'Sí' : 'No'}</span>
         </div>
       </div>
     </div>

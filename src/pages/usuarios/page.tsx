@@ -93,8 +93,8 @@ export default function PageUsuarios() {
         const isActive = v === 'S';
         return (
           <span className={`badge-estado ${isActive ? 'badge-activo' : 'badge-inactivo'}`}>
-            {isActive ? 'Activo' : 'Inactivo'}
-          </span>
+              {isActive ? 'Sí' : 'No'}
+            </span>
         );
       },
     },
