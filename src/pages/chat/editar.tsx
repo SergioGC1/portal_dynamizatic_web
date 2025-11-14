@@ -23,8 +23,8 @@ export default function Editar({ usuarios, idUsuarioActual, interlocutoresConCon
   }, [apiBase]);
 
   const disponibles = usuarios
-    .filter(u => u.id !== idUsuarioActual)
-    .filter(u => !interlocutoresConConversacion.includes(u.id));
+    .filter(u => String(u.id) !== String(idUsuarioActual))
+    .filter(u => !interlocutoresConConversacion.includes(String(u.id)));
 
   return (
     <div style={{ flex: 1, overflowY: 'auto', padding: 12 }}>

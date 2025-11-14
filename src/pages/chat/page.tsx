@@ -6,6 +6,39 @@ import ConversacionesSidebar from './ConversacionesSidebar';
 import Editar from './editar';
 import { ServicioChat, MensajeChat, UsuarioChat } from '../../servicios/chat/ServicioChat';
 
+const normalizar = (valor?: string | null) => (valor ? valor.trim().toLowerCase() : '');
+
+const extraerIdDeAuthUser = (authUser: any): string | undefined => {
+  if (!authUser) return undefined;
+  const candidatos = [
+    authUser.id,
+    authUser.userId,
+    authUser.usuarioId,
+    authUser.user?.id,
+    authUser.user?.userId,
+    authUser.user?.usuarioId,
+  ];
+  const encontrado = candidatos.find((valor) => valor !== undefined && valor !== null && valor !== '');
+  return encontrado !== undefined ? String(encontrado) : undefined;
+};
+
+const resolverUsuarioActual = (lista: UsuarioChat[], authUser: any) => {
+  if (!authUser) return { id: undefined as string | undefined, usuario: undefined as UsuarioChat | undefined };
+  const emailAuth = normalizar(authUser.email || authUser.user?.email);
+  const idAuth = extraerIdDeAuthUser(authUser);
+
+  const porEmail = emailAuth ? lista.find((u) => normalizar(u.email) === emailAuth) : undefined;
+  const porId = porEmail ? undefined : (idAuth ? lista.find((u) => String(u.id) === String(idAuth)) : undefined);
+  const porNombre =
+    porEmail || porId
+      ? undefined
+      : (authUser.nombreUsuario ? lista.find((u) => u.nombreUsuario === authUser.nombreUsuario) : undefined);
+
+  const coincidencia = porEmail || porId || porNombre;
+  const idResuelto = coincidencia?.id !== undefined ? String(coincidencia.id) : idAuth;
+  return { id: idResuelto, usuario: coincidencia };
+};
+
 // Página principal: gestiona datos (usuarios, conversaciones, mensajes) y delega UI específica.
 export default function PaginaChat() {
   const { user } = useAuth();
@@ -28,16 +61,48 @@ export default function PaginaChat() {
         const lista = await ServicioChat.obtenerUsuarios();
         if (cancelado) return;
         setUsuarios(lista);
-        // Mapear email a id y inicializar antes de pedir conversaciones
-        if (user?.email) {
-          const encontrado = lista.find(u => u.email === user.email);
-          if (encontrado) {
-            setIdUsuarioActual(encontrado.id);
-            ServicioChat.inicializar(encontrado.id);
+        let { id: idResuelto } = resolverUsuarioActual(lista, user);
+        if (!idResuelto && typeof window !== 'undefined') {
+          try {
+            const stored = localStorage.getItem('user');
+            if (stored) {
+              const parsed = JSON.parse(stored);
+              const alternativa = resolverUsuarioActual(lista, parsed);
+              if (alternativa.id) idResuelto = alternativa.id;
+            }
+            if (!idResuelto) {
+              const token = localStorage.getItem('accessToken');
+              if (token) {
+                const parts = String(token).split('.');
+                if (parts.length >= 2) {
+                  try {
+                    const payload = JSON.parse(atob(parts[1]));
+                    const fallbackUser = {
+                      email: payload.email || payload.preferred_username || payload.username,
+                      id: payload.sub || payload.userId || payload.id,
+                    };
+                    const alternativaToken = resolverUsuarioActual(lista, fallbackUser);
+                    if (alternativaToken.id) idResuelto = alternativaToken.id;
+                  } catch {
+                    // Ignorar errores de decodificaci��n
+                  }
+                }
+              }
+            }
+          } catch (error) {
+            console.warn('[Chat] Error determinando el usuario autenticado desde almacenamiento local.', error);
           }
         }
-        // Cargar interlocutores tras inicializar
-        const interlocutores = await ServicioChat.obtenerInterlocutoresConConversacion();
+        if (idResuelto) {
+          setIdUsuarioActual(idResuelto);
+          ServicioChat.inicializar(idResuelto);
+        } else {
+          console.warn('[Chat] No se pudo determinar el usuario autenticado para el chat.');
+        }
+        const interlocutores = idResuelto
+          ? (await ServicioChat.obtenerInterlocutoresConConversacion()).map((i: any) => String(i))
+          : [];
+
         if (cancelado) return;
         setInterlocutoresConConversacion(interlocutores);
         if (!seleccionado && interlocutores.length > 0) setSeleccionado(interlocutores[0]);
@@ -49,15 +114,19 @@ export default function PaginaChat() {
       }
     })();
     return () => { cancelado = true; };
-  }, [user?.email, seleccionado]);
+  }, [user, seleccionado]);
 
   // Suscripción tiempo real
   useEffect(() => {
     const off = ServicioChat.suscribirse(msg => {
       if (!idUsuarioActual) return;
-      const pertenece = seleccionado && (
-        (msg.deUsuarioId === seleccionado && msg.paraUsuarioId === idUsuarioActual) ||
-        (msg.deUsuarioId === idUsuarioActual && msg.paraUsuarioId === seleccionado)
+      const msgDe = String(msg.deUsuarioId);
+      const msgPara = String(msg.paraUsuarioId);
+      const pertenece = Boolean(
+        seleccionado && (
+          (msgDe === seleccionado && msgPara === idUsuarioActual) ||
+          (msgDe === idUsuarioActual && msgPara === seleccionado)
+        )
       );
       if (pertenece) {
         setMensajes(prev => {
@@ -65,8 +134,9 @@ export default function PaginaChat() {
           if (existe) return prev.map(m => (m.id === msg.id ? msg : m));
           return [...prev, msg];
         });
-      } else if (msg.paraUsuarioId === idUsuarioActual) {
-        setInterlocutoresConConversacion(prev => prev.includes(msg.deUsuarioId) ? prev : [...prev, msg.deUsuarioId]);
+      } else if (msgPara === idUsuarioActual) {
+        const remitente = msgDe;
+        setInterlocutoresConConversacion(prev => prev.includes(remitente) ? prev : [...prev, remitente]);
       }
     });
     return () => off();
@@ -96,7 +166,7 @@ export default function PaginaChat() {
       // Evitar refresco si usuario está leyendo arriba
       if (!cercaDelFondo) return;
       try {
-        const interlocutores = await ServicioChat.obtenerInterlocutoresConConversacion();
+        const interlocutores = (await ServicioChat.obtenerInterlocutoresConConversacion()).map((i: any) => String(i));
         setInterlocutoresConConversacion(prev => {
           const nuevos = interlocutores.filter(i => !prev.includes(i));
           return nuevos.length ? [...prev, ...nuevos] : prev;
@@ -139,7 +209,7 @@ export default function PaginaChat() {
     return `${apiBase}/${s}`;
   }, []);
 
-  const interlocutor = usuarios.find(u => u.id === seleccionado);
+  const interlocutor = usuarios.find(u => String(u.id) === String(seleccionado));
   const avatarUrl = construirSrc(interlocutor?.imagen || (interlocutor as any)?.urlAvatar || undefined);
 
   // Vista selector inicial si no hay conversaciones aún

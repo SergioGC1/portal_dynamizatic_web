@@ -192,7 +192,11 @@ class ImplementacionServicioChat {
   async obtenerUsuarios() {
     const respuesta = await fetch(`${this.urlBase}/usuarios`, { headers: { ...this.obtenerCabecerasAutenticacion() } });
     const json = await respuesta.json();
-    const lista = Array.isArray(json) ? json : [];
+    // Soportar dos formatos de respuesta:
+    // - array directo: [ { ... }, ... ]
+    // - objeto con paginación: { data: [ ... ], total: 123 }
+    const posibleArray = json && Array.isArray(json) ? json : json && Array.isArray(json.data) ? json.data : [];
+    const lista = posibleArray;
     // Normalizamos para que "nombre" sea el nombre completo
     const normalizados: UsuarioChat[] = lista.map((u: any) => {
       const id = u.id != null ? String(u.id) : (u.email ?? u.nombreUsuario ?? '');
@@ -213,6 +217,7 @@ class ImplementacionServicioChat {
   // Devuelve los identificadores de usuarios con los que el usuario actual ya tiene conversación
   async obtenerInterlocutoresConConversacion(): Promise<string[]> {
     if (!this.identificadorUsuarioActual) return [];
+
     const parametros = new URLSearchParams({
       filter: JSON.stringify({
         where: {
@@ -225,25 +230,40 @@ class ImplementacionServicioChat {
         limit: 500,
       }),
     });
-    const respuesta = await fetch(`${this.urlBase}/mensajes-chats?${parametros.toString()}`, { headers: { ...this.obtenerCabecerasAutenticacion() } });
-    if (!respuesta.ok) return [];
-    const json = await respuesta.json().catch(() => []);
-    const mensajes = Array.isArray(json) ? json : [];
-    const conjunto = new Set<string>();
-    for (const m of mensajes) {
-      if (m.emisorId === Number(this.identificadorUsuarioActual) && m.receptorId != null) conjunto.add(String(m.receptorId));
-      else if (m.receptorId === Number(this.identificadorUsuarioActual) && m.emisorId != null) conjunto.add(String(m.emisorId));
-    }
-    return Array.from(conjunto);
-  }
 
+    const respuesta = await fetch(`${this.urlBase}/mensajes-chats?${parametros}`, {
+      headers: { ...this.obtenerCabecerasAutenticacion() }
+    });
+
+    const json = await respuesta.json().catch(() => []);
+
+    // 🔥 NORMALIZACIÓN AUTOMÁTICA
+    const mensajes =
+      Array.isArray(json) ? json :
+        Array.isArray(json.data) ? json.data :
+          Array.isArray(json.items) ? json.items :
+            [];
+
+    const setIds = new Set<string>();
+
+    for (const m of mensajes) {
+      if (m.emisorId === Number(this.identificadorUsuarioActual))
+        setIds.add(String(m.receptorId));
+
+      if (m.receptorId === Number(this.identificadorUsuarioActual))
+        setIds.add(String(m.emisorId));
+    }
+
+    return Array.from(setIds);
+  }
   // Indica si hay conexión WS activa (para decidir si usar polling)
   estaConectadoTiempoReal() {
     return this.estaConectado;
   }
 
-  // (Características de leídos desactivadas temporalmente)
 }
+
 
 const URL_BASE = (typeof window !== 'undefined' && (window as any).__API_BASE_URL__) || 'http://localhost:3000';
 export const ServicioChat = new ImplementacionServicioChat(URL_BASE);
+

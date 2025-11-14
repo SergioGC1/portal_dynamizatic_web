@@ -23,7 +23,7 @@ export default function ConversacionesSidebar({ usuarios, interlocutores, selecc
     <div style={{ width: 260, borderRight: '1px solid #e5e7eb', overflowY: 'auto', padding: 8 }}>
       <h3 style={{ marginTop: 0 }}>Conversaciones</h3>
       {interlocutores.map(id => {
-        const u = usuarios.find(x => x.id === id);
+        const u = usuarios.find(x => String(x.id) === String(id));
         const avatarRaw = u?.imagen || (u as any)?.urlAvatar || undefined;
         const url = construirSrc(avatarRaw);
         const isActive = seleccionado === id;
