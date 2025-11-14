@@ -237,6 +237,27 @@ export default function Editar(props: Props) {
       hasPermission('Usuarios', 'EditarRol') ||
       hasPermission('Usuarios', 'Editar Rol'));
 
+  const manejarCambioEstadoActivo = (valor: boolean) => {
+    const nuevoValor = valor ? 'S' : 'N';
+    const estaActualmenteActivo = String((formulario as any)?.activoSn ?? '').toUpperCase() === 'S';
+    const esDesactivacion = estaActualmenteActivo && nuevoValor === 'N' && (formulario as any)?.id;
+
+    if (modo === 'editar' && esDesactivacion) {
+      confirmDialog({
+        message: 'Si desactivas al usuario no podrá iniciar sesión. ¿Estás seguro?',
+        header: 'Confirmar desactivación',
+        acceptLabel: 'Desactivar',
+        rejectLabel: 'Cancelar',
+        acceptClassName: 'p-button-danger',
+        rejectClassName: 'p-button-secondary',
+        accept: () => actualizarCampoDelFormulario('activoSn', 'N'),
+      });
+      return;
+    }
+
+    actualizarCampoDelFormulario('activoSn', nuevoValor);
+  };
+
   const intentarSubirImagenDespuesDeGuardar = async (archivoPendiente?: File) => {
     const archivo = archivoPendiente || (formulario as any)?._imagenFile;
     if (!archivo) return;
@@ -443,7 +464,7 @@ export default function Editar(props: Props) {
         onCampoChange={actualizarCampoDelFormulario}
         onGuardarClick={guardarUsuarioConValidaciones}
         onCerrarClick={onClose}
-        onEstadoActivoChange={(valor) => actualizarCampoDelFormulario('activoSn', valor ? 'S' : 'N')}
+        onEstadoActivoChange={manejarCambioEstadoActivo}
         onRolChange={manejarRolChange}
         onSeleccionarArchivo={manejarSeleccionDeArchivo}
         onEliminarImagenClick={manejarEliminarImagen}

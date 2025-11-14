@@ -21,6 +21,14 @@ export type ColumnDef<T = any> = {
   filterOptions?: Array<{ label: string; value: any }>
 }
 
+export type DataTableHandle = {
+  clearFilters: () => void
+  downloadCSV: () => void
+  setGlobalFilter: (v: string) => void
+  getColumnFilters: () => Record<string, string>
+}
+
+
 type Props = {
   columns: ColumnDef<any>[]
   data: any[]
@@ -52,11 +60,6 @@ type Props = {
   onLazyLoad?: (state: { first: number; rows: number; sortField?: string | null; sortOrder?: 1 | -1 }) => void
 }
 
-export type DataTableHandle = {
-  clearFilters: () => void
-  downloadCSV: () => void
-  setGlobalFilter: (v: string) => void
-}
 
 const DataTableAdaptado = forwardRef<DataTableHandle, Props>(function DataTableAdaptado(
   {
@@ -119,18 +122,15 @@ const DataTableAdaptado = forwardRef<DataTableHandle, Props>(function DataTableA
   }
 
   // Filtrado
+  // Filtrado
   const filteredData = useMemo(() => {
-    // In lazy (server-side) mode, the data is assumed already filtered/paginated by the server
-    if (typeof lazy !== 'undefined' && lazy) {
-      return [...data]
-    }
+    // 🔥 En lazy TAMBIÉN filtramos en local
     let result = [...data]
 
     // Filtro global
     if (globalFilter) {
       result = result.filter((row) =>
         columns.some((col) => {
-          // Respetar columnas no filtrables también en el filtro global
           if (col.filterable === false) return false
           const value = row[col.key]
           return String(value || "")
@@ -140,7 +140,7 @@ const DataTableAdaptado = forwardRef<DataTableHandle, Props>(function DataTableA
       )
     }
 
-    // Filtros por columna
+    // Filtros por columna (embudo)
     Object.entries(columnFilters).forEach(([key, filterValue]) => {
       if (filterValue) {
         result = result.filter((row) =>
@@ -152,7 +152,8 @@ const DataTableAdaptado = forwardRef<DataTableHandle, Props>(function DataTableA
     })
 
     return result
-  }, [data, globalFilter, columnFilters, columns, lazy])
+  }, [data, globalFilter, columnFilters, columns])
+
 
   // Ordenamiento
   const sortedData = useMemo(() => {
@@ -205,7 +206,9 @@ const DataTableAdaptado = forwardRef<DataTableHandle, Props>(function DataTableA
     clearFilters,
     downloadCSV: handleDownloadCSV,
     setGlobalFilter: (v: string) => setGlobalFilter(v),
-  }), [clearFilters, handleDownloadCSV])
+    getColumnFilters: () => columnFilters,
+
+  }), [clearFilters, handleDownloadCSV, columnFilters]);
 
   const onSort = (e: any) => {
     setSortField(e.sortField);

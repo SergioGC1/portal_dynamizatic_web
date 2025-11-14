@@ -83,6 +83,11 @@ export default function PageUsuarios() {
       key: 'activoSn',
       title: 'Activo',
       sortable: true,
+      filterable: true,
+      filterOptions: [
+        { label: "Sí", value: "S" },
+        { label: "No", value: "N" }
+      ],
       render: (value: any) => {
         const v = String(value ?? '').toUpperCase();
         const isActive = v === 'S';
@@ -93,6 +98,7 @@ export default function PageUsuarios() {
         );
       },
     },
+
   ]);
 
   const tableRef = useRef<DataTableHandle | null>(null);
@@ -145,15 +151,16 @@ export default function PageUsuarios() {
     search = filtroBusquedaAplicar,
     sortField = null,
     sortOrder = null,
+    filters = {},   // 👈 AQUI
   }: {
     first?: number;
     rows?: number;
     search?: string;
     sortField?: string | null;
     sortOrder?: number | null;
+    filters?: any;  // 👈 Y AQUI
   } = {}) => {
-    setLoading(true);
-    setError(null);
+
 
     try {
       const params: any = {
@@ -164,6 +171,10 @@ export default function PageUsuarios() {
       if (search) params.search = search;
       if (sortField) params.sortField = sortField;
       if (typeof sortOrder === 'number') params.sortOrder = sortOrder;
+      // Aplicar filtro de columna "activoSn"
+      if (filters.activoSn !== undefined && filters.activoSn !== null) {
+        params.activoSn = filters.activoSn;
+      }
 
       const respuesta = await UsuariosAPI.findUsuarios(params);
       const { lista, total } = normalizarRespuestaUsuarios(respuesta);
@@ -264,8 +275,16 @@ export default function PageUsuarios() {
                   lazy
                   totalRecords={totalUsuarios}
                   onLazyLoad={({ first, rows, sortField, sortOrder }) => {
-                    fetchUsuarios({ first, rows, search: filtroBusquedaAplicar, sortField, sortOrder });
+                    fetchUsuarios({
+                      first,
+                      rows,
+                      search: filtroBusquedaAplicar,
+                      sortField,
+                      sortOrder,
+                      filters: tableRef.current?.getColumnFilters?.()
+                    });
                   }}
+
 
 
                   onNew={() => {
