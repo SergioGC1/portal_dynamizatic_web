@@ -185,7 +185,7 @@ export default function EditarDatosUsuariosVista({
                                             type={mostrarPasswordCrear ? 'text' : 'password'}
                                             value={(formulario as any)?.password || ''}
                                             onChange={(evento: React.ChangeEvent<HTMLInputElement>) => onCampoChange('password', evento.target.value)}
-                                            className="record-panel__input"
+                                            className={`record-panel__input ${errores.password ? 'record-panel__input--error' : ''}`}
                                             style={{ width: '100%' }}
                                             placeholder="Introduce una contraseña segura"
                                         />
@@ -205,7 +205,7 @@ export default function EditarDatosUsuariosVista({
                                             type={mostrarPasswordEditar ? 'text' : 'password'}
                                             value={(formulario as any)?.password || ''}
                                             onChange={(evento: React.ChangeEvent<HTMLInputElement>) => onCampoChange('password', evento.target.value)}
-                                            className="record-panel__input"
+                                            className={`record-panel__input ${errores.password ? 'record-panel__input--error' : ''}`}
                                             style={{ width: '100%' }}
                                             placeholder="Déjalo vacío para mantener la actual"
                                         />

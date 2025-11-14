@@ -114,11 +114,11 @@ export default function EditarDatosFasesVista({
             <input
               value={formulario?.codigo ?? ''}
               onChange={(evento) => onCampoChange('codigo', evento.target.value)}
-              className="record-panel__input"
+              className={`record-panel__input ${errores.codigo ? 'record-panel__input--error' : ''}`}
               style={{ width: '100%' }}
               disabled={modo === 'ver'}
             />
-            {errores.codigo && <div style={{ color: 'red', marginTop: 6 }}>{errores.codigo}</div>}
+            {errores.codigo && <div className="record-panel__error">{errores.codigo}</div>}
           </div>
         </div>
 

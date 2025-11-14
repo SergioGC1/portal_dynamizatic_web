@@ -175,7 +175,11 @@ export default function Editar(props: Props) {
     }
 
     const codigo = String((formulario as any).codigo || '').trim();
-    if (codigo && codigo.length < 2) {
+    if (!codigo) {
+      setErrores({ codigo: 'El código es obligatorio' });
+      return;
+    }
+    if (codigo.length < 2) {
       setErrores({ codigo: 'El código debe tener al menos 2 caracteres' });
       return;
     }
