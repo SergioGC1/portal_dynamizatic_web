@@ -8,6 +8,7 @@ import { DataTableHandle } from '../../components/data-table/DataTable';
 import { useRef } from 'react';
 import DataTable, { ColumnDef } from '../../components/data-table/DataTable';
 import RolesAPI from '../../api-endpoints/roles/index';
+import UsuariosAPI from '../../api-endpoints/usuarios/index';
 import { ConfirmDialog, confirmDialog } from 'primereact/confirmdialog';
 import { Toast } from 'primereact/toast';
 
@@ -93,6 +94,38 @@ export default function PageRoles() {
       }
       return
     }
+    // Antes de pedir confirmación, comprobar si hay usuarios asignados a este rol
+    const doDelete = async () => {
+      try {
+        await RolesAPI.deleteRoleById(rol.id);
+        toast.show({ severity: 'success', summary: 'Eliminado', detail: 'Rol eliminado correctamente', life: 2500 });
+        await refresh();
+      } catch (e) {
+        console.error(e);
+        toast.show({ severity: 'error', summary: 'Error', detail: 'Error eliminando rol', life: 2500 });
+      }
+    }
+
+    try {
+      const usuariosCount = await UsuariosAPI.countUsuarios({ rolId: rol.id });
+      const n = Number(usuariosCount || 0)
+      if (n > 0) {
+        confirmDialog({
+          message: `Hay ${n} usuario(s) con este rol. Si lo eliminas, esos usuarios podrían quedarse sin rol asignado. ¿Seguro que deseas eliminar el rol "${rol.nombre}"?`,
+          header: 'Confirmar eliminación',
+          icon: 'pi pi-exclamation-triangle',
+          acceptLabel: 'Sí, eliminar',
+          rejectLabel: 'Cancelar',
+          acceptClassName: 'p-button-danger',
+          accept: doDelete,
+        })
+        return
+      }
+    } catch (err) {
+      console.error('Error comprobando usuarios del rol:', err)
+      // En caso de error en la comprobación continuamos con confirmación estándar
+    }
+
     confirmDialog({
       message: `¿Seguro que deseas eliminar el rol "${rol.nombre}"?`,
       header: 'Confirmar eliminación',
@@ -100,16 +133,7 @@ export default function PageRoles() {
       acceptLabel: 'Sí, eliminar',
       rejectLabel: 'Cancelar',
       acceptClassName: 'p-button-danger',
-      accept: async () => {
-        try {
-          await RolesAPI.deleteRoleById(rol.id);
-          toast.show({ severity: 'success', summary: 'Eliminado', detail: 'Rol eliminado correctamente', life: 2500 });
-          await refresh();
-        } catch (e) {
-          console.error(e);
-          toast.show({ severity: 'error', summary: 'Error', detail: 'Error eliminando rol', life: 2500 });
-        }
-      },
+      accept: doDelete,
     });
   };
 

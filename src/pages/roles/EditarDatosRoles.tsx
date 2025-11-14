@@ -35,7 +35,9 @@ export default function EditarDatosRolesVista({
   onCerrarClick,
 }: PropsVistaRol) {
   const estaEnModoVer = modo === 'ver';
-  const estaActivo = String(formulario?.activoSn ?? '').toUpperCase() === 'S' || Boolean(formulario?.activo);
+  const estaActivo =
+    String(formulario?.activoSn ?? '').toUpperCase() === 'S' ||
+    Boolean(formulario?.activo);
   const titulo = estaEnModoVer ? 'Ver Rol' : 'Editar Rol';
 
   return (
@@ -72,7 +74,13 @@ export default function EditarDatosRolesVista({
       <div className="record-panel__field">
         <label className="record-panel__label">Estado</label>
         <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-          <InputSwitch checked={estaActivo} onChange={onEstadoChange} disabled={cargando || estaEnModoVer} />
+          <InputSwitch
+            checked={estaActivo}
+            onChange={(e: any) => {
+              if (onEstadoChange) onEstadoChange(e);
+            }}
+            disabled={cargando || estaEnModoVer}
+          />
           <span style={{ fontSize: 14 }}>{estaActivo ? 'Activo' : 'Inactivo'}</span>
         </div>
       </div>

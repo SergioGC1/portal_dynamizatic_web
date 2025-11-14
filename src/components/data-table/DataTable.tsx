@@ -439,7 +439,7 @@ const DataTableAdaptado = forwardRef<DataTableHandle, Props>(function DataTableA
     CurrentPageReport: (options: any) => {
       return (
         <span className="tabla-paginator-info">
-          Mostrando {options.first + 1} a {Math.min(options.first + options.rows, options.totalRecords)} de{" "}
+          Mostrando {options.first} a {Math.min(options.first + options.rows, options.totalRecords)} de{" "}
           {options.totalRecords} registros
         </span>
       )

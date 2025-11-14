@@ -22,7 +22,6 @@ interface PropiedadesPanelRol {
 }
 
 type PropsPagina = { rolId?: string };
-
 type Props = PropsPagina | PropiedadesPanelRol;
 
 export default function Editar(props: Props) {
@@ -93,14 +92,28 @@ export default function Editar(props: Props) {
 
     if (esDesactivacion) {
       try {
-        const usuarios = await UsuariosAPI.findUsuarios();
-        const usuariosConRol = usuarios.filter((usuario: any) => Number(usuario?.rolId) === Number(formulario.id));
-        if (usuariosConRol.length > 0) {
+        const respuesta = await UsuariosAPI.findUsuarios();
+
+        const listaUsuarios = Array.isArray(respuesta?.data)
+          ? respuesta.data
+          : Array.isArray(respuesta)
+            ? respuesta
+            : [];
+
+        const usuariosConRol = listaUsuarios.filter(
+          (usuario: any) => Number(usuario?.rolId) === Number(formulario.id)
+        );
+
+        const contador = usuariosConRol.length;
+
+        if (contador > 0) {
           confirmDialog({
-            message: `Hay ${usuariosConRol.length} usuario(s) con este rol. Si lo desactivas, perderán sus permisos. ¿Estás seguro?`,
+            message: `Hay ${contador} usuario(s) con este rol. Si lo desactivas, perderán permisos. ¿Seguro?`,
             header: 'Confirmar desactivación',
+            icon: 'pi pi-exclamation-triangle',
             acceptLabel: 'Desactivar',
             rejectLabel: 'Cancelar',
+            acceptClassName: 'p-button-danger',
             accept: () => actualizarCampoDelFormulario('activoSn', 'N'),
           });
           return;
@@ -113,9 +126,11 @@ export default function Editar(props: Props) {
     actualizarCampoDelFormulario('activoSn', nuevoValor);
   };
 
+
   const guardarRol = async () => {
     setErrores({});
     const nombreLimpio = String(formulario?.nombre || '').trim();
+
     if (nombreLimpio.length < 3) {
       setErrores({ nombre: 'El nombre debe tener al menos 3 caracteres.' });
       return;
