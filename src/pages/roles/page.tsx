@@ -11,6 +11,7 @@ import RolesAPI from '../../api-endpoints/roles/index';
 import UsuariosAPI from '../../api-endpoints/usuarios/index';
 import { ConfirmDialog, confirmDialog } from 'primereact/confirmdialog';
 import { Toast } from 'primereact/toast';
+import '../../styles/pages/RolesPage.scss';
 
 export default function PageRoles() {
   // query param handling removed; panel controlled via panelMode/panelRecord
@@ -37,8 +38,8 @@ export default function PageRoles() {
         const isActive = String(value) === 'S';
         return (
           <span className={`badge-estado ${isActive ? 'badge-activo' : 'badge-inactivo'}`}>
-              {isActive ? 'Sí' : 'No'}
-            </span>
+            {isActive ? 'Activo' : 'Inactivo'}
+          </span>
         );
       },
     },
@@ -138,10 +139,10 @@ export default function PageRoles() {
   };
 
   return (
-    <div style={{ padding: 16 }}>
+    <div className="roles-page">
       <Toast ref={setToast} />
       <ConfirmDialog />
-      {mensajeError && <div style={{ color: 'red' }}>{mensajeError}</div>}
+      {mensajeError && <div className="roles-page__error">{mensajeError}</div>}
       
       <div className="tabla-personalizada">
         {!modoPanel && (
@@ -166,20 +167,12 @@ export default function PageRoles() {
             />
 
             {!hasSearched && !cargando && (
-              <div style={{ 
-                textAlign: 'center', 
-                padding: 40, 
-                background: '#f8f9fa', 
-                borderRadius: 8,
-                margin: '20px 0'
-              }}>
-                <h4 style={{ color: '#666', marginBottom: 16 }}>
-                  Buscar Roles
-                </h4>
+              <div className="roles-page__placeholder">
+                <h4 className="roles-page__placeholder-title">Buscar Roles</h4>
               </div>
             )}
 
-            {cargando && <div style={{ textAlign: 'center', padding: 20 }}>Cargando roles...</div>}
+            {cargando && <div className="roles-page__loading">Cargando roles...</div>}
 
             {hasSearched && !cargando && (
               <DataTable

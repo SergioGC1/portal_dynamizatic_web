@@ -1,9 +1,10 @@
-import React from 'react';
+﻿import React from 'react';
 import { Button } from 'primereact/button';
 import { InputSwitch } from 'primereact/inputswitch';
 import { InputText } from 'primereact/inputtext';
 import '../../components/ui/GestorEditores.css';
 import '../../styles/paneles/PanelUsuario.scss';
+import '../../styles/pages/EditarDatosUsuarios.scss';
 
 interface FormularioUsuario {
     id?: number | string;
@@ -87,56 +88,46 @@ export default function EditarDatosUsuariosVista({
             <div className="record-panel__header">
                 <strong className="record-panel__title">{titulo}</strong>
                 <div className="record-panel__controls">
-                    {modo === 'editar' && <Button label="Guardar" onClick={onGuardarClick} style={{ marginRight: 8 }} />}
+                    {modo === 'editar' && (
+                        <Button
+                            label="Guardar"
+                            onClick={onGuardarClick}
+                            className="usuarios-editar-datos__guardar-btn"
+                        />
+                    )}
                     {onCerrarClick && <Button label="Cerrar" onClick={onCerrarClick} className="p-button-secondary" />}
                 </div>
             </div>
 
             {errores.general && (
-                <div className="record-panel__error" style={{ marginBottom: 16 }}>
+                <div className="record-panel__error usuarios-editar-datos__error-general">
                     {errores.general}
                 </div>
             )}
 
-            <div className="record-panel__top" style={{ display: 'flex', gap: 24, flexWrap: 'wrap', alignItems: 'flex-start' }}>
+            <div className="record-panel__top usuarios-editar-datos__top">
                 {debeMostrarBloqueImagen && (
-                    <div style={{ position: 'relative', width: 180 }}>
-                        <div style={{ position: 'absolute', top: -20, left: 0 }}>
+                    <div className="usuarios-editar-datos__image-wrapper">
+                        <div className="usuarios-editar-datos__badge-container">
                             <span className={`badge-estado ${estaActivo ? 'badge-activo' : 'badge-inactivo'}`}>
                                 {estaActivo ? 'Activo' : 'Inactivo'}
                             </span>
                         </div>
-                        <div className="record-panel__image-box--static" style={{ width: 180, height: 180 }}>
+                        <div className="record-panel__image-box--static usuarios-editar-datos__image-box">
                             {urlVistaPrevia ? (
                                 <img
                                     src={urlVistaPrevia}
                                     alt="Vista previa"
-                                    className="record-panel__thumbnail"
-                                    style={{ width: '100%', height: '100%', objectFit: 'contain', borderRadius: 6 }}
+                                    className="record-panel__thumbnail usuarios-editar-datos__image usuarios-editar-datos__image--contain"
                                 />
                             ) : urlImagen ? (
                                 <img
                                     src={urlImagen}
                                     alt="Imagen del usuario"
-                                    className="record-panel__thumbnail"
-                                    style={{ width: '100%', height: '100%', objectFit: 'cover', borderRadius: 6 }}
+                                    className="record-panel__thumbnail usuarios-editar-datos__image usuarios-editar-datos__image--cover"
                                 />
                             ) : (
-                                <div
-                                    className="record-panel__no-image"
-                                    style={{
-                                        backgroundColor: '#f2f2f2',
-                                        color: '#6c757d',
-                                        width: '100%',
-                                        height: '100%',
-                                        display: 'flex',
-                                        alignItems: 'center',
-                                        justifyContent: 'center',
-                                        borderRadius: 6,
-                                        textTransform: 'uppercase',
-                                        fontWeight: 600,
-                                    }}
-                                >
+                                <div className="record-panel__no-image usuarios-editar-datos__no-image">
                                     Sin imagen
                                 </div>
                             )}
@@ -171,22 +162,20 @@ export default function EditarDatosUsuariosVista({
                     {errores.nombreUsuario && <div className="record-panel__error">{errores.nombreUsuario}</div>}
 
                     {modo === 'editar' && (
-                        <div style={{ marginTop: 12 }}>
+                        <div className="usuarios-editar-datos__password-section">
                             {esNuevo ? (
                                 <div className="record-panel__field">
-                                    <label className="record-panel__label">Contraseña (mínimo 8 caracteres)</label>
-                                    <span className="p-input-icon-right" style={{ width: '100%', display: 'block' }}>
+                                    <label className="record-panel__label">Contraseña (máximo 8 caracteres)</label>
+                                    <span className="p-input-icon-right usuarios-editar-datos__input-icon-wrapper">
                                         <i
-                                            className={mostrarPasswordCrear ? 'pi pi-eye-slash' : 'pi pi-eye'}
+                                            className={`${mostrarPasswordCrear ? 'pi pi-eye-slash' : 'pi pi-eye'} usuarios-editar-datos__icon-toggle`}
                                             onClick={onTogglePasswordCrear}
-                                            style={{ cursor: 'pointer' }}
                                         />
                                         <InputText
                                             type={mostrarPasswordCrear ? 'text' : 'password'}
                                             value={(formulario as any)?.password || ''}
                                             onChange={(evento: React.ChangeEvent<HTMLInputElement>) => onCampoChange('password', evento.target.value)}
-                                            className={`record-panel__input ${errores.password ? 'record-panel__input--error' : ''}`}
-                                            style={{ width: '100%' }}
+                                            className={`record-panel__input usuarios-editar-datos__text-input ${errores.password ? 'record-panel__input--error' : ''}`}
                                             placeholder="Introduce una contraseña segura"
                                         />
                                     </span>
@@ -194,36 +183,34 @@ export default function EditarDatosUsuariosVista({
                                 </div>
                             ) : (
                                 <div className="record-panel__field">
-                                    <label className="record-panel__label">Nueva contraseña (opcional)</label>
-                                    <span className="p-input-icon-right" style={{ width: '100%', display: 'block' }}>
+                                    <label className="record-panel__label">Nueva contraseÃ±a (opcional)</label>
+                                    <span className="p-input-icon-right usuarios-editar-datos__input-icon-wrapper">
                                         <i
-                                            className={mostrarPasswordEditar ? 'pi pi-eye-slash' : 'pi pi-eye'}
+                                            className={`${mostrarPasswordEditar ? 'pi pi-eye-slash' : 'pi pi-eye'} usuarios-editar-datos__icon-toggle`}
                                             onClick={onTogglePasswordEditar}
-                                            style={{ cursor: 'pointer' }}
                                         />
                                         <InputText
                                             type={mostrarPasswordEditar ? 'text' : 'password'}
                                             value={(formulario as any)?.password || ''}
                                             onChange={(evento: React.ChangeEvent<HTMLInputElement>) => onCampoChange('password', evento.target.value)}
-                                            className={`record-panel__input ${errores.password ? 'record-panel__input--error' : ''}`}
-                                            style={{ width: '100%' }}
-                                            placeholder="Déjalo vacío para mantener la actual"
+                                            className={`record-panel__input usuarios-editar-datos__text-input ${errores.password ? 'record-panel__input--error' : ''}`}
+                                            placeholder="Deja vacío para mantener la actual"
                                         />
                                     </span>
                                     {errores.password && <div className="record-panel__error">{errores.password}</div>}
-                                    <div style={{ fontSize: '0.85em', color: '#6c757d', marginTop: 4 }}>
+                                    <div className="usuarios-editar-datos__helper-text">
                                         Por seguridad no mostramos la contraseña actual. Solo escribe algo si deseas cambiarla.
                                     </div>
                                 </div>
                             )}
 
                             {/* Botón de seleccionar imagen + nombre de archivo: colocado debajo de la contraseña según petición */}
-                            <div style={{ marginTop: 12, display: 'flex', gap: 12, alignItems: 'center', flexWrap: 'nowrap' }}>
+                            <div className="usuarios-editar-datos__upload-row">
                                 <input
                                     ref={fileInputRef}
                                     type="file"
                                     accept="image/*"
-                                    style={{ display: 'none' }}
+                                    className="usuarios-editar-datos__file-input"
                                     onChange={(evento) => onSeleccionarArchivo(evento.target.files ? evento.target.files[0] : undefined)}
                                 />
                                 <Button
@@ -235,30 +222,16 @@ export default function EditarDatosUsuariosVista({
                                 {/* Mostrar nombre de archivo de forma segura (con fondo gris y comportamiento responsive) */}
                                 {(() => {
                                     const fichero = (formulario as any)?._imagenFile
-                                    if (!fichero) return <span style={{ color: '#999' }}>Ningún archivo seleccionado</span>
+                                    if (!fichero) return <span className="usuarios-editar-datos__file-placeholder">Ningún archivo seleccionado</span>
                                     try {
                                         const nombre = typeof fichero === 'object' && 'name' in fichero ? String((fichero as File).name) : String(fichero)
                                         return (
-                                            <span
-                                                style={{
-                                                    fontSize: '0.9em',
-                                                    color: '#495057',
-                                                    flex: '0 0 auto',
-                                                    backgroundColor: '#f0f0f0',
-                                                    padding: '6px 10px',
-                                                    borderRadius: 6,
-                                                    display: 'inline-block',
-                                                    whiteSpace: 'normal',
-                                                    overflowWrap: 'anywhere',
-                                                    marginLeft: 6
-                                                }}
-                                                title={nombre}
-                                            >
+                                            <span className="usuarios-editar-datos__file-badge" title={nombre}>
                                                 {nombre}
                                             </span>
                                         )
                                     } catch (e) {
-                                        return <span style={{ color: '#999' }}>Nombre no disponible</span>
+                                        return <span className="usuarios-editar-datos__file-placeholder">Nombre no disponible</span>
                                     }
                                 })()}
                             </div>
@@ -293,7 +266,7 @@ export default function EditarDatosUsuariosVista({
 
                 <div className="record-panel__field record-panel__field--switch">
                     <label className="record-panel__label">Estado</label>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                    <div className="usuarios-editar-datos__switch-row">
                         <InputSwitch
                             checked={estaActivo}
                             onChange={(evento: any) => onEstadoActivoChange(!!evento.value)}
@@ -304,7 +277,7 @@ export default function EditarDatosUsuariosVista({
             </div>
 
             <div className="record-panel__grid">
-                <div className="record-panel__field" style={{ marginTop: 8 }}>
+                <div className="record-panel__field usuarios-editar-datos__field-margin">
                     <label className="record-panel__label">Rol</label>
                     <select
                         value={rolSeleccionado || ''}
@@ -325,3 +298,6 @@ export default function EditarDatosUsuariosVista({
         </div>
     );
 }
+
+
+

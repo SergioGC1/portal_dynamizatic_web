@@ -1,0 +1,31 @@
+.roles-editar__panel {
+  max-width: 100%;
+}
+
+.roles-editar__guardar-btn {
+  margin-right: 8px;
+}
+
+.roles-editar__loading {
+  padding: 8px;
+}
+
+.roles-editar__error {
+  color: red;
+  padding: 8px;
+}
+
+.roles-editar__field-error {
+  color: red;
+  margin-top: 6px;
+}
+
+.roles-editar__estado-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.roles-editar__estado-text {
+  font-size: 14px;
+}

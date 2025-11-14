@@ -1,4 +1,4 @@
-import React, { useEffect, useRef, useState } from 'react'
+﻿import React, { useEffect, useRef, useState } from 'react'
 import { ColumnDef } from '../../components/data-table/DataTable'
 import { Calendar } from 'primereact/calendar'
 import { InputSwitch } from 'primereact/inputswitch'
@@ -8,6 +8,7 @@ import usePermisos from '../../hooks/usePermisos'
 import productosAPI from '../../api-endpoints/productos/index'
 import estadosAPI from '../../api-endpoints/estados/index'
 import { confirmDialog } from 'primereact/confirmdialog'
+import '../../styles/pages/ProductosEditar.scss'
 
 /* === Tipos === */
 interface Producto {
@@ -47,13 +48,13 @@ type CampoRenderizado = {
   contenido: React.ReactNode
 }
 // ========================================================================
-// COMPONENTE CONTENEDOR/LÓGICO: Editar
-// - Detecta si se usa como página (productId) o como panel (props.mode)
+// COMPONENTE CONTENEDOR/LÃ“GICO: Editar
+// - Detecta si se usa como pÃ¡gina (productId) o como panel (props.mode)
 // - Gestiona estado local del formulario, carga inicial y llamadas a la API
 // - Emite callbacks (onSave/onUploadSuccess) cuando procede
 // ========================================================================
 export default function Editar(props: Props) {
-  // --- Detección de contexto ---
+  // --- DetecciÃ³n de contexto ---
   const propsPanel = props as PropiedadesPanelProducto
   const propsPagina = props as PropsPagina
   const esPanel = (propsPanel as any).mode !== undefined
@@ -115,7 +116,7 @@ export default function Editar(props: Props) {
   const actualizarCampoDelFormulario = (clave: string, valor: any) =>
     setFormulario((formularioActual: any) => ({ ...formularioActual, [clave]: valor }))
 
-  // Construcción de URL de imagen según API base
+  // ConstrucciÃ³n de URL de imagen segÃºn API base
   const baseDeApi = (typeof window !== 'undefined' && (window as any).__API_BASE_URL__) || 'http://127.0.0.1:3000'
   const construirUrlDeImagen = (rutaImagen?: string) => {
     if (!rutaImagen) return ''
@@ -129,7 +130,7 @@ export default function Editar(props: Props) {
   const urlVistaPrevia = (formulario as any)?._imagenUrl || ((formulario as any)?.imagen ? construirUrlDeImagen((formulario as any).imagen) : '')
   const vistaPreviaLocal = localPreviewUrl
 
-  // Determinar título clave y columnas de cuadrícula
+  // Determinar tÃ­tulo clave y columnas de cuadrÃ­cula
   const claveTitulo = (() => {
     if (!columnsProp || columnsProp.length === 0) return 'nombre'
     for (const definicionColumna of columnsProp) {
@@ -225,7 +226,7 @@ export default function Editar(props: Props) {
       )
     }
 
-    const esCampoAnyo = normalizado.includes('anyo') || normalizado.includes('año')
+    const esCampoAnyo = normalizado.includes('anyo') || normalizado.includes('aÃ±o')
     if (esCampoAnyo) {
       if (mode === 'ver') {
         return (
@@ -244,13 +245,13 @@ export default function Editar(props: Props) {
               actualizarCampoDelFormulario(claveCampo, e.value ? (e.value as Date).getFullYear() : '')
             }
             view="year"
-            dateFormat="yy"
-            showIcon
-            className={`record-panel__input ${errores[claveCampo] ? 'record-panel__input--error' : ''}`}
-            maxDate={new Date(new Date().getFullYear(), 11, 31)}
-            minDate={new Date(1900, 0, 1)}
-            style={{ width: '100%' }}
-          />
+          dateFormat="yy"
+          showIcon
+          className={`record-panel__input ${errores[claveCampo] ? 'record-panel__input--error' : ''}`}
+          maxDate={new Date(new Date().getFullYear(), 11, 31)}
+          minDate={new Date(1900, 0, 1)}
+          inputClassName="productos-editar-calendar"
+        />
           {renderError(claveCampo)}
         </>
       )
@@ -293,9 +294,9 @@ export default function Editar(props: Props) {
       if (mode === 'ver') {
         return (
           <>
-            <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+            <div className="productos-editar-switch-row">
               <InputSwitch checked={estaActivo} disabled />
-              <span style={{ fontSize: 14 }}>{estaActivo ? 'Activo' : 'Inactivo'}</span>
+              <span className="productos-editar-switch-text">{estaActivo ? 'Activo' : 'Inactivo'}</span>
             </div>
             {renderError(claveCampo)}
           </>
@@ -303,13 +304,13 @@ export default function Editar(props: Props) {
       }
       return (
         <>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+          <div className="productos-editar-switch-row">
             <InputSwitch
               checked={estaActivo}
               onChange={(e: any) => actualizarCampoDelFormulario(claveCampo, e.value ? 'S' : 'N')}
               disabled={!(puedeEditarActivo && puedeEditarActivo())}
             />
-            <span style={{ fontSize: 14 }}>{estaActivo ? 'Activo' : 'Inactivo'}</span>
+            <span className="productos-editar-switch-text">{estaActivo ? 'Activo' : 'Inactivo'}</span>
           </div>
           {renderError(claveCampo)}
         </>
@@ -348,7 +349,7 @@ export default function Editar(props: Props) {
   const descripcionCampo =
     !(columnasDeLaCuadricula || []).some((col) => col.key === 'descripcion') ? (
       <div className="record-panel__field">
-        <label className="record-panel__label">Descripción</label>
+        <label className="record-panel__label">DescripciÃ³n</label>
         {mode === 'ver' ? (
           renderSoloLectura(String((formulario as any)?.descripcion ?? ''))
         ) : (
@@ -437,7 +438,7 @@ export default function Editar(props: Props) {
         if (productosAPI && typeof (productosAPI as any).uploadProductoImagen === 'function') {
           data = await (productosAPI as any).uploadProductoImagen(productoId, archivo, nombreDeArchivoDeseado)
         } else {
-          throw new Error('Método uploadProductoImagen no disponible en ProductosAPI')
+          throw new Error('MÃ©todo uploadProductoImagen no disponible en ProductosAPI')
         }
       } catch (errorSubida) {
         throw errorSubida
@@ -485,11 +486,11 @@ export default function Editar(props: Props) {
     }
   }
 
-  /* === Eliminación de imagen (confirmación y llamada API) === */
+  /* === EliminaciÃ³n de imagen (confirmaciÃ³n y llamada API) === */
   const eliminarImagenDelProductoConConfirmacion = () => {
     confirmDialog({
-      message: '¿Estás seguro de que quieres eliminar esta imagen? Esta acción no se puede deshacer.',
-      header: 'Confirmar eliminación',
+      message: 'Â¿EstÃ¡s seguro de que quieres eliminar esta imagen? Esta acciÃ³n no se puede deshacer.',
+      header: 'Confirmar eliminaciÃ³n',
       icon: 'pi pi-exclamation-triangle',
       accept: async () => {
         try {
@@ -502,7 +503,7 @@ export default function Editar(props: Props) {
           console.log('Imagen eliminada correctamente')
         } catch (error) {
           console.error('Error al eliminar la imagen:', error)
-          alert('Error al eliminar la imagen. Inténtalo de nuevo.')
+          alert('Error al eliminar la imagen. IntÃ©ntalo de nuevo.')
         }
       },
       reject: () => { /* cancel */ },
@@ -513,7 +514,7 @@ export default function Editar(props: Props) {
     })
   }
 
-  /* === Subida automática tras guardar === */
+  /* === Subida automÃ¡tica tras guardar === */
   const intentarSubirImagenDespuesDeGuardar = async (archivo?: File) => {
     const archivoPendiente: File | undefined = archivo || (formulario as any)?._imagenFile
     if (!archivoPendiente) return
@@ -529,14 +530,14 @@ export default function Editar(props: Props) {
     }
 
     if (!productoId) {
-      alert('Producto guardado pero no se ha podido subir la imagen automáticamente porque el registro no tiene id. Abre el registro y sube la imagen.')
+      alert('Producto guardado pero no se ha podido subir la imagen automÃ¡ticamente porque el registro no tiene id. Abre el registro y sube la imagen.')
       return
     }
 
     try {
       await subirImagenDelProducto(archivoPendiente, productoId)
     } catch (errorSubidaAutomatica) {
-      // La función de subida ya muestra errores, no repetimos alerta
+      // La funciÃ³n de subida ya muestra errores, no repetimos alerta
     }
   }
 
@@ -547,12 +548,12 @@ export default function Editar(props: Props) {
     const nombre = String((formulario as any).nombre || '').trim()
     if (!nombre) nuevosErrores.nombre = 'El nombre del producto es obligatorio'
 
-    const anyoValor = (formulario as any).anyo ?? (formulario as any)['año']
+    const anyoValor = (formulario as any).anyo ?? (formulario as any)['aÃ±o']
     const anyoStr = anyoValor !== undefined && anyoValor !== null ? String(anyoValor).trim() : ''
     const currentYearLocal = new Date().getFullYear()
-    if (!anyoStr) nuevosErrores.anyo = 'El año es obligatorio'
-    else if (Number.isNaN(Number(anyoStr))) nuevosErrores.anyo = 'El año debe ser un número'
-    else if (Number(anyoStr) < 1900 || Number(anyoStr) > currentYearLocal) nuevosErrores.anyo = `El año debe estar entre 1900 y ${currentYearLocal}`
+    if (!anyoStr) nuevosErrores.anyo = 'El aÃ±o es obligatorio'
+    else if (Number.isNaN(Number(anyoStr))) nuevosErrores.anyo = 'El aÃ±o debe ser un nÃºmero'
+    else if (Number(anyoStr) < 1900 || Number(anyoStr) > currentYearLocal) nuevosErrores.anyo = `El aÃ±o debe estar entre 1900 y ${currentYearLocal}`
 
     if (Object.keys(nuevosErrores).length > 0) { setErrores(nuevosErrores); return }
 
@@ -564,12 +565,12 @@ export default function Editar(props: Props) {
     if (payload._estadoNombre !== undefined) delete payload._estadoNombre
     if (payload._cb !== undefined) delete payload._cb
 
-    const anyoValor2 = (formulario as any).anyo ?? (formulario as any)['año']
+    const anyoValor2 = (formulario as any).anyo ?? (formulario as any)['aÃ±o']
     if (anyoValor2 !== undefined && anyoValor2 !== null && String(anyoValor2).trim() !== '') {
       const parsedYear = Number(String(anyoValor2).trim())
       if (!Number.isNaN(parsedYear)) payload.anyo = parsedYear
     }
-    if (Object.prototype.hasOwnProperty.call(payload, 'año')) delete payload['año']
+    if (Object.prototype.hasOwnProperty.call(payload, 'aÃ±o')) delete payload['aÃ±o']
     if (payload.nombre) payload.nombre = String(payload.nombre).trim()
 
     let resultadoGuardado: any = null
@@ -613,6 +614,7 @@ export default function Editar(props: Props) {
     />
   )
 }
+
 
 
 

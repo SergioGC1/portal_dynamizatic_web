@@ -12,6 +12,28 @@ import usePermisos from '../../hooks/usePermisos';
 import { useAuth } from '../../contexts/AuthContext';
 import { ConfirmDialog, confirmDialog } from 'primereact/confirmdialog';
 import { Toast } from 'primereact/toast';
+import '../../styles/pages/UsuariosPage.scss';
+
+const API_UPLOAD_BASE_URL =
+  process.env.REACT_APP_UPLOAD_BASE_URL ||
+  process.env.REACT_APP_API_URL ||
+  '';
+
+const construirUrlImagen = (ruta?: string) => {
+  if (!ruta) return '';
+  const texto = String(ruta);
+  if (texto.startsWith('http://') || texto.startsWith('https://')) return texto;
+  if (!API_UPLOAD_BASE_URL) return texto;
+  if (texto.startsWith('/')) return `${API_UPLOAD_BASE_URL}${texto}`;
+  return `${API_UPLOAD_BASE_URL}/${texto}`;
+};
+
+const obtenerInicialesUsuario = (nombre?: string, apellidos?: string) => {
+  const inicialNombre = (nombre || '').trim().charAt(0).toUpperCase();
+  const inicialApellido = (apellidos || '').trim().charAt(0).toUpperCase();
+  const combinadas = `${inicialNombre}${inicialApellido}`.trim();
+  return combinadas || '?';
+};
 
 // Page principal para Usuarios — obtiene la lista usando el adaptador en src/api-endpoints/usuarios
 export default function PageUsuarios() {
@@ -40,37 +62,25 @@ export default function PageUsuarios() {
       filterable: false,
       render: (value: any, row: any) => {
         const img = value || row?.imagen || '';
-        const apiBase =
-          (typeof window !== 'undefined' && (window as any).__API_BASE_URL__) ||
-          'http://127.0.0.1:3000';
-        const buildSrc = (p: string) => {
-          const s = String(p);
-          if (s.startsWith('http://') || s.startsWith('https://')) return s;
-          if (s.startsWith('/')) return `${apiBase}${s}`;
-          return `${apiBase}/${s}`;
-        };
         const nombreUsuario = String(row?.nombreUsuario || '');
         const apellidos = String(row?.apellidos || '');
-        // iniciales: primera letra de nombreUsuario + primera letra del primer apellido
-        const iniciales = (
-          nombreUsuario.trim().charAt(0).toUpperCase() + apellidos.charAt(0)
-        ).toUpperCase();
+        const iniciales = obtenerInicialesUsuario(nombreUsuario, apellidos);
         const displayName = `${nombreUsuario}${apellidos ? ' ' + apellidos : ''}`.trim();
-        // cache-buster local (`_cb`) para recargar avatar tras subida
         const cb = row && (row as any)._cb ? `cb=${(row as any)._cb}` : '';
-        const baseSrc = buildSrc(String(img));
-        const srcWithCb = cb
-          ? baseSrc + (baseSrc.includes('?') ? `&${cb}` : `?${cb}`)
-          : baseSrc;
+        const baseSrc = construirUrlImagen(String(img));
+        const srcWithCb =
+          cb && baseSrc
+            ? baseSrc + (baseSrc.includes('?') ? `&${cb}` : `?${cb}`)
+            : baseSrc;
 
         return (
-          <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-            {img ? (
+          <div className="usuarios-page__avatar">
+            {srcWithCb ? (
               <div className="user-avatar">
                 <img src={srcWithCb} alt={String(displayName)} />
               </div>
             ) : (
-              <div className="user-avatar avatar-placeholder">{iniciales || '?'}</div>
+              <div className="user-avatar avatar-placeholder">{iniciales}</div>
             )}
           </div>
         );
@@ -208,10 +218,10 @@ export default function PageUsuarios() {
   );
 
   return (
-    <div style={{ padding: 16 }}>
+    <div className="usuarios-page">
       <Toast ref={setToast} />
       <ConfirmDialog />
-      {mensajeError && <div style={{ color: 'red' }}>{mensajeError}</div>}
+      {mensajeError && <div className="usuarios-page__error">{mensajeError}</div>}
 
       <div className="tabla-personalizada">
         {!modoPanel && (
@@ -247,25 +257,17 @@ export default function PageUsuarios() {
             />
 
             {!hasSearched && !cargando && (
-              <div
-                style={{
-                  textAlign: 'center',
-                  padding: 40,
-                  background: '#f8f9fa',
-                  borderRadius: 8,
-                  margin: '20px 0',
-                }}
-              >
-                <h4 style={{ color: '#666', marginBottom: 16 }}>Usuarios</h4>
+              <div className="usuarios-page__placeholder">
+                <h4 className="usuarios-page__placeholder-title">Usuarios</h4>
               </div>
             )}
 
             {cargando && !hasSearched && (
-              <div style={{ textAlign: 'center', padding: 20 }}>Cargando usuarios...</div>
+              <div className="usuarios-page__loading">Cargando usuarios...</div>
             )}
 
             {hasSearched && (
-              <div style={{ position: 'relative' }}>
+              <div className="usuarios-page__table-wrapper">
                 <DataTable
                   ref={tableRef}
                   columns={columns}
@@ -418,25 +420,8 @@ export default function PageUsuarios() {
                   }}
                 />
                 {cargando && (
-                  <div
-                    style={{
-                      position: 'absolute',
-                      inset: 0,
-                      background: 'rgba(255,255,255,0.6)',
-                      display: 'flex',
-                      alignItems: 'center',
-                      justifyContent: 'center',
-                      pointerEvents: 'none',
-                    }}
-                  >
-                    <div
-                      style={{
-                        padding: 12,
-                        background: '#fff',
-                        borderRadius: 6,
-                        boxShadow: '0 2px 8px rgba(0,0,0,0.12)',
-                      }}
-                    >
+                  <div className="usuarios-page__table-overlay">
+                    <div className="usuarios-page__table-overlay-box">
                       Cargando...
                     </div>
                   </div>

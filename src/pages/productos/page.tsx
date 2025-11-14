@@ -9,6 +9,7 @@ import TableToolbar from '../../components/ui/TableToolbar'
 import usePermisos from '../../hooks/usePermisos'
 import { ConfirmDialog, confirmDialog } from 'primereact/confirmdialog'
 import { Toast } from 'primereact/toast'
+import '../../styles/pages/ProductosPage.scss'
 
 export default function PageProductos() {
   const [productos, setProductos] = useState<any[]>([])
@@ -50,10 +51,8 @@ export default function PageProductos() {
       sortable: true,
       filterOptions: (estados || []).map((e: any) => ({ label: String(e?.nombre || e?.name || e?.title || ''), value: String(e?.id) })),
       render: (value: any, row: any) => {
-        // value puede ser el id, o la fila puede traer la entidad completa en row.estado
         let claveEstado: string | number | undefined = value
         if ((claveEstado === undefined || claveEstado === null) && row && row.estado) {
-          // row.estado puede ser objeto { id, nombre } o simplemente un string
           if (typeof row.estado === 'object' && row.estado !== null) claveEstado = row.estado.id ?? row.estado?.estadoId ?? row.estado?.id
           else claveEstado = row.estado
         }
@@ -64,7 +63,7 @@ export default function PageProductos() {
     { key: 'anyo', title: 'Año', sortable: true },
     { key: 'descripcion', title: 'Descripción', sortable: false },
     { key: 'color', title: 'Color', sortable: true },
-    // Nota: la base de datos usa la columna `tamaño` (con ñ). 
+    // Nota: la base de datos usa la columna `tamaño`.
     // Pero la api lo devuelve como tamaO.
     { key: 'tamaO', title: 'Tamaño', sortable: true },
     { key: 'dimension', title: 'Dimensión', sortable: true },
@@ -140,10 +139,10 @@ export default function PageProductos() {
   const columns = useMemo(() => (columnasDefinicion.length ? columnasDefinicion : [{ key: 'id', title: 'ID' }]), [columnasDefinicion])
 
   return (
-    <div style={{ padding: 16 }}>
+    <div className="productos-page">
       <Toast ref={setToast} />
       <ConfirmDialog />
-      {mensajeError && <div style={{ color: 'red' }}>{mensajeError}</div>}
+      {mensajeError && <div className="productos-page__error">{mensajeError}</div>}
       
       <div className="tabla-personalizada">
         {!modoPanel && (
@@ -169,23 +168,17 @@ export default function PageProductos() {
             />
 
             {!hasSearched && !cargando && (
-              <div style={{ 
-                textAlign: 'center', 
-                padding: 40, 
-                background: '#f8f9fa', 
-                borderRadius: 8,
-                margin: '20px 0'
-              }}>
-                <h4 style={{ color: '#666', marginBottom: 16 }}>
+              <div className="productos-page__placeholder">
+                <h4 className="productos-page__placeholder-title">
                   Buscar Productos
                 </h4>
               </div>
             )}
 
-            {cargando && <div style={{ textAlign: 'center', padding: 20 }}>Cargando productos...</div>}
+            {cargando && <div className="productos-page__loading">Cargando productos...</div>}
 
             {hasSearched && (
-              <div style={{ position: 'relative' }}>
+              <div className="productos-page__table-wrapper">
                 <DataTable
                   ref={tableRef}
                   columns={columns}
@@ -222,16 +215,8 @@ export default function PageProductos() {
                   }}
                 />
                 {cargando && (
-                  <div style={{
-                    position: 'absolute',
-                    inset: 0,
-                    background: 'rgba(255,255,255,0.6)',
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    pointerEvents: 'none'
-                  }}>
-                    <div style={{ padding: 12, background: '#fff', borderRadius: 6, boxShadow: '0 2px 8px rgba(0,0,0,0.12)' }}>Cargando...</div>
+                  <div className="productos-page__table-overlay">
+                    <div className="productos-page__table-overlay-box">Cargando...</div>
                   </div>
                 )}
               </div>

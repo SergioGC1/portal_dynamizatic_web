@@ -1,0 +1,25 @@
+.roles-page {
+  padding: 16px;
+}
+
+.roles-page__error {
+  color: red;
+}
+
+.roles-page__placeholder {
+  text-align: center;
+  padding: 40px;
+  background: #f8f9fa;
+  border-radius: 8px;
+  margin: 20px 0;
+}
+
+.roles-page__placeholder-title {
+  color: #666;
+  margin-bottom: 16px;
+}
+
+.roles-page__loading {
+  text-align: center;
+  padding: 20px;
+}

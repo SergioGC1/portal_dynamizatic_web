@@ -2,6 +2,7 @@ import React from 'react';
 import { Button } from 'primereact/button';
 import { InputSwitch } from 'primereact/inputswitch';
 import '../../styles/paneles/PanelRol.scss';
+import '../../styles/pages/EditarDatosRoles.scss';
 
 interface FormularioRol {
   id?: number | string;
@@ -41,19 +42,24 @@ export default function EditarDatosRolesVista({
   const titulo = estaEnModoVer ? 'Ver Rol' : 'Editar Rol';
 
   return (
-    <div className="record-panel" style={{ maxWidth: '100%' }}>
+    <div className="record-panel roles-editar__panel">
       <div className="record-panel__header">
         <strong className="record-panel__title">{titulo}</strong>
         <div className="record-panel__controls">
           {!estaEnModoVer && (
-            <Button label="Guardar" onClick={onGuardarClick} style={{ marginRight: 8 }} disabled={cargando} />
+            <Button
+              label="Guardar"
+              onClick={onGuardarClick}
+              className="roles-editar__guardar-btn"
+              disabled={cargando}
+            />
           )}
           {esPanel && <Button label="Cerrar" onClick={onCerrarClick} className="p-button-secondary" />}
         </div>
       </div>
 
-      {cargando && <div style={{ padding: 8 }}>Cargando...</div>}
-      {errores.general && <div style={{ color: 'red', padding: 8 }}>{errores.general}</div>}
+      {cargando && <div className="roles-editar__loading">Cargando...</div>}
+      {errores.general && <div className="roles-editar__error">{errores.general}</div>}
 
       <div className="record-panel__top">
         <div className="record-panel__main-title record-panel__main-title--full">
@@ -67,13 +73,13 @@ export default function EditarDatosRolesVista({
             className={`record-panel__input ${errores.nombre ? 'record-panel__input--error' : ''}`}
             disabled={cargando || estaEnModoVer}
           />
-          {errores.nombre && <div style={{ color: 'red', marginTop: 6 }}>{errores.nombre}</div>}
+          {errores.nombre && <div className="roles-editar__field-error">{errores.nombre}</div>}
         </div>
       </div>
 
       <div className="record-panel__field">
         <label className="record-panel__label">Estado</label>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+        <div className="roles-editar__estado-row">
           <InputSwitch
             checked={estaActivo}
             onChange={(e: any) => {
@@ -81,7 +87,9 @@ export default function EditarDatosRolesVista({
             }}
             disabled={cargando || estaEnModoVer}
           />
-          <span style={{ fontSize: 14 }}>{estaActivo ? 'Sí' : 'No'}</span>
+          <span className="roles-editar__estado-text">
+            {estaActivo ? 'Activo' : 'Inactivo'}
+          </span>
         </div>
       </div>
     </div>

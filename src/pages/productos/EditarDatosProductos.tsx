@@ -3,6 +3,7 @@ import Button from '../../components/ui/Button'
 import { ConfirmDialog } from 'primereact/confirmdialog'
 import '../../components/ui/GestorEditores.css'
 import '../../styles/paneles/PanelProducto.scss'
+import '../../styles/pages/EditarDatosProductos.scss'
 
 type Modo = 'ver' | 'editar'
 
@@ -65,7 +66,12 @@ export default function EditarDatosProductosVista({
                 <strong className="record-panel__title">{modo === 'ver' ? 'Ver producto' : 'Editar producto'}</strong>
                 <div className="record-panel__controls">
                     {modo === 'editar' && (
-                        <Button label="Guardar" onClick={onGuardarClick} disabled={cargando} style={{ marginRight: 8 }} />
+                        <Button
+                            label="Guardar"
+                            onClick={onGuardarClick}
+                            disabled={cargando}
+                            className="productos-editar__guardar-btn"
+                        />
                     )}
                     {esPanel && <Button label="Cerrar" onClick={onCerrarClick} className="p-button-secondary" />}
                 </div>
@@ -73,21 +79,19 @@ export default function EditarDatosProductosVista({
 
             <div className="record-panel__top">
                 {imagen.mostrar && (
-                    <div style={{ position: 'relative', width: 180 }}>
-                        <div className="record-panel__image-box--static" style={{ width: 180, height: 180 }}>
+                    <div className="productos-editar__image-wrapper">
+                        <div className="record-panel__image-box--static productos-editar__image-box">
                             {imagen.vistaPreviaLocal ? (
                                 <img
                                     src={imagen.vistaPreviaLocal}
                                     alt="Vista previa"
-                                    className="record-panel__thumbnail"
-                                    style={{ objectFit: 'contain' }}
+                                    className="record-panel__thumbnail productos-editar__image productos-editar__image--contain"
                                 />
                             ) : imagen.urlActual ? (
                                 <img
                                     src={imagen.urlActual}
                                     alt="Imagen del producto"
-                                    className="record-panel__thumbnail"
-                                    style={{ objectFit: 'contain' }}
+                                    className="record-panel__thumbnail productos-editar__image productos-editar__image--contain"
                                     onError={imagen.onImagenError}
                                 />
                             ) : (
@@ -105,48 +109,37 @@ export default function EditarDatosProductosVista({
                         </div>
 
                         {modo === 'editar' && (
-                            <div style={{ marginTop: 12 }}>
+                            <div className="productos-editar__upload-section">
                                 <input
                                     ref={imagen.fileInputRef}
                                     type="file"
                                     accept="image/*"
-                                    style={{ display: 'none' }}
+                                    className="productos-editar__file-input"
                                     onChange={(evento) =>
                                         imagen.onSeleccionarArchivo?.(evento.target.files ? evento.target.files[0] : undefined)
                                     }
                                 />
-                                <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'nowrap' }}>
+                                <div className="productos-editar__upload-row">
                                     <Button
                                         icon="pi pi-upload"
                                         label="Seleccionar"
                                         className="p-button-outlined"
                                         onClick={() => imagen.fileInputRef?.current?.click()}
-                                        style={{ flex: '0 0 auto', minWidth: 92 }}
                                     />
                                     {imagen.nombreArchivo && (
-                                            <span
-                                                style={{
-                                                    fontSize: '0.85em',
-                                                    color: '#495057',
-                                                    flex: '0 0 auto',
-                                                    backgroundColor: '#f0f0f0',
-                                                    padding: '6px 10px',
-                                                    borderRadius: 6,
-                                                    marginLeft: 6,
-                                                    display: 'inline-block',
-                                                    whiteSpace: 'normal'
-                                                }}
-                                                title={imagen.nombreArchivo}
-                                            >
-                                                {imagen.nombreArchivo}
-                                            </span>
-                                        )}
+                                        <span
+                                            className="productos-editar__file-badge"
+                                            title={imagen.nombreArchivo}
+                                        >
+                                            {imagen.nombreArchivo}
+                                        </span>
+                                    )}
+                                    {!imagen.nombreArchivo && (
+                                        <span className="productos-editar__file-placeholder">
+                                            Ningún archivo seleccionado
+                                        </span>
+                                    )}
                                 </div>
-                                {!imagen.tieneId && (
-                                    <small style={{ color: '#6c757d', display: 'block', marginTop: 6 }}>
-                                        Guarda el producto para poder adjuntar la imagen.
-                                    </small>
-                                )}
                             </div>
                         )}
                     </div>

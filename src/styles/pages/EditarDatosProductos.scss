@@ -1,0 +1,84 @@
+.productos-editar__guardar-btn {
+  margin-right: 8px;
+}
+
+.productos-editar__image-wrapper {
+  position: relative;
+  width: 180px;
+}
+
+.productos-editar__image-box {
+  width: 180px;
+  height: 180px;
+  overflow: hidden;
+  background: #fff;
+  border-radius: 6px;
+}
+
+.productos-editar__image {
+  width: 100%;
+  height: 100%;
+  border-radius: 6px;
+  object-fit: contain;
+}
+
+.record-panel__image-box--static .productos-editar__image {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+}
+
+.productos-editar__image--contain {
+  object-fit: contain;
+}
+
+.productos-editar__upload-section {
+  margin-top: 12px;
+}
+
+.productos-editar__file-input {
+  display: none;
+}
+
+.productos-editar__upload-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: nowrap;
+  white-space: nowrap;
+}
+
+.productos-editar__upload-row .p-button,
+.productos-editar__upload-row .p-button-outlined,
+.productos-editar__upload-row button {
+  flex: 0 0 auto;
+  min-width: 92px;
+}
+
+.productos-editar__file-placeholder {
+  color: #999;
+}
+
+.productos-editar__file-badge {
+  font-size: 0.85em;
+  color: #495057;
+  flex: 0 0 auto;
+  background-color: #f0f0f0;
+  padding: 6px 10px;
+  border-radius: 6px;
+  margin-left: 6px;
+  display: inline-block;
+  white-space: normal;
+}
+
+.productos-editar__file-placeholder {
+  font-size: 0.85em;
+  color: #999;
+  margin-left: 6px;
+}
+
+.productos-editar__upload-helper {
+  color: #6c757d;
+  display: block;
+  margin-top: 6px;
+}

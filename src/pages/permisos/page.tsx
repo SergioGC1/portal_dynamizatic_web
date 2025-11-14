@@ -2,6 +2,7 @@ import React, { useEffect, useMemo, useState } from 'react';
 import RolesAPI from '../../api-endpoints/roles/index';
 import PermisosAPI from '../../api-endpoints/permisos/index';
 import usePermisos from '../../hooks/usePermisos';
+import '../../styles/pages/PermisosPage.scss';
 
 type Permiso = { id?: string | number; pantalla: string; accion: string; permisoSn: string; rolId: number | string };
 
@@ -48,7 +49,7 @@ export default function PaginaPermisos() {
   }, [listaPermisos]);
 
   if (!puedeVerPagina) {
-    return <div style={{ padding: 16, color: '#a00' }}>No tienes permisos para ver esta sección.</div>
+    return <div className="permisos-page__no-access">No tienes permisos para ver esta sección.</div>
   }
 
   // Helper: obtener permiso por rol+pantalla+accion
@@ -85,38 +86,38 @@ export default function PaginaPermisos() {
 
   // Render por pantalla
   return (
-    <div>
-      {mensajeError && <div style={{ color: 'red', margin: 8 }}>{mensajeError}</div>}
-      {cargando && <div style={{ margin: 8 }}>Cargando permisos y roles...</div>}
+    <div className="permisos-page">
+      {mensajeError && <div className="permisos-page__error">{mensajeError}</div>}
+      {cargando && <div className="permisos-page__loading">Cargando permisos y roles...</div>}
 
       {pantallasSeccion.map(seccion => (
-        <section key={seccion.pantalla} style={{ marginTop: 16 }}>
-            <h3 style={{ background: '#2c2c2c', color: '#fff', padding: '8px 12px' }}>{seccion.pantalla}</h3>
-          <table style={{ width: '100%', borderCollapse: 'collapse', marginTop: 8 }}>
+        <section key={seccion.pantalla} className="permisos-page__section">
+          <h2 className="permisos-page__section-title">{seccion.pantalla}</h2>
+          <table className="permisos-page__table">
             <thead>
               <tr>
-                <th style={{ padding: 10, borderBottom: '1px solid #ddd', textAlign: 'left' }}>ROL</th>
+                <th className="permisos-page__th permisos-page__th--left">ROL</th>
                 {listaRoles.map(rol => (
-                  <th key={rol.id} style={{ padding: 10, borderBottom: '1px solid #ddd', textAlign: 'center', background: '#f5f5f5', textTransform: 'uppercase' }}>{rol.nombre || rol.name || `Rol ${rol.id}`}</th>
+                  <th key={rol.id} className="permisos-page__th permisos-page__th--role">{rol.nombre || rol.name || `Rol ${rol.id}`}</th>
                 ))}
               </tr>
             </thead>
             <tbody>
               {seccion.acciones.map((accion: string) => (
-                <tr key={accion} style={{ borderBottom: '1px solid #f2f2f2' }}>
-                  <td style={{ padding: 12 }}>{accion}</td>
+                <tr key={accion}>
+                  <td className="permisos-page__td permisos-page__accion">{accion}</td>
                   {listaRoles.map(rol => {
                     const permisoParaCelda = buscarPermisoPorRol(rol.id, seccion.pantalla, accion);
                     const marcado = permisoParaCelda ? permisoParaCelda.permisoSn === 'S' : false;
                     const deshabilitado = celdaGuardando === (permisoParaCelda ? String(permisoParaCelda.id) : `${rol.id}-${seccion.pantalla}-${accion}`);
                     return (
-                      <td key={rol.id} style={{ padding: 12, textAlign: 'center' }}>
+                      <td key={rol.id} className="permisos-page__td permisos-page__td--checkbox">
                         <input
                           type="checkbox"
                           checked={marcado}
                           disabled={deshabilitado}
                           onChange={() => alternarPermiso(rol.id, seccion.pantalla, accion)}
-                          style={{ width: 18, height: 18, accentColor: '#1976d2', boxShadow: marcado ? '0 0 6px rgba(25,118,210,0.4)' : 'none' }}
+                          className="permisos-page__checkbox"
                         />
                       </td>
                     );
