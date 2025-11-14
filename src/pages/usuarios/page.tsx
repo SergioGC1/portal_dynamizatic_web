@@ -1,4 +1,4 @@
-import React, { useMemo, useState, useRef, useEffect } from 'react';
+import React, { useMemo, useState, useRef } from 'react';
 // Estilos globales para páginas y componentes
 import '../../styles/layout.scss';
 import '../../styles/_main.scss';
@@ -18,16 +18,19 @@ export default function PageUsuarios() {
   // - usuarios: lista de usuarios cargada desde la API
   // - cargando: indicador de carga mientras se consulta la API
   // - mensajeError: texto con el error si ocurre
-  // - idSeleccionado: id del usuario actualmente seleccionado
-  // - columnasDefinicion: definición de columnas calculada a partir de los datos
-  const [usuarios, setUsers] = useState<any[]>([]); // lista de usuarios (setter mantiene nombre técnico `setUsers`)
+  const [usuarios, setUsers] = useState<any[]>([]); // lista de usuarios
   const [cargando, setLoading] = useState(false);
   const [mensajeError, setError] = useState<string | null>(null);
   const [hasSearched, setHasSearched] = useState(false); // Indica si ya se ha realizado una búsqueda
 
+  // Paginación server-side
+  const [tablaPaginacion, setTablaPaginacion] = useState<{ first: number; rows: number }>({
+    first: 0,
+    rows: 10,
+  });
+  const [totalUsuarios, setTotalUsuarios] = useState(0);
+
   // Definición explícita de columnas que queremos mostrar en la tabla de Usuarios.
-  // Edita este arreglo para mostrar u ocultar atributos.
-  // Columnas basadas en la definición de la tabla `usuarios` en la BD
   const [columnasDefinicion] = useState<ColumnDef<any>[]>([
     // Avatar / imagen (primera columna)
     {
@@ -36,23 +39,30 @@ export default function PageUsuarios() {
       sortable: false,
       filterable: false,
       render: (value: any, row: any) => {
-        const img = value || row?.imagen || ''
-        const apiBase = (typeof window !== 'undefined' && (window as any).__API_BASE_URL__) || 'http://127.0.0.1:3000'
+        const img = value || row?.imagen || '';
+        const apiBase =
+          (typeof window !== 'undefined' && (window as any).__API_BASE_URL__) ||
+          'http://127.0.0.1:3000';
         const buildSrc = (p: string) => {
-          const s = String(p)
-          if (s.startsWith('http://') || s.startsWith('https://')) return s
-          if (s.startsWith('/')) return `${apiBase}${s}`
-          return `${apiBase}/${s}`
-        }
-        const nombreUsuario = String(row?.nombreUsuario || '')
-        const apellidos = String(row?.apellidos || '')
+          const s = String(p);
+          if (s.startsWith('http://') || s.startsWith('https://')) return s;
+          if (s.startsWith('/')) return `${apiBase}${s}`;
+          return `${apiBase}/${s}`;
+        };
+        const nombreUsuario = String(row?.nombreUsuario || '');
+        const apellidos = String(row?.apellidos || '');
         // iniciales: primera letra de nombreUsuario + primera letra del primer apellido
-        const iniciales = (nombreUsuario.trim().charAt(0).toUpperCase() + apellidos.charAt(0)).toUpperCase()
-        const displayName = `${nombreUsuario}${apellidos ? ' ' + apellidos : ''}`.trim()
-        // Si el registro trae un cache-buster local (`_cb`) lo añadimos para forzar
-        // la recarga del avatar tras una subida reciente.
-        const cb = (row && (row as any)._cb) ? `cb=${(row as any)._cb}` : ''
-        const srcWithCb = cb ? (buildSrc(String(img)) + (String(buildSrc(String(img))).includes('?') ? `&${cb}` : `?${cb}`)) : buildSrc(String(img))
+        const iniciales = (
+          nombreUsuario.trim().charAt(0).toUpperCase() + apellidos.charAt(0)
+        ).toUpperCase();
+        const displayName = `${nombreUsuario}${apellidos ? ' ' + apellidos : ''}`.trim();
+        // cache-buster local (`_cb`) para recargar avatar tras subida
+        const cb = row && (row as any)._cb ? `cb=${(row as any)._cb}` : '';
+        const baseSrc = buildSrc(String(img));
+        const srcWithCb = cb
+          ? baseSrc + (baseSrc.includes('?') ? `&${cb}` : `?${cb}`)
+          : baseSrc;
+
         return (
           <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
             {img ? (
@@ -63,8 +73,8 @@ export default function PageUsuarios() {
               <div className="user-avatar avatar-placeholder">{iniciales || '?'}</div>
             )}
           </div>
-        )
-      }
+        );
+      },
     },
     { key: 'nombreUsuario', title: 'Nombre', sortable: true },
     { key: 'apellidos', title: 'Apellidos', sortable: true },
@@ -74,25 +84,26 @@ export default function PageUsuarios() {
       title: 'Activo',
       sortable: true,
       render: (value: any) => {
-        const v = String(value ?? '').toUpperCase()
-        const isActive = v === 'S'
+        const v = String(value ?? '').toUpperCase();
+        const isActive = v === 'S';
         return (
           <span className={`badge-estado ${isActive ? 'badge-activo' : 'badge-inactivo'}`}>
             {isActive ? 'Activo' : 'Inactivo'}
           </span>
-        )
+        );
       },
     },
   ]);
+
   const tableRef = useRef<DataTableHandle | null>(null);
   const [toast, setToast] = useState<any>(null);
+
   // Obtener usuario actual desde el AuthContext (usa el objeto guardado en login/register)
   const { user: authUser } = useAuth();
   // Cargar permisos del rol actual
-  const { hasPermission } = usePermisos()
-  // Obtener email del usuario actual
-  // 1) authUser.email si está en el contexto
-  // 2) Si no, leer el objeto `user` guardado en localStorage y usar su email
+  const { hasPermission } = usePermisos();
+
+  // Obtener email del usuario actual (authUser o localStorage)
   const currentEmail = React.useMemo(() => {
     if (authUser && (authUser as any).email) return (authUser as any).email;
     try {
@@ -104,48 +115,86 @@ export default function PageUsuarios() {
       return null;
     }
   }, [authUser]);
-  // Filtro de búsqueda temporal (no aplica hasta pulsar "Buscar")
+
+  // Filtro de búsqueda (texto) — solo se aplica al pulsar "Buscar"
   const [filtroBusquedaTemporal, establecerFiltroBusquedaTemporal] = useState<string>('');
   const [filtroBusquedaAplicar, setFiltroBusquedaAplicar] = useState<string>('');
-  const [pageState] = useState<{ first: number; rows: number }>({ first: 0, rows: 10 })
+
   // Estados locales del panel (ver / editar)
   const [modoPanel, setModoPanel] = useState<'ver' | 'editar' | null>(null);
   const [registroPanel, setRegistroPanel] = useState<any | null>(null);
 
-  const refresh = async () => {
-    // Congelar el valor actual del filtro para esta búsqueda
-    const filtro = filtroBusquedaTemporal
-    setFiltroBusquedaAplicar(filtro)
-    // Cargar todos los usuarios en modo cliente para permitir orden/filtrado fluido
-    setLoading(true)
-    setError(null)
+  // Normalizar respuesta de la API (compatibilidad: array plano o {data,total})
+  const normalizarRespuestaUsuarios = (respuesta: any): { lista: any[]; total: number } => {
+    if (respuesta && Array.isArray(respuesta.data)) {
+      const total =
+        typeof respuesta.total === 'number' ? respuesta.total : respuesta.data.length;
+      return { lista: respuesta.data, total };
+    }
+    if (Array.isArray(respuesta)) {
+      return { lista: respuesta, total: respuesta.length };
+    }
+    return { lista: [], total: 0 };
+  };
+
+  // Carga paginada desde backend
+  // Carga paginada desde backend con ordenación incluida
+  const fetchUsuarios = async ({
+    first = tablaPaginacion.first,
+    rows = tablaPaginacion.rows,
+    search = filtroBusquedaAplicar,
+    sortField = null,
+    sortOrder = null,
+  }: {
+    first?: number;
+    rows?: number;
+    search?: string;
+    sortField?: string | null;
+    sortOrder?: number | null;
+  } = {}) => {
+    setLoading(true);
+    setError(null);
+
     try {
-      const list = await UsuariosAPI.findUsuarios()
-      setUsers(list || [])
-      setHasSearched(true)
+      const params: any = {
+        limit: rows,
+        offset: first,
+      };
+
+      if (search) params.search = search;
+      if (sortField) params.sortField = sortField;
+      if (typeof sortOrder === 'number') params.sortOrder = sortOrder;
+
+      const respuesta = await UsuariosAPI.findUsuarios(params);
+      const { lista, total } = normalizarRespuestaUsuarios(respuesta);
+
+      setUsers(lista || []);
+      setTotalUsuarios(total);
+      setTablaPaginacion({ first, rows });
+      setHasSearched(true);
     } catch (e: any) {
-      console.error(e)
-      setError(e?.message || 'Error cargando usuarios')
+      console.error(e);
+      setError(e?.message || 'Error cargando usuarios');
     } finally {
-      setLoading(false)
+      setLoading(false);
     }
-  }
+  };
 
-  
 
-  // Aplicar el filtro cuando la tabla esté visible (no cargando) tras una búsqueda
-  useEffect(() => {
-    if (hasSearched && !cargando) {
-      tableRef.current?.setGlobalFilter(filtroBusquedaAplicar)
-    }
-  }, [hasSearched, cargando, filtroBusquedaAplicar])
 
-  // El input solo cambia el filtro temporal; la búsqueda se hace exclusivamente al pulsar "Buscar".
+  const refresh = async () => {
+    await fetchUsuarios({
+      first: tablaPaginacion.first,
+      rows: tablaPaginacion.rows,
+      search: filtroBusquedaAplicar,
+    });
+  };
 
-  // (removed query param handling) Página no abre edición al clicar fila; el panel se controla con panelMode/panelRecord
-  // NOTA: No cargamos datos automáticamente - solo cuando el usuario presiona "Buscar"
-
-  const columns = useMemo(() => (columnasDefinicion.length ? columnasDefinicion : [{ key: 'id', title: 'ID' }]), [columnasDefinicion]);
+  // Columnas para el DataTable
+  const columns = useMemo(
+    () => (columnasDefinicion.length ? columnasDefinicion : [{ key: 'id', title: 'ID' }]),
+    [columnasDefinicion],
+  );
 
   return (
     <div style={{ padding: 16 }}>
@@ -158,38 +207,51 @@ export default function PageUsuarios() {
           <>
             <TableToolbar
               title="Usuarios"
-              onNew={() => { setModoPanel('editar'); setRegistroPanel({}) }}
+              onNew={() => {
+                setModoPanel('editar');
+                setRegistroPanel({});
+              }}
               puede={{ nuevo: hasPermission('Usuarios', 'Nuevo') }}
               onDownloadCSV={() => tableRef.current?.downloadCSV()}
-              onSearch={refresh} // Conectar búsqueda con refresh
+              onSearch={() => {
+                const criterio = filtroBusquedaTemporal.trim();
+                setFiltroBusquedaAplicar(criterio);
+                // Siempre reiniciamos a la primera página al buscar
+                fetchUsuarios({ first: 0, rows: tablaPaginacion.rows, search: criterio });
+              }}
               globalFilter={filtroBusquedaTemporal}
               setGlobalFilter={(texto: string) => {
                 // Solo actualizamos el filtro temporal; la tabla no cambia hasta pulsar "Buscar"
-                establecerFiltroBusquedaTemporal(texto)
+                establecerFiltroBusquedaTemporal(texto);
               }}
               clearFilters={() => {
-                // Limpiar filtros sin perder datos
-                establecerFiltroBusquedaTemporal('')
-                tableRef.current?.clearFilters()
-                setHasSearched(true)
+                // Limpiar filtro de búsqueda y recargar sin filtro (si ya se buscó antes)
+                establecerFiltroBusquedaTemporal('');
+                setFiltroBusquedaAplicar('');
+                tableRef.current?.clearFilters();
+                if (hasSearched) {
+                  fetchUsuarios({ first: 0, rows: tablaPaginacion.rows, search: '' });
+                }
               }}
             />
 
             {!hasSearched && !cargando && (
-              <div style={{
-                textAlign: 'center',
-                padding: 40,
-                background: '#f8f9fa',
-                borderRadius: 8,
-                margin: '20px 0'
-              }}>
-                <h4 style={{ color: '#666', marginBottom: 16 }}>
-                  Usuarios
-                </h4>
+              <div
+                style={{
+                  textAlign: 'center',
+                  padding: 40,
+                  background: '#f8f9fa',
+                  borderRadius: 8,
+                  margin: '20px 0',
+                }}
+              >
+                <h4 style={{ color: '#666', marginBottom: 16 }}>Usuarios</h4>
               </div>
             )}
 
-            {cargando && <div style={{ textAlign: 'center', padding: 20 }}>Cargando usuarios...</div>}
+            {cargando && !hasSearched && (
+              <div style={{ textAlign: 'center', padding: 20 }}>Cargando usuarios...</div>
+            )}
 
             {hasSearched && (
               <div style={{ position: 'relative' }}>
@@ -197,104 +259,167 @@ export default function PageUsuarios() {
                   ref={tableRef}
                   columns={columns}
                   data={usuarios}
-                  pageSize={pageState.rows}
+                  pageSize={tablaPaginacion.rows}
+                  // 🔹 Activamos modo server-side
+                  lazy
+                  totalRecords={totalUsuarios}
+                  onLazyLoad={({ first, rows, sortField, sortOrder }) => {
+                    fetchUsuarios({ first, rows, search: filtroBusquedaAplicar, sortField, sortOrder });
+                  }}
+
+
                   onNew={() => {
-                    setModoPanel('editar')
-                    setRegistroPanel({})
+                    setModoPanel('editar');
+                    setRegistroPanel({});
                   }}
                   onView={(r) => {
-                    setModoPanel('ver')
-                    setRegistroPanel(r)
+                    setModoPanel('ver');
+                    setRegistroPanel(r);
                   }}
                   onEdit={(r) => {
-                    setModoPanel('editar')
-                    setRegistroPanel(r)
+                    setModoPanel('editar');
+                    setRegistroPanel(r);
                   }}
                   onDelete={(row) => {
-                  if (!row) return
-                  // No permitir borrar al usuario autenticado
-                  const esPropio = currentEmail && String(row.email) === String(currentEmail)
-                  if (esPropio) {
-                    if (toast && toast.show) toast.show({ severity: 'warn', summary: 'No permitido', detail: 'No puedes eliminar tu propio usuario', life: 2500 })
-                    return
-                  }
-                  confirmDialog({
-                    message: `¿Seguro que deseas eliminar al usuario "${row?.nombreUsuario || row?.email || row?.id}"?`,
-                    header: 'Confirmar eliminación',
-                    icon: 'pi pi-exclamation-triangle',
-                    acceptLabel: 'Sí, eliminar',
-                    rejectLabel: 'Cancelar',
-                    acceptClassName: 'p-button-danger',
-                    accept: async () => {
-                      try {
-                        // 1) Eliminar credenciales del usuario (capa cliente para evitar FK)
-                        try {
-                          const todas = await CredencialesAPI.findCredencialesUsuarios()
-                          const asociadas = Array.isArray(todas) ? todas.filter((c: any) => Number(c?.usuarioId) === Number(row.id)) : []
-                          for (const c of asociadas) {
-                            if (c && c.id !== undefined) {
-                              // eslint-disable-next-line no-await-in-loop
-                              await CredencialesAPI.deleteCredencialesUsuarioById(c.id)
-                            }
-                          }
-                        } catch (eBorrarCred) {
-                          // Si falla limpiar credenciales, seguimos; el backend puede manejarlo
-                          console.warn('No se pudieron eliminar todas las credenciales del usuario antes del borrado:', eBorrarCred)
-                        }
-
-                        // 2) Intentar eliminar el usuario
-                        await UsuariosAPI.deleteUsuarioById(row.id)
-                        if (toast && toast.show) toast.show({ severity: 'success', summary: 'Eliminado', detail: 'Usuario eliminado correctamente', life: 2000 })
-                        await refresh()
-                      } catch (e: any) {
-                        console.error(e)
-                        // Fallback: desactivar el usuario si persisten dependencias (FK)
-                        try {
-                          await UsuariosAPI.updateUsuarioById(row.id, { activoSn: 'N' })
-                          const msgRaw = String(e?.message || '')
-                          const porFK = /foreign key|credenciales_usuario|constraint/i.test(msgRaw)
-                          const detail = porFK
-                            ? 'No se pudo eliminar por dependencias (credenciales vinculadas). Usuario desactivado.'
-                            : 'No se pudo eliminar el usuario. Se ha desactivado en su lugar.'
-                          if (toast && toast.show) toast.show({ severity: 'info', summary: 'Desactivado', detail, life: 3500 })
-                          await refresh()
-                        } catch (e2) {
-                          console.error(e2)
-                          if (toast && toast.show) toast.show({ severity: 'error', summary: 'Error', detail: 'No se pudo eliminar ni desactivar el usuario', life: 3000 })
-                        }
-                      }
+                    if (!row) return;
+                    // No permitir borrar al usuario autenticado
+                    const esPropio =
+                      currentEmail && String(row.email) === String(currentEmail);
+                    if (esPropio) {
+                      if (toast && toast.show)
+                        toast.show({
+                          severity: 'warn',
+                          summary: 'No permitido',
+                          detail: 'No puedes eliminar tu propio usuario',
+                          life: 2500,
+                        });
+                      return;
                     }
-                  })
-                }}
-                // Permisos para acciones: usamos hasPermission con la pantalla 'Usuarios'
-                puede={{
-                  ver: hasPermission('Usuarios', 'Ver'),
-                  editar: hasPermission('Usuarios', 'Actualizar'),
-                  borrar: hasPermission('Usuarios', 'Borrar'),
-                }}
-                // Ocultar botón eliminar si la fila corresponde al usuario logado.
-                // Usamos solo el email del usuario autenticado como criterio (prefieres esta convención).
-                allowDelete={(row) => {
-                  if (!row) return true;
-                  try {
-                    if (currentEmail && String(row.email) === String(currentEmail)) return false;
-                  } catch (e) {
-                    // En caso de error en la comparación, permitimos la acción por seguridad
-                  }
-                  return true;
-                }}
+                    confirmDialog({
+                      message: `¿Seguro que deseas eliminar al usuario "${row?.nombreUsuario || row?.email || row?.id
+                        }"?`,
+                      header: 'Confirmar eliminación',
+                      icon: 'pi pi-exclamation-triangle',
+                      acceptLabel: 'Sí, eliminar',
+                      rejectLabel: 'Cancelar',
+                      acceptClassName: 'p-button-danger',
+                      accept: async () => {
+                        try {
+                          // 1) Eliminar credenciales del usuario (capa cliente para evitar FK)
+                          try {
+                            const todas = await CredencialesAPI.findCredencialesUsuarios();
+                            const asociadas = Array.isArray(todas)
+                              ? todas.filter(
+                                (c: any) =>
+                                  Number(c?.usuarioId) === Number(row.id),
+                              )
+                              : [];
+                            for (const c of asociadas) {
+                              if (c && c.id !== undefined) {
+                                // eslint-disable-next-line no-await-in-loop
+                                await CredencialesAPI.deleteCredencialesUsuarioById(
+                                  c.id,
+                                );
+                              }
+                            }
+                          } catch (eBorrarCred) {
+                            console.warn(
+                              'No se pudieron eliminar todas las credenciales del usuario antes del borrado:',
+                              eBorrarCred,
+                            );
+                          }
+
+                          // 2) Intentar eliminar el usuario
+                          await UsuariosAPI.deleteUsuarioById(row.id);
+                          if (toast && toast.show)
+                            toast.show({
+                              severity: 'success',
+                              summary: 'Eliminado',
+                              detail: 'Usuario eliminado correctamente',
+                              life: 2000,
+                            });
+                          await refresh();
+                        } catch (e: any) {
+                          console.error(e);
+                          // Fallback: desactivar el usuario si persisten dependencias (FK)
+                          try {
+                            await UsuariosAPI.updateUsuarioById(row.id, {
+                              activoSn: 'N',
+                            });
+                            const msgRaw = String(e?.message || '');
+                            const porFK =
+                              /foreign key|credenciales_usuario|constraint/i.test(
+                                msgRaw,
+                              );
+                            const detail = porFK
+                              ? 'No se pudo eliminar por dependencias (credenciales vinculadas). Usuario desactivado.'
+                              : 'No se pudo eliminar el usuario. Se ha desactivado en su lugar.';
+                            if (toast && toast.show)
+                              toast.show({
+                                severity: 'info',
+                                summary: 'Desactivado',
+                                detail,
+                                life: 3500,
+                              });
+                            await refresh();
+                          } catch (e2) {
+                            console.error(e2);
+                            if (toast && toast.show)
+                              toast.show({
+                                severity: 'error',
+                                summary: 'Error',
+                                detail:
+                                  'No se pudo eliminar ni desactivar el usuario',
+                                life: 3000,
+                              });
+                          }
+                        }
+                      },
+                    });
+                  }}
+                  // Permisos para acciones: usamos hasPermission con la pantalla 'Usuarios'
+                  puede={{
+                    ver: hasPermission('Usuarios', 'Ver'),
+                    editar: hasPermission('Usuarios', 'Actualizar'),
+                    borrar: hasPermission('Usuarios', 'Borrar'),
+                  }}
+                  // Ocultar botón eliminar si la fila corresponde al usuario logado.
+                  allowDelete={(row) => {
+                    if (!row) return true;
+                    try {
+                      if (
+                        currentEmail &&
+                        String(row.email) === String(currentEmail)
+                      )
+                        return false;
+                    } catch (e) {
+                      // En caso de error en la comparación, permitimos la acción por seguridad
+                    }
+                    return true;
+                  }}
                 />
                 {cargando && (
-                  <div style={{
-                    position: 'absolute',
-                    inset: 0,
-                    background: 'rgba(255,255,255,0.6)',
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    pointerEvents: 'none'
-                  }}>
-                    <div style={{ padding: 12, background: '#fff', borderRadius: 6, boxShadow: '0 2px 8px rgba(0,0,0,0.12)' }}>Cargando...</div>
+                  <div
+                    style={{
+                      position: 'absolute',
+                      inset: 0,
+                      background: 'rgba(255,255,255,0.6)',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      pointerEvents: 'none',
+                    }}
+                  >
+                    <div
+                      style={{
+                        padding: 12,
+                        background: '#fff',
+                        borderRadius: 6,
+                        boxShadow: '0 2px 8px rgba(0,0,0,0.12)',
+                      }}
+                    >
+                      Cargando...
+                    </div>
                   </div>
                 )}
               </div>
@@ -308,69 +433,71 @@ export default function PageUsuarios() {
             record={registroPanel}
             entityType="usuario"
             columns={columns}
-                  // cuando GestorEditores suba una imagen correctamente, refrescamos la lista
+            // cuando GestorEditores suba una imagen correctamente, refrescamos la lista
             onUploadSuccess={async (userId: number) => {
               try {
-                // recargar la lista desde el servidor
-                await refresh()
-                // forzar cache-bust local para el usuario recién subido (evita mostrar imagen caché)
-                setUsers((prev) => prev.map(u => (u && Number(u.id) === Number(userId)) ? { ...u, _cb: Date.now() } : u))
-              } catch (e) { console.error(e) }
+                await refresh();
+                // forzar cache-bust local para el usuario recién subido
+                setUsers((prev) =>
+                  prev.map((u) =>
+                    u && Number(u.id) === Number(userId)
+                      ? { ...u, _cb: Date.now() }
+                      : u,
+                  ),
+                );
+              } catch (e) {
+                console.error(e);
+              }
             }}
             onClose={async () => {
-              setModoPanel(null)
-              setRegistroPanel(null)
-              await refresh()
+              setModoPanel(null);
+              setRegistroPanel(null);
+              await refresh();
             }}
             onSave={async (updated) => {
               try {
                 // extraer roles asignados (desde GestorEditores) y limpiar el payload
-                const assignedRoles = (updated as any)._assignedRoles || []
-                const payload: any = { ...updated }
-                delete payload._assignedRoles
+                const assignedRoles = (updated as any)._assignedRoles || [];
+                const payload: any = { ...updated };
+                delete payload._assignedRoles;
                 // Salvaguarda: en edición, el backend no acepta 'password' en PATCH
-                // Nos aseguramos de no enviarlo nunca en el update
                 if (payload && payload.id) {
                   if (Object.prototype.hasOwnProperty.call(payload, 'password')) {
-                    delete payload.password
+                    delete payload.password;
                   }
                 }
                 // Aplicar cambio de rol SOLO si el usuario tiene permiso explícito para ello
-                const puedeEditarRol = (
+                const puedeEditarRol =
                   hasPermission('Usuarios', 'Rol') ||
                   hasPermission('Usuarios', 'EditarRol') ||
-                  hasPermission('Usuarios', 'Editar Rol')
-                )
+                  hasPermission('Usuarios', 'Editar Rol');
+
                 if (puedeEditarRol) {
-                  // si hay roles asignados, mantenemos compatibilidad con el esquema actual usando `rolId` (primer rol)
                   if (assignedRoles && assignedRoles.length) {
-                    const parsed = Number(assignedRoles[0])
-                    payload.rolId = Number.isNaN(parsed) ? assignedRoles[0] : parsed
+                    const parsed = Number(assignedRoles[0]);
+                    payload.rolId = Number.isNaN(parsed)
+                      ? assignedRoles[0]
+                      : parsed;
                   }
                 } else {
-                  // Si no hay permiso para editar rol, ignorar cualquier cambio recibido
-                  delete payload.rolId
+                  delete payload.rolId;
                 }
 
-                let resultado: any
+                let resultado: any;
                 if (updated.id) {
-                  await UsuariosAPI.updateUsuarioById(updated.id, payload)
-                  resultado = { id: updated.id }
+                  await UsuariosAPI.updateUsuarioById(updated.id, payload);
+                  resultado = { id: updated.id };
                 } else {
-                  // Para creación de usuario usamos el flujo de registro que acepta contraseña
-                  // El GestorEditores añade `password` al form cuando entityType === 'usuario'
-                  const creado = await UsuariosAPI.register(payload)
-                  // devolver el usuario creado (o al menos su id) para que el Panel suba la imagen
-                  resultado = creado
+                  const creado = await UsuariosAPI.register(payload);
+                  resultado = creado;
                 }
-                setModoPanel(null)
-                setRegistroPanel(null)
-                await refresh()
-                return resultado
+                setModoPanel(null);
+                setRegistroPanel(null);
+                await refresh();
+                return resultado;
               } catch (e) {
-                console.error(e)
-                // Re-propagar el error para que PanelUsuario pueda mapearlo a campos y mostrarlos en rojo
-                throw e
+                console.error(e);
+                throw e;
               }
             }}
           />

@@ -208,22 +208,42 @@ const DataTableAdaptado = forwardRef<DataTableHandle, Props>(function DataTableA
   }), [clearFilters, handleDownloadCSV])
 
   const onSort = (e: any) => {
-    setSortField(e.sortField)
-    setSortOrder(e.sortOrder)
-    // En modo lazy, delegar la ordenación al servidor pasando sortField/sortOrder
+    setSortField(e.sortField);
+    setSortOrder(e.sortOrder);
+
     if (lazy && onLazyLoad) {
-      try { onLazyLoad({ first, rows, sortField: e.sortField, sortOrder: e.sortOrder }) } catch (err) { console.error('onLazyLoad handler error', err) }
+      try {
+        onLazyLoad({
+          first,
+          rows,
+          sortField: e.sortField,
+          sortOrder: e.sortOrder,
+        });
+      } catch (err) {
+        console.error("onLazyLoad handler error", err);
+      }
     }
-  }
+  };
+
 
   const onPage = (e: any) => {
-    setFirst(e.first)
-    setRows(e.rows)
-    // If lazy (server-side) delegate page change to parent
+    setFirst(e.first);
+    setRows(e.rows);
+
     if (lazy && onLazyLoad) {
-      try { onLazyLoad({ first: e.first, rows: e.rows }) } catch (err) { console.error('onLazyLoad handler error', err) }
+      try {
+        onLazyLoad({
+          first: e.first,
+          rows: e.rows,
+          sortField,
+          sortOrder
+        });
+      } catch (err) {
+        console.error('onLazyLoad handler error', err);
+      }
     }
-  }
+  };
+
 
   // Template para el header con filtro
   // Nota: devolvemos los elementos como hermanos directos para que el
@@ -338,18 +358,18 @@ const DataTableAdaptado = forwardRef<DataTableHandle, Props>(function DataTableA
       color: "#fff", // icon color
     }
 
-  // Evaluar permisos por fila usando el objeto `puede`.
-  const permisoVer = puede?.ver
-  const permisoEditar = puede?.editar
-  const permisoBorrar = puede?.borrar
+    // Evaluar permisos por fila usando el objeto `puede`.
+    const permisoVer = puede?.ver
+    const permisoEditar = puede?.editar
+    const permisoBorrar = puede?.borrar
 
-  const puedeVerFila = typeof permisoVer === 'function' ? permisoVer(rowData) : (permisoVer ?? true)
-  const puedeEditarFila = typeof permisoEditar === 'function' ? permisoEditar(rowData) : (permisoEditar ?? true)
-  const puedeBorrarFila = typeof permisoBorrar === 'function' ? permisoBorrar(rowData) : (permisoBorrar ?? true)
+    const puedeVerFila = typeof permisoVer === 'function' ? permisoVer(rowData) : (permisoVer ?? true)
+    const puedeEditarFila = typeof permisoEditar === 'function' ? permisoEditar(rowData) : (permisoEditar ?? true)
+    const puedeBorrarFila = typeof permisoBorrar === 'function' ? permisoBorrar(rowData) : (permisoBorrar ?? true)
 
     return (
       <div className="tabla-actions" style={{ display: "flex", gap: 8, alignItems: "center", justifyContent: 'flex-start' }}>
-  {puedeVerFila && (
+        {puedeVerFila && (
           <Button
             icon="pi pi-eye"
             onClick={(e) => {
@@ -363,7 +383,7 @@ const DataTableAdaptado = forwardRef<DataTableHandle, Props>(function DataTableA
           />
         )}
 
-  {puedeEditarFila && (
+        {puedeEditarFila && (
           <Button
             icon="pi pi-pencil"
             onClick={(e) => {
@@ -377,11 +397,11 @@ const DataTableAdaptado = forwardRef<DataTableHandle, Props>(function DataTableA
           />
         )}
 
-    {/* Mostrar botón eliminar por defecto (compatibilidad):
+        {/* Mostrar botón eliminar por defecto (compatibilidad):
       - Si `allowDelete` está definido y devuelve false, ocultarlo.
       - Si `allowDelete` no está definido, mostramos según `puede.borrar` evaluado por fila.
     */}
-  {((!allowDelete || allowDelete(rowData)) && puedeBorrarFila) && (
+        {((!allowDelete || allowDelete(rowData)) && puedeBorrarFila) && (
           <Button
             icon="pi pi-trash"
             onClick={(e) => {
@@ -438,8 +458,8 @@ const DataTableAdaptado = forwardRef<DataTableHandle, Props>(function DataTableA
       sortField={sortField || undefined}
       sortOrder={sortOrder}
       onSort={onSort}
-  lazy={lazy}
-  totalRecords={totalRecords}
+      lazy={lazy}
+      totalRecords={totalRecords}
       onRowClick={onRowClick ? (e) => onRowClick(e.data) : undefined}
       className="tabla-datatable"
       emptyMessage="No se encontraron registros"

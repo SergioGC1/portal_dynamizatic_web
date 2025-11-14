@@ -18,12 +18,30 @@ async function handleResponse(res, context) {
   try { return JSON.parse(text); } catch (err) { return text; }
 }
 
+// ✅ LISTADO CON PAGINACIÓN + BÚSQUEDA
 async function find(params) {
-  const qs = params && Object.keys(params).length ? `?${new URLSearchParams(params).toString()}` : '';
+  const query = new URLSearchParams();
+
+  if (params?.limit != null) query.append('limit', String(params.limit));
+  if (params?.offset != null) query.append('offset', String(params.offset));
+  if (params?.search) query.append('search', params.search);
+
+  // ✅ ESTO FALTABA: añadir ordenación
+  if (params?.sortField) query.append('sortField', params.sortField);
+  if (params?.sortOrder != null) query.append('sortOrder', String(params.sortOrder));
+
+  const qs = query.toString() ? `?${query.toString()}` : '';
+
   const headers = { 'Content-Type': 'application/json', ...getAuthHeader() };
-  const res = await fetch(`${BASE_URL}/usuarios${qs}`, { method: 'GET', headers });
+
+  const res = await fetch(`${BASE_URL}/usuarios${qs}`, {
+    method: 'GET',
+    headers
+  });
+
   return await handleResponse(res, 'findUsuarios');
 }
+
 
 async function getById(id) {
   const headers = { 'Content-Type': 'application/json', ...getAuthHeader() };
@@ -62,7 +80,7 @@ async function count(where) {
   return await handleResponse(res, 'countUsuarios');
 }
 
-// Auth endpoints (login/register) - adjust paths if backend differs
+// Auth endpoints (login/register)
 async function login(data) {
   const headers = { 'Content-Type': 'application/json' };
   const res = await fetch(`${BASE_URL}/usuarios/login`, { method: 'POST', headers, body: JSON.stringify(data) });
@@ -82,13 +100,7 @@ async function uploadImage(userId, file, filename) {
   if (!userId) throw new Error('userId required')
   if (!file) throw new Error('file required')
 
-  // Candidate URLs in order of preference. We include variants with and
-  // without the `/api` prefix and both the new usuarios endpoint and the
-  // legacy uploads endpoint to maximize compatibility with different backends.
   const candidates = [
-    // Eliminada la variante `/api/usuarios/:id/imagen` porque tu backend
-    // no la expone y provocaba 404; mantenemos las rutas legacy que sí
-    // funcionan en tu entorno.
     `${BASE_URL}/usuarios/${userId}/imagen`,
     `${BASE_URL}/api/uploads/users/${userId}`,
     `${BASE_URL}/uploads/users/${userId}`,
@@ -100,7 +112,6 @@ async function uploadImage(userId, file, filename) {
 
   const headers = getAuthHeader()
 
-  // try each candidate until one succeeds
   let lastError = null
   const tried = []
   for (const url of candidates) {
@@ -112,7 +123,6 @@ async function uploadImage(userId, file, filename) {
         const err = new Error(`uploadImage failed ${res.status}: ${txt}`)
         err.status = res.status
         lastError = err
-        // try next
         continue
       }
       const contentType = res.headers.get('content-type') || ''
@@ -122,7 +132,6 @@ async function uploadImage(userId, file, filename) {
       try { return JSON.parse(txt) } catch (e) { return txt }
     } catch (e) {
       lastError = e
-      // continue to next candidate
     }
   }
 
