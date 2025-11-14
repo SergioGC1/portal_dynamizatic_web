@@ -103,7 +103,7 @@ export default function EditarDatosUsuariosVista({
                     <div style={{ position: 'relative', width: 180 }}>
                         <div style={{ position: 'absolute', top: -20, left: 0 }}>
                             <span className={`badge-estado ${estaActivo ? 'badge-activo' : 'badge-inactivo'}`}>
-                                {estaActivo ? 'Sí' : 'No'}
+                                {estaActivo ? 'Activo' : 'Inactivo'}
                             </span>
                         </div>
                         <div className="record-panel__image-box--static" style={{ width: 180, height: 180 }}>

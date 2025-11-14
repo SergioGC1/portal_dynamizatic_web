@@ -118,10 +118,15 @@ export default function Editar(props: Props) {
   }, []);
 
   useEffect(() => {
-    const rolId = (formulario as any)?.rolId ?? (formulario as any)?.rol;
-    if (rolId === undefined || rolId === null || rolId === '') setRolSeleccionado(null);
-    else setRolSeleccionado(String(rolId));
-  }, [(formulario as any)?.rolId, (formulario as any)?.rol]);
+  const rolId = (formulario as any)?.rolId ?? (formulario as any)?.rol;
+  if (rolId === undefined || rolId === null || rolId === '') {
+    setRolSeleccionado(null);
+  } else {
+    setRolSeleccionado(String(rolId));
+  }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+}, [(formulario as any)?.rolId, (formulario as any)?.rol]);
+
 
   useEffect(() => {
     return () => {
