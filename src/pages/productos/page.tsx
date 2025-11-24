@@ -1,49 +1,96 @@
-import React, { useMemo, useState, useRef, useEffect } from 'react'
-import '../../styles/layout.scss'
-import '../../styles/_main.scss'
-import GestorEditores from '../../components/ui/GestorEditores'
-import DataTable, { ColumnDef } from '../../components/data-table/DataTable'
-import productosAPI from '../../api-endpoints/productos/index'
-import estadosAPI from '../../api-endpoints/estados/index'
-import TableToolbar from '../../components/ui/TableToolbar'
-import usePermisos from '../../hooks/usePermisos'
-import { ConfirmDialog, confirmDialog } from 'primereact/confirmdialog'
-import { Toast } from 'primereact/toast'
-import '../../styles/pages/ProductosPage.scss'
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import '../../styles/layout.scss';
+import '../../styles/_main.scss';
+import GestorEditores from '../../components/ui/GestorEditores';
+import DataTable, { ColumnDef, DataTableHandle } from '../../components/data-table/DataTable';
+import productosAPI from '../../api-endpoints/productos/index';
+import estadosAPI from '../../api-endpoints/estados/index';
+import TableToolbar from '../../components/ui/TableToolbar';
+import usePermisos from '../../hooks/usePermisos';
+import { ConfirmDialog, confirmDialog } from 'primereact/confirmdialog';
+import { Toast } from 'primereact/toast';
+import '../../styles/pages/ProductosPage.scss';
+
+interface Producto {
+  id: number;
+  nombre?: string;
+  estadoId?: string | number;
+  [key: string]: any;
+}
+
+interface EstadoPaginacion {
+  first: number;
+  rows: number;
+}
+
+interface ParametrosCargaProductos {
+  first?: number;
+  rows?: number;
+  search?: string;
+  sortField?: string | null;
+  sortOrder?: number | null;
+  filters?: Record<string, any>;
+}
+
+const normalizarRespuestaProductos = (respuesta: any): { lista: Producto[]; total: number } => {
+  if (respuesta && Array.isArray(respuesta.data)) {
+    const total = typeof respuesta.total === 'number' ? respuesta.total : respuesta.data.length;
+    return { lista: respuesta.data, total };
+  }
+  if (Array.isArray(respuesta)) return { lista: respuesta, total: respuesta.length };
+  return { lista: [], total: 0 };
+};
 
 export default function PageProductos() {
-  const [productos, setProductos] = useState<any[]>([])
-  const [cargando, setLoading] = useState(false)
-  const [mensajeError, setError] = useState<string | null>(null)
-  const [hasSearched, setHasSearched] = useState(false) // Indica si ya se ha realizado una búsqueda
-  
-  // Cargar lista de estados para mostrar nombre en vez de id
-  const [estados, setEstados] = useState<any[]>([])
+  const referenciaTabla = useRef<DataTableHandle | null>(null);
+  const [toast, setToast] = useState<any>(null);
+
+  // Estado de datos, paginación y orden
+  const [productos, setProductos] = useState<Producto[]>([]);
+  const [totalProductos, setTotalProductos] = useState(0);
+  const [estaCargando, setEstaCargando] = useState(false);
+  const [mensajeError, setMensajeError] = useState<string | null>(null);
+  const [haBuscado, setHaBuscado] = useState(false);
+
+  const [tablaPaginacion, setTablaPaginacion] = useState<EstadoPaginacion>({ first: 0, rows: 10 });
+  const [filtroBusquedaTemporal, setFiltroBusquedaTemporal] = useState('');
+  const [filtroBusquedaAplicado, setFiltroBusquedaAplicado] = useState('');
+  const [ordenTabla, setOrdenTabla] = useState<{ campo: string | null; orden: 1 | -1 }>({ campo: null, orden: -1 });
+
+  const [modoPanel, setModoPanel] = useState<'ver' | 'editar' | null>(null);
+  const [registroPanel, setRegistroPanel] = useState<Producto | null>(null);
+
+  const [estados, setEstados] = useState<any[]>([]);
+
+  const { hasPermission } = usePermisos();
 
   useEffect(() => {
-    let montado = true
+    let montado = true;
     const cargarEstados = async () => {
       try {
-        const listaEstados = await estadosAPI.findEstados()
-        if (montado) setEstados(listaEstados || [])
+        const listaEstados = await estadosAPI.findEstados();
+        if (montado) setEstados(listaEstados || []);
       } catch (errorCarga) {
-        console.warn('No se pudieron cargar estados', errorCarga)
+        console.warn('No se pudieron cargar estados', errorCarga);
       }
-    }
-    cargarEstados()
-    return () => { montado = false }
-  }, [])
+    };
+    cargarEstados();
+    return () => {
+      montado = false;
+    };
+  }, []);
 
   const estadosMap = useMemo(() => {
-    const mapaEstados: Record<string, string> = {}
+    const mapaEstados: Record<string, string> = {};
     for (const estado of estados || []) {
-      if (estado && (estado.id !== undefined)) mapaEstados[String(estado.id)] = String(estado.nombre || estado.name || estado.titulo || estado.title || '')
+      if (estado && estado.id !== undefined) {
+        mapaEstados[String(estado.id)] = String(estado.nombre || estado.name || estado.titulo || estado.title || '');
+      }
     }
-    return mapaEstados
-  }, [estados])
+    return mapaEstados;
+  }, [estados]);
 
-  // Columnas explícitas para Productos — con renderizadores para Estado y campos S/N
-  const columnasDefinicion = useMemo<ColumnDef<any>[]>(() => ([
+  const columnasDefinicion = useMemo<ColumnDef<Producto>[]>(() => ([
     { key: 'nombre', title: 'Nombre', sortable: true },
     {
       key: 'estadoId',
@@ -51,20 +98,18 @@ export default function PageProductos() {
       sortable: true,
       filterOptions: (estados || []).map((e: any) => ({ label: String(e?.nombre || e?.name || e?.title || ''), value: String(e?.id) })),
       render: (value: any, row: any) => {
-        let claveEstado: string | number | undefined = value
+        let claveEstado: string | number | undefined = value;
         if ((claveEstado === undefined || claveEstado === null) && row && row.estado) {
-          if (typeof row.estado === 'object' && row.estado !== null) claveEstado = row.estado.id ?? row.estado?.estadoId ?? row.estado?.id
-          else claveEstado = row.estado
+          if (typeof row.estado === 'object' && row.estado !== null) claveEstado = row.estado.id ?? row.estado?.estadoId ?? row.estado?.id;
+          else claveEstado = row.estado;
         }
-        const claveStr = claveEstado === undefined || claveEstado === null ? '' : String(claveEstado)
-        return <span>{estadosMap[claveStr] || claveStr}</span>
+        const claveStr = claveEstado === undefined || claveEstado === null ? '' : String(claveEstado);
+        return <span>{estadosMap[claveStr] || claveStr}</span>;
       }
     },
     { key: 'anyo', title: 'Año', sortable: true },
     { key: 'descripcion', title: 'Descripción', sortable: false },
     { key: 'color', title: 'Color', sortable: true },
-    // Nota: la base de datos usa la columna `tamaño`.
-    // Pero la api lo devuelve como tamaO.
     { key: 'tamaO', title: 'Tamaño', sortable: true },
     { key: 'dimension', title: 'Dimensión', sortable: true },
     { key: 'material1', title: 'Material 1', sortable: true },
@@ -75,9 +120,9 @@ export default function PageProductos() {
       title: 'Eléctrico',
       sortable: true,
       render: (value: any) => {
-        const valor = String(value ?? '').toUpperCase()
-        const esSi = valor === 'S'
-        return <span className={`badge-estado ${esSi ? 'badge-activo' : 'badge-inactivo'}`}>{esSi ? 'Sí' : 'No'}</span>
+        const valor = String(value ?? '').toUpperCase();
+        const esSi = valor === 'S';
+        return <span className={`badge-estado ${esSi ? 'badge-activo' : 'badge-inactivo'}`}>{esSi ? 'Sí' : 'No'}</span>;
       }
     },
     {
@@ -85,89 +130,110 @@ export default function PageProductos() {
       title: 'Biodegradable',
       sortable: true,
       render: (value: any) => {
-        const valor = String(value ?? '').toUpperCase()
-        const esSi = valor === 'S'
-        return <span className={`badge-estado ${esSi ? 'badge-activo' : 'badge-inactivo'}`}>{esSi ? 'Sí' : 'No'}</span>
+        const valor = String(value ?? '').toUpperCase();
+        const esSi = valor === 'S';
+        return <span className={`badge-estado ${esSi ? 'badge-activo' : 'badge-inactivo'}`}>{esSi ? 'Sí' : 'No'}</span>;
       }
     }
-  ]), [estadosMap, estados])
-  const tableRef = useRef<any | null>(null)
-  const [toast, setToast] = useState<any>(null)
-  // Filtro de búsqueda temporal (no aplica a la tabla hasta pulsar "Buscar")
-  const [filtroBusquedaTemporal, establecerFiltroBusquedaTemporal] = useState<string>('')
-  // Filtro a aplicar tras pulsar "Buscar" (se fija en el momento del click)
-  const [filtroBusquedaAplicar, setFiltroBusquedaAplicar] = useState<string>('')
-  const [pageState] = useState<{ first: number; rows: number }>({ first: 0, rows: 10 })
-  // Estados del panel para ver/editar registros
-  const [modoPanel, setModoPanel] = useState<'ver' | 'editar' | null>(null)
-  const [registroPanel, setRegistroPanel] = useState<any | null>(null)
+  ]), [estadosMap, estados]);
 
-  const { hasPermission } = usePermisos()
+  const columnas = useMemo(
+    () => (columnasDefinicion.length ? columnasDefinicion : [{ key: 'id', title: 'ID' } as ColumnDef<Producto>]),
+    [columnasDefinicion],
+  );
 
-  // Función para cargar productos - solo cuando el usuario busque
-  const loadProductos = async () => {
-    // congelar filtro y cargar TODOS los productos en cliente para orden/filtrado fluidos
-    const filtro = filtroBusquedaTemporal
-    setFiltroBusquedaAplicar(filtro)
-    setLoading(true)
-    setError(null)
-    try {
-      const list = await productosAPI.findProductos()
-      setProductos(list || [])
-      setHasSearched(true)
-    } catch (e: any) {
-      console.error(e)
-      setError(e?.message || 'Error cargando productos')
-    } finally {
-      setLoading(false)
-    }
-  }
-
-  
-
-  // Aplicar el filtro global a la tabla una vez que la tabla esté montada (hasSearched) y no esté cargando
   useEffect(() => {
-    if (hasSearched && !cargando) {
-      tableRef.current?.setGlobalFilter(filtroBusquedaAplicar)
+    if (ordenTabla.campo === null && columnas.length) {
+      setOrdenTabla({ campo: columnas[0].key, orden: -1 });
     }
-  }, [hasSearched, cargando, filtroBusquedaAplicar])
+  }, [columnas, ordenTabla.campo]);
 
-  // El input solo cambia el filtro temporal; la búsqueda se hace exclusivamente al pulsar "Buscar".
+  const cargarProductos = useCallback(
+    async ({
+      first = tablaPaginacion.first,
+      rows = tablaPaginacion.rows,
+      search = filtroBusquedaAplicado,
+      sortField = ordenTabla.campo,
+      sortOrder = ordenTabla.orden,
+      filters = {},
+    }: ParametrosCargaProductos = {}) => {
+      setEstaCargando(true);
+      setMensajeError(null);
+      try {
+        const params: any = { limit: rows, offset: first };
+        if (search) params.search = search;
+        if (sortField) params.sortField = sortField;
+        if (typeof sortOrder === 'number') params.sortOrder = sortOrder;
+        if (filters.estadoId !== undefined && filters.estadoId !== null && filters.estadoId !== '') {
+          params.estadoId = filters.estadoId;
+        }
+        if (filters.activoSn !== undefined && filters.activoSn !== null && filters.activoSn !== '') {
+          params.activoSn = filters.activoSn;
+        }
 
-  // NOTA: No cargamos datos automáticamente - solo cuando el usuario presiona "Buscar"
+        const respuesta = await productosAPI.findProductos(params);
+        const { lista, total } = normalizarRespuestaProductos(respuesta);
 
-  const columns = useMemo(() => (columnasDefinicion.length ? columnasDefinicion : [{ key: 'id', title: 'ID' }]), [columnasDefinicion])
+        setProductos(lista || []);
+        setTotalProductos(total);
+        setTablaPaginacion({ first, rows });
+        setHaBuscado(true);
+      } catch (e: any) {
+        console.error(e);
+        setMensajeError(e?.message || 'Error cargando productos');
+      } finally {
+        setEstaCargando(false);
+      }
+    },
+    [tablaPaginacion.first, tablaPaginacion.rows, filtroBusquedaAplicado],
+  );
+
+  const recargarProductos = useCallback(async () => {
+    await cargarProductos({
+      first: tablaPaginacion.first,
+      rows: tablaPaginacion.rows,
+      search: filtroBusquedaAplicado,
+      sortField: ordenTabla.campo,
+      sortOrder: ordenTabla.orden,
+    });
+  }, [cargarProductos, tablaPaginacion.first, tablaPaginacion.rows, filtroBusquedaAplicado, ordenTabla.campo, ordenTabla.orden]);
+
+  const manejarBusqueda = () => {
+    const criterio = filtroBusquedaTemporal.trim();
+    setFiltroBusquedaAplicado(criterio);
+    cargarProductos({ first: 0, rows: tablaPaginacion.rows, search: criterio, sortField: ordenTabla.campo, sortOrder: ordenTabla.orden });
+  };
+
+  const limpiarFiltros = () => {
+    setFiltroBusquedaTemporal('');
+    setFiltroBusquedaAplicado('');
+    referenciaTabla.current?.clearFilters();
+    if (haBuscado) {
+      cargarProductos({ first: 0, rows: tablaPaginacion.rows, search: '', sortField: ordenTabla.campo, sortOrder: ordenTabla.orden });
+    }
+  };
 
   return (
     <div className="productos-page">
       <Toast ref={setToast} />
       <ConfirmDialog />
       {mensajeError && <div className="productos-page__error">{mensajeError}</div>}
-      
+
       <div className="tabla-personalizada">
         {!modoPanel && (
           <>
             <TableToolbar
               title="Productos"
-              onNew={() => { setModoPanel('editar'); setRegistroPanel({}) }}
+              onNew={() => { setModoPanel('editar'); setRegistroPanel({} as Producto); }}
               puede={{ nuevo: hasPermission('Productos', 'Nuevo') }}
-              onDownloadCSV={() => tableRef.current?.downloadCSV()}
-              onSearch={loadProductos} // Conectar búsqueda con loadProductos
+              onDownloadCSV={() => referenciaTabla.current?.downloadCSV()}
+              onSearch={manejarBusqueda}
               globalFilter={filtroBusquedaTemporal}
-              setGlobalFilter={(texto: string) => { 
-                // Solo actualizamos el filtro temporal; la tabla no cambia hasta pulsar "Buscar"
-                establecerFiltroBusquedaTemporal(texto)
-              }}
-              clearFilters={() => {
-                // Limpiar filtros sin perder los datos ya cargados
-                establecerFiltroBusquedaTemporal('')
-                tableRef.current?.clearFilters()
-                // Mantenemos hasSearched para que la tabla siga visible
-                setHasSearched(true)
-              }}
+              setGlobalFilter={(texto: string) => setFiltroBusquedaTemporal(texto)}
+              clearFilters={limpiarFiltros}
             />
 
-            {!hasSearched && !cargando && (
+            {!haBuscado && !estaCargando && (
               <div className="productos-page__placeholder">
                 <h4 className="productos-page__placeholder-title">
                   Buscar Productos
@@ -175,20 +241,40 @@ export default function PageProductos() {
               </div>
             )}
 
-            {cargando && <div className="productos-page__loading">Cargando productos...</div>}
+            {estaCargando && !haBuscado && <div className="productos-page__loading">Cargando productos...</div>}
 
-            {hasSearched && (
+            {haBuscado && (
               <div className="productos-page__table-wrapper">
                 <DataTable
-                  ref={tableRef}
-                  columns={columns}
+                  ref={referenciaTabla}
+                  columns={columnas}
                   data={productos}
-                  pageSize={pageState.rows}
-                  onNew={() => { setModoPanel('editar'); setRegistroPanel({}) }}
-                  onView={(r) => { setModoPanel('ver'); setRegistroPanel(r) }}
-                  onEdit={(r) => { setModoPanel('editar'); setRegistroPanel(r) }}
+                  pageSize={tablaPaginacion.rows}
+                  sortField={ordenTabla.campo}
+                  sortOrder={ordenTabla.orden}
+                  first={tablaPaginacion.first}
+                  lazy
+                  totalRecords={totalProductos}
+                  onLazyLoad={({ first, rows, sortField, sortOrder }) => {
+                    const campoOrden = sortField ?? ordenTabla.campo;
+                    const orden = (typeof sortOrder === 'number' ? sortOrder : ordenTabla.orden) as 1 | -1;
+                    const filtrosAplicados = referenciaTabla.current?.getColumnFilters?.() || {};
+                    setOrdenTabla({ campo: campoOrden, orden });
+                    setTablaPaginacion({ first, rows });
+                    cargarProductos({
+                      first,
+                      rows,
+                      search: filtroBusquedaAplicado,
+                      sortField: campoOrden,
+                      sortOrder: orden,
+                      filters: filtrosAplicados,
+                    });
+                  }}
+                  onNew={() => { setModoPanel('editar'); setRegistroPanel({} as Producto); }}
+                  onView={(r) => { setModoPanel('ver'); setRegistroPanel(r); }}
+                  onEdit={(r) => { setModoPanel('editar'); setRegistroPanel(r); }}
                   onDelete={(row) => {
-                    if (!row) return
+                    if (!row) return;
                     confirmDialog({
                       message: `¿Seguro que deseas eliminar el producto "${row?.nombre || row?.id}"?`,
                       header: 'Confirmar eliminación',
@@ -198,15 +284,15 @@ export default function PageProductos() {
                       acceptClassName: 'p-button-danger',
                       accept: async () => {
                         try {
-                          await productosAPI.deleteProductoById(row.id)
-                          if (toast && toast.show) toast.show({ severity: 'success', summary: 'Eliminado', detail: 'Producto eliminado correctamente', life: 2000 })
-                          await loadProductos()
+                          await productosAPI.deleteProductoById(row.id);
+                          if (toast && toast.show) toast.show({ severity: 'success', summary: 'Eliminado', detail: 'Producto eliminado correctamente', life: 2000 });
+                          await recargarProductos();
                         } catch (e) {
-                          console.error(e)
-                          if (toast && toast.show) toast.show({ severity: 'error', summary: 'Error', detail: 'No se pudo eliminar el producto', life: 2500 })
+                          console.error(e);
+                          if (toast && toast.show) toast.show({ severity: 'error', summary: 'Error', detail: 'No se pudo eliminar el producto', life: 2500 });
                         }
                       }
-                    })
+                    });
                   }}
                   puede={{
                     ver: hasPermission('Productos', 'Ver'),
@@ -214,7 +300,7 @@ export default function PageProductos() {
                     borrar: hasPermission('Productos', 'Borrar'),
                   }}
                 />
-                {cargando && (
+                {estaCargando && (
                   <div className="productos-page__table-overlay">
                     <div className="productos-page__table-overlay-box">Cargando...</div>
                   </div>
@@ -223,41 +309,39 @@ export default function PageProductos() {
             )}
           </>
         )}
+
         {modoPanel && registroPanel && (
-            <GestorEditores
-              mode={modoPanel}
-              record={registroPanel}
-              entityType="producto"
-              columns={columns}
-              onClose={async () => {
-                setModoPanel(null)
-                setRegistroPanel(null)
-                // recargar lista
-                try {
-                  await loadProductos()
-                } catch (e) { console.error(e) }
-              }}
-              onUploadSuccess={async () => {
-                try { await loadProductos() } catch (e) { console.error(e) }
-              }}
-              onSave={async (updated) => {
-                try {
-                  let resultado: any
-                  if (updated.id) {
-                    await productosAPI.updateProductoById(updated.id, updated)
-                    resultado = { id: updated.id }
-                  } else {
-                    resultado = await productosAPI.createProducto(updated)
-                  }
-                  setModoPanel(null)
-                  setRegistroPanel(null)
-                  await loadProductos()
-                  return resultado
-                } catch (e) { console.error(e) }
-              }}
-            />
-          )}
-        </div>
+          <GestorEditores
+            mode={modoPanel}
+            record={registroPanel}
+            entityType="producto"
+            columns={columnas}
+            onClose={async () => {
+              setModoPanel(null);
+              setRegistroPanel(null);
+              await recargarProductos();
+            }}
+            onUploadSuccess={async () => {
+              try { await recargarProductos(); } catch (e) { console.error(e); }
+            }}
+            onSave={async (updated) => {
+              try {
+                let resultado: any;
+                if (updated.id) {
+                  await productosAPI.updateProductoById(updated.id, updated);
+                  resultado = { id: updated.id };
+                } else {
+                  resultado = await productosAPI.createProducto(updated);
+                }
+                setModoPanel(null);
+                setRegistroPanel(null);
+                await recargarProductos();
+                return resultado;
+              } catch (e) { console.error(e); }
+            }}
+          />
+        )}
+      </div>
     </div>
-  )
+  );
 }

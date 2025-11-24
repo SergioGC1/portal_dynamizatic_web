@@ -33,6 +33,10 @@ type Props = {
   columns: ColumnDef<any>[]
   data: any[]
   pageSize?: number
+  // Paginación/orden controlados desde el padre (modo lazy)
+  first?: number
+  sortField?: string | null
+  sortOrder?: 1 | -1 | null
   onRowClick?: (row: any) => void
   onNew?: () => void
   onDownloadCSV?: () => void
@@ -57,7 +61,7 @@ type Props = {
   lazy?: boolean
   totalRecords?: number
   // onLazyLoad ahora puede recibir sortField/sortOrder opcionales para orden server-side
-  onLazyLoad?: (state: { first: number; rows: number; sortField?: string | null; sortOrder?: 1 | -1 }) => void
+  onLazyLoad?: (state: { first: number; rows: number; sortField?: string | null; sortOrder?: 1 | -1 | null; filters?: Record<string, string> }) => void
 }
 
 
@@ -66,6 +70,9 @@ const DataTableAdaptado = forwardRef<DataTableHandle, Props>(function DataTableA
     columns,
     data,
     pageSize = 10,
+    first: firstExterno,
+    sortField: sortFieldExterno,
+    sortOrder: sortOrderExterno,
     onRowClick,
     onNew,
     onDownloadCSV,
@@ -84,9 +91,9 @@ const DataTableAdaptado = forwardRef<DataTableHandle, Props>(function DataTableA
   const [globalFilter, setGlobalFilter] = useState("")
   const [columnFilters, setColumnFilters] = useState<Record<string, string>>({})
   const [tempColumnFilters, setTempColumnFilters] = useState<Record<string, string>>({})
-  const [sortField, setSortField] = useState<string | null>(null)
-  const [sortOrder, setSortOrder] = useState<1 | -1>(-1)
-  const [first, setFirst] = useState(0)
+  const [sortField, setSortField] = useState<string | null>(sortFieldExterno ?? null)
+  const [sortOrder, setSortOrder] = useState<1 | -1 | null>(sortOrderExterno ?? -1)
+  const [first, setFirst] = useState(firstExterno ?? 0)
   const [rows, setRows] = useState(pageSize)
   const overlayRefs = React.useRef<Record<string, OverlayPanel | null>>({})
 
@@ -99,11 +106,58 @@ const DataTableAdaptado = forwardRef<DataTableHandle, Props>(function DataTableA
     }
   }, [columns, sortField])
 
+  // Sincronizar paginación si el padre la controla
+  useEffect(() => {
+    if (typeof firstExterno === 'number' && firstExterno !== first) {
+      setFirst(firstExterno)
+    }
+  }, [firstExterno, first])
+
+  // Sincronizar orden si el padre lo controla
+  useEffect(() => {
+    if (sortFieldExterno !== undefined && sortFieldExterno !== sortField) {
+      setSortField(sortFieldExterno)
+    }
+  }, [sortFieldExterno, sortField])
+
+  useEffect(() => {
+    if (sortOrderExterno !== undefined && sortOrderExterno !== sortOrder) {
+      setSortOrder(sortOrderExterno)
+    }
+  }, [sortOrderExterno, sortOrder])
+
+  const dispararCargaLazy = useCallback(
+    (
+      proximoFirst = first,
+      proximoRows = rows,
+      proximoSortField = sortField,
+      proximoSortOrder = sortOrder,
+      proximoFilters = columnFilters,
+    ) => {
+      if (lazy && onLazyLoad) {
+        try {
+          onLazyLoad({
+            first: proximoFirst,
+            rows: proximoRows,
+            sortField: proximoSortField,
+            sortOrder: proximoSortOrder,
+            filters: proximoFilters,
+          })
+        } catch (err) {
+          console.error("onLazyLoad handler error", err)
+        }
+      }
+    },
+    [lazy, onLazyLoad, first, rows, sortField, sortOrder, columnFilters],
+  )
+
   const clearFilters = useCallback(() => {
     setGlobalFilter("")
     setColumnFilters({})
     setTempColumnFilters({})
-  }, [])
+    setFirst(0)
+    dispararCargaLazy(0, rows, sortField, sortOrder, {})
+  }, [dispararCargaLazy, rows, sortField, sortOrder])
 
   const applyColumnFilter = (columnKey: string) => {
     setColumnFilters({
@@ -176,11 +230,11 @@ const DataTableAdaptado = forwardRef<DataTableHandle, Props>(function DataTableA
       const aNum = Number(aValue)
       const bNum = Number(bValue)
       if (!isNaN(aNum) && !isNaN(bNum)) {
-        return (aNum - bNum) * sortOrder
+        return (aNum - bNum) * (typeof sortOrder === 'number' ? sortOrder : 1)
       }
 
       // Comparación de strings
-      return String(aValue).localeCompare(String(bValue)) * sortOrder
+      return String(aValue).localeCompare(String(bValue)) * (typeof sortOrder === 'number' ? sortOrder : 1)
     })
   }, [filteredData, sortField, sortOrder, lazy])
 
@@ -221,6 +275,7 @@ const DataTableAdaptado = forwardRef<DataTableHandle, Props>(function DataTableA
           rows,
           sortField: e.sortField,
           sortOrder: e.sortOrder,
+          filters: columnFilters,
         });
       } catch (err) {
         console.error("onLazyLoad handler error", err);
@@ -239,7 +294,8 @@ const DataTableAdaptado = forwardRef<DataTableHandle, Props>(function DataTableA
           first: e.first,
           rows: e.rows,
           sortField,
-          sortOrder
+          sortOrder,
+          filters: columnFilters,
         });
       } catch (err) {
         console.error('onLazyLoad handler error', err);
