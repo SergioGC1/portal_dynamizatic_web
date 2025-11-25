@@ -18,6 +18,19 @@ type TareaFase = {
 
 type Fase = { id: number; codigo?: string; nombre?: string }
 
+// Normaliza distintas formas de respuesta del backend a un arreglo
+const normalizarListaFases = (entrada: any): any[] => {
+    if (Array.isArray(entrada)) return entrada
+    if (!entrada) return []
+    if (Array.isArray(entrada.data)) return entrada.data
+    if (entrada.data && Array.isArray(entrada.data.data)) return entrada.data.data
+    if (Array.isArray(entrada.rows)) return entrada.rows
+    if (Array.isArray(entrada.items)) return entrada.items
+    if (Array.isArray(entrada.result)) return entrada.result
+    if (Array.isArray(entrada.results)) return entrada.results
+    return []
+}
+
 export default function PanelFasesProducto({
     productId,
     selectedEstadoId,
@@ -83,8 +96,10 @@ export default function PanelFasesProducto({
                 const listaRemota = typeof (fasesAPI as any).findFases === 'function'
                     ? await (fasesAPI as any).findFases()
                     : await (typeof (fasesAPI as any).find === 'function' ? (fasesAPI as any).find() : [])
+                // Normalizar la respuesta por si ahora viene envuelta o incluye metadata
+                const lista = normalizarListaFases(listaRemota)
                 if (!componenteMontado) return
-                const listaMapeada: Fase[] = (listaRemota || []).map((fase: any) => ({ id: Number(fase.id), codigo: fase.codigo, nombre: fase.nombre }))
+                const listaMapeada: Fase[] = lista.map((fase: any) => ({ id: Number(fase.id), codigo: fase.codigo, nombre: fase.nombre }))
                 establecerListaDeFases(listaMapeada)
                 if (!listaMapeada.length) return
                 // mapear selectedEstadoId a fase (fallback a primera)
