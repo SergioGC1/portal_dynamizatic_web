@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+﻿import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import '../../styles/layout.scss';
 import '../../styles/_main.scss';
 import GestorEditores from '../../components/ui/GestorEditores';
@@ -45,7 +45,7 @@ export default function PageProductos() {
   const referenciaTabla = useRef<DataTableHandle | null>(null);
   const [toast, setToast] = useState<any>(null);
 
-  // Estado de datos, paginación y orden
+  // Estado de datos, paginaciÃ³n y orden
   const [productos, setProductos] = useState<Producto[]>([]);
   const [totalProductos, setTotalProductos] = useState(0);
   const [estaCargando, setEstaCargando] = useState(false);
@@ -161,15 +161,17 @@ export default function PageProductos() {
       setMensajeError(null);
       try {
         const params: any = { limit: rows, offset: first };
+        // búsqueda global (barra superior)
         if (search) params.search = search;
         if (sortField) params.sortField = sortField;
         if (typeof sortOrder === 'number') params.sortOrder = sortOrder;
-        if (filters.estadoId !== undefined && filters.estadoId !== null && filters.estadoId !== '') {
-          params.estadoId = filters.estadoId;
-        }
-        if (filters.activoSn !== undefined && filters.activoSn !== null && filters.activoSn !== '') {
-          params.activoSn = filters.activoSn;
-        }
+
+        // Igual que en usuarios: filtros de columna 1:1 al back, normalizando S/N
+        Object.entries(filters || {}).forEach(([key, value]) => {
+          if (value === undefined || value === null || value === '') return;
+          const esBool = key.toLowerCase().includes('sn') || key.toLowerCase().includes('activo');
+          params[key] = esBool ? String(value).toUpperCase() : value;
+        });
 
         const respuesta = await productosAPI.findProductos(params);
         const { lista, total } = normalizarRespuestaProductos(respuesta);
@@ -255,10 +257,9 @@ export default function PageProductos() {
                   first={tablaPaginacion.first}
                   lazy
                   totalRecords={totalProductos}
-                  onLazyLoad={({ first, rows, sortField, sortOrder }) => {
+                  onLazyLoad={({ first, rows, sortField, sortOrder, filters = {} }) => {
                     const campoOrden = sortField ?? ordenTabla.campo;
                     const orden = (typeof sortOrder === 'number' ? sortOrder : ordenTabla.orden) as 1 | -1;
-                    const filtrosAplicados = referenciaTabla.current?.getColumnFilters?.() || {};
                     setOrdenTabla({ campo: campoOrden, orden });
                     setTablaPaginacion({ first, rows });
                     cargarProductos({
@@ -267,7 +268,7 @@ export default function PageProductos() {
                       search: filtroBusquedaAplicado,
                       sortField: campoOrden,
                       sortOrder: orden,
-                      filters: filtrosAplicados,
+                      filters,
                     });
                   }}
                   onNew={() => { setModoPanel('editar'); setRegistroPanel({} as Producto); }}

@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+﻿import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 // Estilos globales de la aplicación
 import '../../styles/layout.scss';
 import '../../styles/_main.scss';
@@ -45,6 +45,14 @@ interface RespuestaUsuariosNormalizada {
   lista: Usuario[];
   total: number;
 }
+
+// Normaliza valores de activo: acepta S/N, Si/No/Activo/Inactivo y devuelve 'S' o 'N'
+const normalizarValorActivo = (valor: any): string => {
+  const texto = String(valor ?? '').trim().toLowerCase();
+  if (texto === 'S' || texto === 'Si' || texto === 'Sí' || texto === 'Activo') return 'S';
+  if (texto === 'N' || texto === 'No' || texto === 'Inactivo') return 'N';
+  return String(valor ?? '').toUpperCase();
+};
 
 // ======================================================
 // Constantes y utilidades
@@ -190,7 +198,7 @@ export default function PageUsuarios() {
         { label: 'No', value: 'N' },
       ],
       render: (value: any) => {
-        const normalizado = String(value ?? '').toUpperCase();
+        const normalizado = normalizarValorActivo(value);
         const estaActivo = normalizado === 'S';
 
         return (
@@ -255,9 +263,18 @@ export default function PageUsuarios() {
         if (search) params.search = search;
         if (sortField) params.sortField = sortField;
         if (typeof sortOrder === 'number') params.sortOrder = sortOrder;
-        if (filters.activoSn !== undefined && filters.activoSn !== null) {
-          params.activoSn = filters.activoSn;
-        }
+
+        // Enviar filtros de columna al backend (normalizando S/N)
+        Object.entries(filters || {}).forEach(([key, value]) => {
+          if (value === undefined || value === null || value === '') return;
+          const lower = key.toLowerCase();
+          const esBool = lower.includes('s') || lower.includes('si') || lower.includes('n') || lower.includes('no');
+          if (esBool) {
+            params[key] = normalizarValorActivo(value); // S/N siempre
+            return;
+          }
+          params[key] = value;
+        });
 
         const respuesta = await UsuariosAPI.findUsuarios(params);
         const { lista, total } = normalizarRespuestaUsuarios(respuesta);
@@ -479,7 +496,7 @@ export default function PageUsuarios() {
                   sortOrder={ordenTabla.orden}
                   lazy
                   totalRecords={totalUsuarios}
-                  onLazyLoad={({ first, rows, sortField, sortOrder }) => {
+                  onLazyLoad={({ first, rows, sortField, sortOrder, filters = {} }) => {
                     const campoOrden = sortField ?? ordenTabla.campo;
                     const orden = (typeof sortOrder === 'number' ? sortOrder : ordenTabla.orden) as 1 | -1;
                     setOrdenTabla({ campo: campoOrden, orden });
@@ -489,7 +506,7 @@ export default function PageUsuarios() {
                       search: filtroBusquedaAplicado,
                       sortField: campoOrden,
                       sortOrder: orden,
-                      filters: referenciaTabla.current?.getColumnFilters?.() || {},
+                      filters,
                     });
                   }}
                   onNew={() => {

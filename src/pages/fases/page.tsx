@@ -37,6 +37,7 @@ interface ParametrosCargaFases {
   search?: string;
   sortField?: string | null;
   sortOrder?: number | null;
+  filters?: Record<string, any>;
 }
 
 const normalizarRespuestaFases = (respuesta: any): { lista: Fase[]; total: number } => {
@@ -106,6 +107,7 @@ export default function PageFases() {
       search = filtroBusquedaAplicado,
       sortField = ordenTabla.campo,
       sortOrder = ordenTabla.orden,
+      filters = {},
     }: ParametrosCargaFases = {}) => {
       setEstaCargando(true);
       setMensajeError(null);
@@ -114,22 +116,34 @@ export default function PageFases() {
         if (search) params.search = search;
         if (sortField) params.sortField = sortField;
         if (typeof sortOrder === 'number') params.sortOrder = sortOrder;
+        // Filtros de la tabla (ej: codigo, nombre si lo haces filterable)
+        Object.entries(filters || {}).forEach(([key, value]) => {
+          if (value === undefined || value === null || value === '') return;
+          const esBool = key.toLowerCase().includes('sn') || key.toLowerCase().includes('activo');
+          params[key] = esBool ? String(value).toUpperCase() : value;
+        });
 
         const respuesta = await FasesAPI.findFases(params);
         const { lista, total } = normalizarRespuestaFases(respuesta);
 
         setFases(lista || []);
-        setTotalFases(typeof total === 'number' ? total : Array.isArray(lista) ? lista.length : 0);
+        setTotalFases(total);
         setTablaPaginacion({ first, rows });
         setHaBuscado(true);
-      } catch (e: any) {
-        console.error(e);
-        setMensajeError(e?.message || 'Error cargando fases');
+      } catch (error: any) {
+        console.error(error);
+        setMensajeError(error?.message || 'Error cargando fases');
       } finally {
         setEstaCargando(false);
       }
     },
-    [tablaPaginacion.first, tablaPaginacion.rows, filtroBusquedaAplicado],
+    [
+      tablaPaginacion.first,
+      tablaPaginacion.rows,
+      filtroBusquedaAplicado,
+      ordenTabla.campo,
+      ordenTabla.orden,
+    ],
   );
 
   const recargarFases = useCallback(async () => {
@@ -270,7 +284,7 @@ export default function PageFases() {
               sortOrder={ordenTabla.orden}
               lazy
               totalRecords={totalFases}
-              onLazyLoad={({ first, rows, sortField, sortOrder }) => {
+              onLazyLoad={({ first, rows, sortField, sortOrder, filters = {} }) => {
                 const campoOrden = sortField ?? ordenTabla.campo;
                 const orden = (typeof sortOrder === 'number' ? sortOrder : ordenTabla.orden) as 1 | -1;
                 setOrdenTabla({ campo: campoOrden, orden });
@@ -281,6 +295,7 @@ export default function PageFases() {
                   search: filtroBusquedaAplicado,
                   sortField: campoOrden,
                   sortOrder: orden,
+                  filters,
                 });
               }}
               onNew={() => {

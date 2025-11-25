@@ -1,4 +1,4 @@
-const BASE_URL = (typeof window !== 'undefined' && window.__API_BASE_URL__) || 'http://localhost:3000';
+﻿const BASE_URL = (typeof window !== 'undefined' && window.__API_BASE_URL__) || 'http://localhost:3000';
 
 function getAuthHeader() {
   if (typeof localStorage === 'undefined') return {};
@@ -18,30 +18,30 @@ async function handleResponse(res, context) {
   try { return JSON.parse(text); } catch (err) { return text; }
 }
 
-// ✅ LISTADO CON PAGINACIÓN + BÚSQUEDA
+// LISTADO CON PAGINACIÓN + BÚSQUEDA
 async function find(params) {
   const query = new URLSearchParams();
 
   if (params?.limit != null) query.append('limit', String(params.limit));
   if (params?.offset != null) query.append('offset', String(params.offset));
   if (params?.search) query.append('search', params.search);
-
-  // ✅ ESTO FALTABA: añadir ordenación
   if (params?.sortField) query.append('sortField', params.sortField);
   if (params?.sortOrder != null) query.append('sortOrder', String(params.sortOrder));
+
+  // Filtros de columna soportados por el backend
+  if (params?.activoSn) query.append('activoSn', params.activoSn);
+  if (params?.nombreUsuario) query.append('nombreUsuario', params.nombreUsuario);
+  if (params?.apellidos) query.append('apellidos', params.apellidos);
+  if (params?.email) query.append('email', params.email);
+  if (params?.estadoId != null) query.append('estadoId', String(params.estadoId));
 
   const qs = query.toString() ? `?${query.toString()}` : '';
 
   const headers = { 'Content-Type': 'application/json', ...getAuthHeader() };
 
-  const res = await fetch(`${BASE_URL}/usuarios${qs}`, {
-    method: 'GET',
-    headers
-  });
-
+  const res = await fetch(`${BASE_URL}/usuarios${qs}`, { method: 'GET', headers });
   return await handleResponse(res, 'findUsuarios');
 }
-
 
 async function getById(id) {
   const headers = { 'Content-Type': 'application/json', ...getAuthHeader() };
@@ -152,3 +152,4 @@ module.exports = {
   register,
   uploadImage
 };
+

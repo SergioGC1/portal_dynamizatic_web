@@ -127,9 +127,13 @@ export default function PageRoles() {
         if (search) params.search = search;
         if (sortField) params.sortField = sortField;
         if (typeof sortOrder === 'number') params.sortOrder = sortOrder;
-        if (filters.activoSn !== undefined && filters.activoSn !== null && filters.activoSn !== '') {
-          params.activoSn = filters.activoSn;
-        }
+
+        // Mandamos los filtros (normalizando S/N en mayúsculas)
+        Object.entries(filters || {}).forEach(([key, value]) => {
+          if (value === undefined || value === null || value === '') return;
+          const esBool = key.toLowerCase().includes('sn') || key.toLowerCase().includes('activo');
+          params[key] = esBool ? String(value).toUpperCase() : value;
+        });
 
         const respuesta = await RolesAPI.findRoles(params);
         const { lista, total } = normalizarRespuestaRoles(respuesta);
@@ -145,7 +149,13 @@ export default function PageRoles() {
         setEstaCargando(false);
       }
     },
-    [tablaPaginacion.first, tablaPaginacion.rows, filtroBusquedaAplicado],
+    [
+      tablaPaginacion.first,
+      tablaPaginacion.rows,
+      filtroBusquedaAplicado,
+      ordenTabla.campo,
+      ordenTabla.orden,
+    ],
   );
 
   const recargarRoles = useCallback(async () => {
@@ -262,10 +272,9 @@ export default function PageRoles() {
                   first={tablaPaginacion.first}
                   lazy
                   totalRecords={totalRoles}
-                  onLazyLoad={({ first, rows, sortField, sortOrder }) => {
+                  onLazyLoad={({ first, rows, sortField, sortOrder, filters = {} }) => {
                     const campoOrden = sortField ?? ordenTabla.campo;
                     const orden = (typeof sortOrder === 'number' ? sortOrder : ordenTabla.orden) as 1 | -1;
-                    const filtrosAplicados = referenciaTabla.current?.getColumnFilters?.() || {};
                     setOrdenTabla({ campo: campoOrden, orden });
                     setTablaPaginacion({ first, rows });
                     cargarRoles({
@@ -274,7 +283,7 @@ export default function PageRoles() {
                       search: filtroBusquedaAplicado,
                       sortField: campoOrden,
                       sortOrder: orden,
-                      filters: filtrosAplicados,
+                      filters,
                     });
                   }}
                   onNew={() => { setModoPanel('editar'); setRegistroPanel({} as Rol); }}

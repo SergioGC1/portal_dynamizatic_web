@@ -160,10 +160,13 @@ const DataTableAdaptado = forwardRef<DataTableHandle, Props>(function DataTableA
   }, [dispararCargaLazy, rows, sortField, sortOrder])
 
   const applyColumnFilter = (columnKey: string) => {
-    setColumnFilters({
+    const nuevosFiltros = {
       ...columnFilters,
       [columnKey]: tempColumnFilters[columnKey] || "",
-    })
+    }
+    setColumnFilters(nuevosFiltros)
+    setFirst(0)
+    dispararCargaLazy(0, rows, sortField, sortOrder, nuevosFiltros)
     overlayRefs.current[columnKey]?.hide()
   }
 
@@ -172,13 +175,15 @@ const DataTableAdaptado = forwardRef<DataTableHandle, Props>(function DataTableA
     delete newFilters[columnKey]
     setColumnFilters(newFilters)
     setTempColumnFilters({ ...tempColumnFilters, [columnKey]: "" })
+    setFirst(0)
+    dispararCargaLazy(0, rows, sortField, sortOrder, newFilters)
     overlayRefs.current[columnKey]?.hide()
   }
 
   // Filtrado
-  // Filtrado
   const filteredData = useMemo(() => {
-    // 🔥 En lazy TAMBIÉN filtramos en local
+    // En modo lazy delegamos el filtrado al backend
+    if (lazy) return data
     let result = [...data]
 
     // Filtro global
