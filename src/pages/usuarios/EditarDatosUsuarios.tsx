@@ -183,7 +183,7 @@ export default function EditarDatosUsuariosVista({
                                 </div>
                             ) : (
                                 <div className="record-panel__field">
-                                    <label className="record-panel__label">Nueva contraseÃ±a (opcional)</label>
+                                    <label className="record-panel__label">Nueva contraseña (opcional)</label>
                                     <span className="p-input-icon-right usuarios-editar-datos__input-icon-wrapper">
                                         <i
                                             className={`${mostrarPasswordEditar ? 'pi pi-eye-slash' : 'pi pi-eye'} usuarios-editar-datos__icon-toggle`}
