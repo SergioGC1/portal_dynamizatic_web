@@ -1,14 +1,19 @@
-import React, { useEffect, useRef, useState } from 'react'
+import React, { useEffect, useMemo, useRef, useState } from 'react'
 import { ColumnDef } from '../../components/data-table/DataTable'
 import { Calendar } from 'primereact/calendar'
 import { InputSwitch } from 'primereact/inputswitch'
 import EditarDatosProductos from './EditarDatosProductos'
 import ProductPhasesPanel from '../../components/product/ProductPhasesPanel'
 import usePermisos from '../../hooks/usePermisos'
+import { useAuth } from '../../contexts/AuthContext'
 import productosAPI from '../../api-endpoints/productos/index'
 import estadosAPI from '../../api-endpoints/estados/index'
-import { confirmDialog } from 'primereact/confirmdialog'
+import fasesAPI from '../../api-endpoints/fases'
+import tareasFasesAPI from '../../api-endpoints/tareas-fases'
+import productosFasesTareasAPI from '../../api-endpoints/productos-fases-tareas'
+import RolesAPI from '../../api-endpoints/roles'
 import '../../styles/pages/ProductosEditar.scss'
+import { confirmDialog } from 'primereact/confirmdialog'
 
 /* === Tipos === */
 interface Producto {
@@ -80,6 +85,7 @@ export default function Editar(props: Props) {
 
   // Permisos
   const { hasPermission: tienePermiso } = usePermisos()
+  const { user } = useAuth()
   const pantalla = 'Productos'
   const puedeEditarActivo = () => {
     if (!tienePermiso) return false
@@ -157,6 +163,10 @@ export default function Editar(props: Props) {
 
   // Cargar estados para mostrar nombre en vez de id
   const [estados, setEstados] = useState<any[]>([])
+  const [fases, setFases] = useState<any[]>([])
+  const confirmPendientePromiseRef = useRef<Promise<boolean> | null>(null)
+  const confirmPendienteActiveRef = useRef(false)
+  const confirmEliminarImagenRef = useRef(false)
   useEffect(() => {
     let montado = true
     const cargar = async () => {
@@ -165,6 +175,12 @@ export default function Editar(props: Props) {
         if (montado) setEstados(Array.isArray(lista) ? lista : [])
       } catch (err) {
         console.warn('No se pudieron cargar estados en EditarDatosProductos', err)
+      }
+      try {
+        const listaFases = typeof (fasesAPI as any).findFases === 'function' ? await (fasesAPI as any).findFases() : await (fasesAPI as any).find?.()
+        if (montado) setFases(Array.isArray(listaFases) ? listaFases : [])
+      } catch (errFases) {
+        console.warn('No se pudieron cargar fases', errFases)
       }
     }
     cargar()
@@ -211,6 +227,139 @@ export default function Editar(props: Props) {
   const renderError = (clave: string) =>
     errores[clave] ? <div className="record-panel__error">{errores[clave]}</div> : null
 
+  const [esSupervisor, setEsSupervisor] = useState(false)
+  useEffect(() => {
+    let montado = true
+    const resolver = async () => {
+      try {
+        const rolId =
+          (user as any)?.rolId ||
+          (user as any)?.roleId ||
+          (() => {
+            try {
+              const stored = localStorage.getItem('user')
+              const parsed = stored ? JSON.parse(stored) : null
+              return parsed?.rolId || parsed?.roleId
+            } catch {
+              return null
+            }
+          })()
+        if (!rolId) { if (montado) setEsSupervisor(false); return }
+        const rol = await RolesAPI.getRoleById(rolId)
+        const nombre = (rol?.nombre || rol?.name || '').toString().trim().toLowerCase()
+        if (montado) setEsSupervisor(nombre === 'supervisor')
+      } catch (err) {
+        console.error('No se pudo resolver rol', err)
+        if (montado) setEsSupervisor(false)
+      }
+    }
+    resolver()
+    return () => { montado = false }
+  }, [user])
+
+  const puedeEditarEstado = () => {
+    if (mode !== 'editar') return false
+    return esSupervisor
+  }
+
+  const mapEstadoAFase = (estado: any) => {
+    if (!estado) return null
+    const nombre = String(estado.nombre || estado.name || estado.title || '').toLowerCase()
+    const codigo = String(estado.codigo || estado.codigoEstado || '').toLowerCase()
+    const idStr = String(estado.id ?? '')
+    const match = fases.find((f: any) => {
+      const n = String(f.nombre || '').toLowerCase()
+      const c = String(f.codigo || '').toLowerCase()
+      return n === nombre || c === codigo || String(f.id) === idStr || n.includes(nombre) || c.includes(codigo)
+    })
+    return match || null
+  }
+
+  const contarPendientesFase = async (faseId: number) => {
+    const paramsT = { filter: JSON.stringify({ where: { faseId: Number(faseId) } }) }
+    const resultadoT = await (tareasFasesAPI as any).findTareasFases(paramsT)
+    const tareas = Array.isArray(resultadoT) ? resultadoT : []
+    if (!tareas.length) return 0
+    const filtro = { filter: JSON.stringify({ where: { productoId: Number((formulario as any)?.id), faseId: Number(faseId) } }) }
+    const resultadoRp = await (productosFasesTareasAPI as any).findProductosFasesTareas(filtro)
+    const rp = Array.isArray(resultadoRp) ? resultadoRp : []
+    const mapa: Record<number, any> = {}
+    for (const r of rp) {
+      const tareaId = Number(r.tareaFaseId)
+      if (!Number.isNaN(tareaId)) mapa[tareaId] = r
+    }
+    let pendientes = 0
+    for (const t of tareas) {
+      const r = mapa[Number((t as any).id)]
+      const keyComp = r ? Object.keys(r).find(k => /complet/i.test(k)) || 'completadaSn' : 'completadaSn'
+      if (!r || String(r[keyComp] ?? '').toUpperCase() !== 'S') pendientes += 1
+    }
+    return pendientes
+  }
+
+  const resetearTareas = async () => {
+    try {
+      // Traer todas las fases y tareas, marcar en N completada/validada
+      const fasesArr = Array.isArray(fases) ? fases : []
+      for (const f of fasesArr) {
+        const paramsT = { filter: JSON.stringify({ where: { faseId: Number((f as any).id) } }) }
+        const tareas = await (tareasFasesAPI as any).findTareasFases(paramsT)
+        const arrT = Array.isArray(tareas) ? tareas : []
+        for (const t of arrT) {
+          const filtro = { filter: JSON.stringify({ where: { productoId: Number((formulario as any)?.id), faseId: Number((f as any).id), tareaFaseId: Number((t as any).id) } }) }
+          const existentes = await (productosFasesTareasAPI as any).findProductosFasesTareas(filtro)
+          const arrEx = Array.isArray(existentes) ? existentes : []
+          const keyComp = arrEx[0] ? Object.keys(arrEx[0]).find(k => /complet/i.test(k)) || 'completadaSn' : 'completadaSn'
+          const keyVal = arrEx[0] ? Object.keys(arrEx[0]).find(k => /validada|supervisor/i.test(k)) || 'validadaSupervisrSN' : 'validadaSupervisrSN'
+          if (arrEx.length) {
+            for (const ex of arrEx) {
+              await (productosFasesTareasAPI as any).updateProductosFasesTareasById(ex.id, { [keyComp]: 'N', [keyVal]: 'N' })
+            }
+          } else {
+            const payload: any = { productoId: Number((formulario as any)?.id), faseId: Number((f as any).id), tareaFaseId: Number((t as any).id), [keyComp]: 'N', [keyVal]: 'N' }
+            await (productosFasesTareasAPI as any).createProductosFasesTareas(payload)
+          }
+        }
+      }
+    } catch (err) {
+      console.error('No se pudieron resetear tareas', err)
+    }
+  }
+
+  const resetearValidacionesSupervisor = async () => {
+    try {
+      const filtro = { filter: JSON.stringify({ where: { productoId: Number((formulario as any)?.id) } }) }
+      const existentes = await (productosFasesTareasAPI as any).findProductosFasesTareas(filtro)
+      const arrEx = Array.isArray(existentes) ? existentes : []
+      for (const ex of arrEx) {
+        const keyVal = ex ? Object.keys(ex).find((k) => /validada|supervisor/i.test(k)) || 'validadaSupervisrSN' : 'validadaSupervisrSN'
+        await (productosFasesTareasAPI as any).updateProductosFasesTareasById(ex.id, { [keyVal]: 'N' })
+      }
+    } catch (err) {
+      console.error('No se pudieron resetear validaciones de supervisor', err)
+    }
+  }
+
+  const fasesOrdenadas = useMemo(() => {
+    return [...(Array.isArray(fases) ? fases : [])].sort((a, b) => Number(a.id) - Number(b.id))
+  }, [fases])
+
+  const confirmarAvanceConPendientes = async (pendientes: string[]) =>
+    new Promise<boolean>((resolve) => {
+      if (confirmPendienteActiveRef.current) return
+      confirmPendienteActiveRef.current = true
+      confirmDialog({
+        message: `Te quedan ${pendientes.join(', ')}. ¿Seguro que quieres avanzar de estado?`,
+        header: 'Confirmar avance',
+        icon: 'pi pi-exclamation-triangle',
+        acceptLabel: 'Sí, avanzar',
+        rejectLabel: 'Cancelar',
+        accept: () => { confirmPendienteActiveRef.current = false; resolve(true) },
+        reject: () => { confirmPendienteActiveRef.current = false; resolve(false) },
+        closeOnEscape: true,
+      })
+    })
+
   const generarContenidoParaCampo = (claveCampo: string): React.ReactNode => {
     const valor = (formulario as any)?.[claveCampo]
     const normalizado = String(claveCampo).toLowerCase()
@@ -218,6 +367,58 @@ export default function Editar(props: Props) {
     if (normalizado.includes('estado')) {
       const etiqueta =
         estadosMap[String(valor ?? '')] || (formulario as any)?._estadoNombre || String(valor ?? '')
+      if (puedeEditarEstado()) {
+        const options = (estados || []).map((e) => ({ label: String(e?.nombre || e?.name || e?.title || ''), value: String(e?.id) }))
+        return (
+          <>
+            <select
+              value={valor ?? ''}
+              onChange={async (e) => {
+                const nuevo = e.target.value
+                const anterior = (formulario as any)?.estadoId
+                try {
+                  console.log('[Estado] cambio', { anterior, nuevo, esSupervisor })
+                  if (nuevo && nuevo !== anterior) {
+                    const targetId = Number(nuevo)
+                    const prevId = Number(anterior)
+                    if (!Number.isNaN(targetId) && !Number.isNaN(prevId) && targetId > prevId) {
+                      const listaFases = fasesOrdenadas.length ? fasesOrdenadas : (estados || []).map((e: any) => ({ id: e.id, nombre: e.nombre || e.name || e.title }))
+                      const incompletas: string[] = []
+                      for (const f of listaFases) {
+                        if (Number(f.id) >= targetId) continue
+                        const pendientes = await contarPendientesFase(Number(f.id))
+                        console.log('[Estado] pendientes fase', { faseId: f.id, pendientes })
+                        if (pendientes > 0) incompletas.push(`${pendientes} pendientes en ${f.nombre || f.id}`)
+                      }
+                    if (incompletas.length) {
+                      if (!confirmPendientePromiseRef.current) {
+                        confirmPendientePromiseRef.current = confirmarAvanceConPendientes(incompletas)
+                      }
+                      const ok = await confirmPendientePromiseRef.current
+                      confirmPendientePromiseRef.current = null
+                      if (!ok) return
+                    }
+                  }
+                  if (!Number.isNaN(targetId) && !Number.isNaN(prevId) && targetId <= prevId) {
+                    await resetearValidacionesSupervisor()
+                  }
+                }
+              } catch (errConf) {
+                console.error('Error validando cambio de estado', errConf)
+              }
+                actualizarCampoDelFormulario('estadoId', nuevo)
+              }}
+              className={`record-panel__input ${errores[claveCampo] ? 'record-panel__input--error' : ''}`}
+            >
+              <option value="">Selecciona estado</option>
+              {options.map((opt) => (
+                <option key={opt.value} value={opt.value}>{opt.label}</option>
+              ))}
+            </select>
+            {renderError(claveCampo)}
+          </>
+        )
+      }
       return (
         <>
           {renderSoloLectura(etiqueta)}
@@ -245,13 +446,13 @@ export default function Editar(props: Props) {
               actualizarCampoDelFormulario(claveCampo, e.value ? (e.value as Date).getFullYear() : '')
             }
             view="year"
-          dateFormat="yy"
-          showIcon
-          className={`record-panel__input ${errores[claveCampo] ? 'record-panel__input--error' : ''}`}
-          maxDate={new Date(new Date().getFullYear(), 11, 31)}
-          minDate={new Date(1900, 0, 1)}
-          inputClassName="productos-editar-calendar"
-        />
+            dateFormat="yy"
+            showIcon
+            className={`record-panel__input ${errores[claveCampo] ? 'record-panel__input--error' : ''}`}
+            maxDate={new Date(new Date().getFullYear(), 11, 31)}
+            minDate={new Date(1900, 0, 1)}
+            inputClassName="productos-editar-calendar"
+          />
           {renderError(claveCampo)}
         </>
       )
@@ -369,6 +570,7 @@ export default function Editar(props: Props) {
     esRegistroDeProducto && (formulario as any)?.id ? (
       <ProductPhasesPanel
         productId={(formulario as any).id}
+        productName={(formulario as any)?.nombre}
         selectedEstadoId={(formulario as any)?.estadoId}
         readOnly={mode === 'ver'}
         onEstadoChange={(nuevoNombre: string) => actualizarCampoDelFormulario('_estadoNombre', nuevoNombre)}
@@ -486,33 +688,38 @@ export default function Editar(props: Props) {
     }
   }
 
-  /* === EliminaciÃ³n de imagen (confirmaciÃ³n y llamada API) === */
+  /* === Eliminacion de imagen (confirmacion y llamada API) === */
   const eliminarImagenDelProductoConConfirmacion = () => {
+    if (confirmEliminarImagenRef.current) return;
+    confirmEliminarImagenRef.current = true;
     confirmDialog({
-      message: 'Â¿EstÃ¡s seguro de que quieres eliminar esta imagen? Esta acciÃ³n no se puede deshacer.',
-      header: 'Confirmar eliminaciÃ³n',
+      message: 'Estas seguro de que quieres eliminar esta imagen? Esta accion no se puede deshacer.',
+      header: 'Confirmar eliminacion',
       icon: 'pi pi-exclamation-triangle',
       accept: async () => {
         try {
           if ((formulario as any)?.id && (formulario as any).imagen) {
             if (productosAPI && typeof productosAPI.updateProductoById === 'function') {
-              await productosAPI.updateProductoById((formulario as any).id, { imagen: null })
+              await productosAPI.updateProductoById((formulario as any).id, { imagen: null });
             }
           }
-          actualizarCampoDelFormulario('imagen', '')
-          console.log('Imagen eliminada correctamente')
+          actualizarCampoDelFormulario('imagen', '');
+          console.log('Imagen eliminada correctamente');
         } catch (error) {
-          console.error('Error al eliminar la imagen:', error)
-          alert('Error al eliminar la imagen. IntÃ©ntalo de nuevo.')
+          console.error('Error al eliminar la imagen:', error);
+          alert('Error al eliminar la imagen. Intentalo de nuevo.');
+        } finally {
+          confirmEliminarImagenRef.current = false;
         }
       },
-      reject: () => { /* cancel */ },
-      acceptLabel: 'Sí, eliminar',
+      reject: () => { confirmEliminarImagenRef.current = false; },
+      acceptLabel: 'Si, eliminar',
       rejectLabel: 'Cancelar',
       acceptClassName: 'p-button-danger',
-      rejectClassName: 'p-button-secondary'
-    })
-  }
+      rejectClassName: 'p-button-secondary',
+    });
+  };
+
 
   /* === Subida automÃ¡tica tras guardar === */
   const intentarSubirImagenDespuesDeGuardar = async (archivo?: File) => {
@@ -572,6 +779,11 @@ export default function Editar(props: Props) {
     }
     if (Object.prototype.hasOwnProperty.call(payload, 'aÃ±o')) delete payload['aÃ±o']
     if (payload.nombre) payload.nombre = String(payload.nombre).trim()
+    if (payload.estadoId !== undefined && payload.estadoId !== null && payload.estadoId !== '') {
+      const parsedEstado = Number(payload.estadoId)
+      if (!Number.isNaN(parsedEstado)) payload.estadoId = parsedEstado
+    }
+
 
     let resultadoGuardado: any = null
     if (onSave) {
@@ -597,23 +809,26 @@ export default function Editar(props: Props) {
 
   // Renderizamos la vista pura y le pasamos todo lo necesario
   return (
-    <EditarDatosProductos
-      modo={mode}
-      esPanel={esPanel}
-      cargando={false}
-      valorNombre={valorTitulo}
-      errores={errores}
-      puedeEditarNombre={mode === 'editar'}
-      imagen={imagenProps}
-      camposDinamicos={camposDinamicos}
-      descripcionCampo={descripcionCampo || undefined}
-      panelFases={panelFases || undefined}
-      onNombreChange={(valor) => actualizarCampoDelFormulario(claveTitulo || 'nombre', valor)}
-      onGuardarClick={guardarProductoConValidaciones}
-      onCerrarClick={onClose}
-    />
+    <>
+      <EditarDatosProductos
+        modo={mode}
+        esPanel={esPanel}
+        cargando={false}
+        valorNombre={valorTitulo}
+        errores={errores}
+        puedeEditarNombre={mode === 'editar'}
+        imagen={imagenProps}
+        camposDinamicos={camposDinamicos}
+        descripcionCampo={descripcionCampo || undefined}
+        panelFases={panelFases || undefined}
+        onNombreChange={(valor) => actualizarCampoDelFormulario(claveTitulo || 'nombre', valor)}
+        onGuardarClick={guardarProductoConValidaciones}
+        onCerrarClick={onClose}
+      />
+    </>
   )
 }
+
 
 
 

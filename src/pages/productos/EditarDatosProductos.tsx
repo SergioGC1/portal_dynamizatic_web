@@ -1,6 +1,5 @@
 import React from 'react'
 import Button from '../../components/ui/Button'
-import { ConfirmDialog } from 'primereact/confirmdialog'
 import '../../components/ui/GestorEditores.css'
 import '../../styles/paneles/PanelProducto.scss'
 import '../../styles/pages/EditarDatosProductos.scss'
@@ -175,8 +174,6 @@ export default function EditarDatosProductosVista({
             </div>
 
             {panelFases}
-
-            <ConfirmDialog />
         </div>
     )
 }
