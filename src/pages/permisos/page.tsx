@@ -5,6 +5,7 @@ import usePermisos from '../../hooks/usePermisos';
 import '../../styles/pages/PermisosPage.scss';
 
 type Permiso = { id?: string | number; pantalla: string; accion: string; permisoSn: string; rolId: number | string };
+const normalizarRoles = (respuesta: any) => (Array.isArray(respuesta?.data) ? respuesta.data : Array.isArray(respuesta) ? respuesta : []);
 
 export default function PaginaPermisos() {
   const [listaRoles, setListaRoles] = useState<any[]>([]);
@@ -16,9 +17,9 @@ export default function PaginaPermisos() {
   // Cargar roles y permisos en paralelo
   useEffect(() => {
     setCargando(true);
-    Promise.all([RolesAPI.findRoles({}), PermisosAPI.findPermisos({})])
+    Promise.all([RolesAPI.findRoles({fetchAll: true}), PermisosAPI.findPermisos({})])
       .then(([datosRoles, datosPermisos]: any) => {
-        setListaRoles(Array.isArray(datosRoles) ? datosRoles : []);
+        setListaRoles(normalizarRoles(datosRoles));
         setListaPermisos(Array.isArray(datosPermisos) ? datosPermisos : []);
       })
       .catch((err) => { console.error(err); setMensajeError('Error cargando datos'); })

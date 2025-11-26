@@ -5,6 +5,7 @@ import EditarDatosUsuariosVista from './EditarDatosUsuarios';
 import usePermisos from '../../hooks/usePermisos';
 import UsuariosAPI from '../../api-endpoints/usuarios/index';
 import RolesAPI from '../../api-endpoints/roles/index';
+const normalizarRoles = (respuesta: any) => (Array.isArray(respuesta?.data) ? respuesta.data : Array.isArray(respuesta) ? respuesta : []);
 
 interface Usuario {
   id?: number | string;
@@ -99,9 +100,10 @@ export default function Editar(props: Props) {
     let montado = true;
     const cargarRoles = async () => {
       try {
-        const roles = await RolesAPI.findRoles();
+        const roles = await RolesAPI.findRoles({fetchAll: true});
         if (montado) {
-          const opciones = (roles || []).map((rol: any) => ({
+          const rolesLista = normalizarRoles(roles);
+          const opciones = (rolesLista || []).map((rol: any) => ({
             label: rol.nombre || rol.name || String(rol.id),
             value: String(rol.id),
           }));

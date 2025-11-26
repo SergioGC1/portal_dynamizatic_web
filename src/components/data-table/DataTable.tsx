@@ -211,7 +211,7 @@ const DataTableAdaptado = forwardRef<DataTableHandle, Props>(function DataTableA
     })
 
     return result
-  }, [data, globalFilter, columnFilters, columns])
+  }, [data, globalFilter, columnFilters, columns, lazy])
 
 
   // Ordenamiento

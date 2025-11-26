@@ -1,4 +1,4 @@
-﻿import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import '../../styles/layout.scss';
 import '../../styles/_main.scss';
 import GestorEditores from '../../components/ui/GestorEditores';
@@ -187,7 +187,7 @@ export default function PageProductos() {
         setEstaCargando(false);
       }
     },
-    [tablaPaginacion.first, tablaPaginacion.rows, filtroBusquedaAplicado],
+    [tablaPaginacion.first, tablaPaginacion.rows, filtroBusquedaAplicado, ordenTabla.campo, ordenTabla.orden],
   );
 
   const recargarProductos = useCallback(async () => {

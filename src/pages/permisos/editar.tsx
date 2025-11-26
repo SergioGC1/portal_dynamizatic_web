@@ -3,6 +3,7 @@ import EditarDatosPermisos from './EditarPermisos';
 import PermisosAPI from '../../api-endpoints/permisos/index';
 import RolesAPI from '../../api-endpoints/roles/index';
 import usePermisos from '../../hooks/usePermisos';
+const normalizarRoles = (respuesta: any) => (Array.isArray(respuesta?.data) ? respuesta.data : Array.isArray(respuesta) ? respuesta : []);
 
 type Permiso = {
   id?: string | number;
@@ -31,9 +32,12 @@ export default function Editar({ rolId }: Props) {
       setCargando(true);
       setMensajeError(null);
       try {
-        const [rolesRespuesta, permisosRespuesta] = await Promise.all([RolesAPI.findRoles({}), PermisosAPI.findPermisos({})]);
+        const [rolesRespuesta, permisosRespuesta] = await Promise.all([
+          RolesAPI.findRoles({fetchAll: true}),
+          PermisosAPI.findPermisos({}),
+        ]);
         if (!componenteActivo) return;
-        const rolesLimpios = Array.isArray(rolesRespuesta) ? rolesRespuesta : [];
+        const rolesLimpios = normalizarRoles(rolesRespuesta);
         const permisosLimpios = Array.isArray(permisosRespuesta) ? permisosRespuesta : [];
         setListaRoles(rolesLimpios);
         setListaPermisos(

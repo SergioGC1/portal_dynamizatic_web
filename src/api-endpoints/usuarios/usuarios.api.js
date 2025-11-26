@@ -1,4 +1,4 @@
-﻿const BASE_URL = (typeof window !== 'undefined' && window.__API_BASE_URL__) || 'http://localhost:3000';
+const BASE_URL = (typeof window !== 'undefined' && window.__API_BASE_URL__) || 'http://localhost:3000';
 
 function getAuthHeader() {
   if (typeof localStorage === 'undefined') return {};

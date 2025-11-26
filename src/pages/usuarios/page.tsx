@@ -1,4 +1,4 @@
-﻿import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 // Estilos globales de la aplicación
 import '../../styles/layout.scss';
 import '../../styles/_main.scss';
@@ -290,7 +290,7 @@ export default function PageUsuarios() {
         setEstaCargando(false);
       }
     },
-    [tablaPaginacion.first, tablaPaginacion.rows, filtroBusquedaAplicado],
+    [tablaPaginacion.first, tablaPaginacion.rows, filtroBusquedaAplicado, ordenTabla.campo, ordenTabla.orden],
   );
 
   const recargarUsuarios = useCallback(async () => {
