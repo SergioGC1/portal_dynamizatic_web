@@ -1,21 +1,21 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-// Estilos globales de la aplicación
 import '../../styles/layout.scss';
 import '../../styles/_main.scss';
+import '../../styles/pages/UsuariosPage.scss';
 import GestorEditores from '../../components/ui/GestorEditores';
 import DataTable, { ColumnDef, DataTableHandle } from '../../components/data-table/DataTable';
+import TableToolbar from '../../components/ui/TableToolbar';
 import UsuariosAPI from '../../api-endpoints/usuarios/index';
 import CredencialesAPI from '../../api-endpoints/credenciales-usuarios/index';
-import TableToolbar from '../../components/ui/TableToolbar';
 import usePermisos from '../../hooks/usePermisos';
 import { useAuth } from '../../contexts/AuthContext';
 import { ConfirmDialog, confirmDialog } from 'primereact/confirmdialog';
 import { Toast } from 'primereact/toast';
-import '../../styles/pages/UsuariosPage.scss';
 
 // ======================================================
 // Tipos
 // ======================================================
+
 interface Usuario {
   id: number;
   nombreUsuario?: string;
@@ -23,7 +23,7 @@ interface Usuario {
   email?: string;
   imagen?: string;
   activoSn?: string;
-  _cb?: number;
+  _cb?: number; // cache bust de imagen
   [key: string]: any;
 }
 
@@ -46,24 +46,22 @@ interface RespuestaUsuariosNormalizada {
   total: number;
 }
 
-// Normaliza valores de activo: acepta S/N, Si/No/Activo/Inactivo y devuelve 'S' o 'N'
-const normalizarValorActivo = (valor: any): string => {
-  const texto = String(valor ?? '').trim().toLowerCase();
-  if (texto === 'S' || texto === 'Si' || texto === 'Sí' || texto === 'Activo') return 'S';
-  if (texto === 'N' || texto === 'No' || texto === 'Inactivo') return 'N';
-  return String(valor ?? '').toUpperCase();
-};
-
 // ======================================================
 // Constantes y utilidades
 // ======================================================
+
+// URL base para ficheros subidos (imágenes, etc.)
 const API_UPLOAD_BASE_URL =
   process.env.REACT_APP_UPLOAD_BASE_URL ||
   process.env.REACT_APP_API_URL ||
   '';
 
+/**
+ * Construye la URL completa de una imagen a partir de la ruta.
+ */
 const construirUrlImagen = (ruta?: string): string => {
   if (!ruta) return '';
+
   const texto = String(ruta);
 
   if (texto.startsWith('http://') || texto.startsWith('https://')) return texto;
@@ -73,14 +71,20 @@ const construirUrlImagen = (ruta?: string): string => {
   return `${API_UPLOAD_BASE_URL}/${texto}`;
 };
 
+/**
+ * Devuelve iniciales en mayúsculas a partir de nombre y apellidos.
+ */
 const obtenerInicialesUsuario = (nombre?: string, apellidos?: string): string => {
   const inicialNombre = (nombre || '').trim().charAt(0).toUpperCase();
   const inicialApellido = (apellidos || '').trim().charAt(0).toUpperCase();
-
   const combinadas = `${inicialNombre}${inicialApellido}`.trim();
+
   return combinadas || '?';
 };
 
+/**
+ * Normaliza la respuesta del backend a un formato común { lista, total }.
+ */
 const normalizarRespuestaUsuarios = (respuesta: any): RespuestaUsuariosNormalizada => {
   if (respuesta && Array.isArray(respuesta.data)) {
     const total = typeof respuesta.total === 'number' ? respuesta.total : respuesta.data.length;
@@ -94,19 +98,33 @@ const normalizarRespuestaUsuarios = (respuesta: any): RespuestaUsuariosNormaliza
   return { lista: [], total: 0 };
 };
 
+/**
+ * Normaliza valores de activo: si/no -> S/N.
+ */
+const normalizarValorActivo = (valor: any): string => {
+  const texto = String(valor ?? '').trim().toLowerCase();
+
+  if (texto === 'si') return 'S';
+  if (texto === 'no') return 'N';
+
+  // Si no coincide con ninguno de los anteriores, devolvemos el valor original en mayúsculas.
+  return String(valor ?? '').toUpperCase();
+};
+
 // ======================================================
 // Componente principal
 // ======================================================
+
 export default function PageUsuarios() {
-  // -----------------------------
+  // --------------------------------------------------
   // Refs
-  // -----------------------------
+  // --------------------------------------------------
   const referenciaTabla = useRef<DataTableHandle | null>(null);
   const toastRef = useRef<Toast | null>(null);
 
-  // -----------------------------
-  // Estado general de la pantalla
-  // -----------------------------
+  // --------------------------------------------------
+  // Estado de datos y tabla
+  // --------------------------------------------------
   const [usuarios, setUsuarios] = useState<Usuario[]>([]);
   const [totalUsuarios, setTotalUsuarios] = useState(0);
   const [estaCargando, setEstaCargando] = useState(false);
@@ -118,22 +136,28 @@ export default function PageUsuarios() {
     rows: 10,
   });
 
-  // Filtros de búsqueda (temporal = lo que se escribe, aplicado = lo que se usa en la consulta)
+  // Filtros y orden de la tabla
   const [filtroBusquedaTemporal, setFiltroBusquedaTemporal] = useState('');
   const [filtroBusquedaAplicado, setFiltroBusquedaAplicado] = useState('');
-  const [ordenTabla, setOrdenTabla] = useState<{ campo: string | null; orden: 1 | -1 }>({ campo: 'nombreUsuario', orden: -1 });
+  const [ordenTabla, setOrdenTabla] = useState<{ campo: string | null; orden: 1 | -1 }>({
+    campo: 'nombreUsuario',
+    orden: -1,
+  });
 
-  // Estado del panel de detalle/edición
+  // Panel lateral (ver/editar usuario)
   const [modoPanel, setModoPanel] = useState<'ver' | 'editar' | null>(null);
   const [registroPanel, setRegistroPanel] = useState<Usuario | null>(null);
 
-  // -----------------------------
+  // --------------------------------------------------
   // Autenticación y permisos
-  // -----------------------------
+  // --------------------------------------------------
   const { user: usuarioAutenticado } = useAuth();
   const { hasPermission } = usePermisos();
   const tienePermiso = hasPermission;
 
+  /**
+   * Email del usuario actual (contexto o localStorage).
+   */
   const emailUsuarioActual = useMemo(() => {
     if (usuarioAutenticado && (usuarioAutenticado as any).email) {
       return (usuarioAutenticado as any).email as string;
@@ -150,9 +174,9 @@ export default function PageUsuarios() {
     }
   }, [usuarioAutenticado]);
 
-  // -----------------------------
-  // Definición de columnas tabla
-  // -----------------------------
+  // --------------------------------------------------
+  // Columnas de la tabla
+  // --------------------------------------------------
   const [columnasDefinicion] = useState<ColumnDef<Usuario>[]>([
     {
       key: 'imagen',
@@ -166,6 +190,7 @@ export default function PageUsuarios() {
         const iniciales = obtenerInicialesUsuario(nombreUsuario, apellidos);
         const nombreParaMostrar = `${nombreUsuario}${apellidos ? ' ' + apellidos : ''}`.trim();
         const cacheBust = row && row._cb ? `cb=${row._cb}` : '';
+
         const baseSrc = construirUrlImagen(String(imagen));
         const srcConCache =
           cacheBust && baseSrc
@@ -211,14 +236,17 @@ export default function PageUsuarios() {
   ]);
 
   const columnas = useMemo<ColumnDef<Usuario>[]>(
-    () => (columnasDefinicion.length ? columnasDefinicion : [{ key: 'id', title: 'ID' } as ColumnDef<Usuario>]),
+    () =>
+      columnasDefinicion.length
+        ? columnasDefinicion
+        : [{ key: 'id', title: 'ID' } as ColumnDef<Usuario>],
     [columnasDefinicion],
   );
 
-  // Establecer orden inicial DESC por la primera columna disponible
+  /**
+   * Asegura un orden inicial por nombreUsuario DESC cuando campo es null.
+   */
   useEffect(() => {
-    // Forzar que la columna de orden inicial sea "nombreUsuario" (la de Nombre) en DESC,
-    // ya que la primera visible es el avatar y no debe ordenar por ahí.
     if (ordenTabla.campo === null) {
       setOrdenTabla({ campo: 'nombreUsuario', orden: -1 });
     }
@@ -227,8 +255,17 @@ export default function PageUsuarios() {
   // ======================================================
   // Funciones auxiliares de UI
   // ======================================================
+
+  /**
+   * Muestra mensajes toast (éxito, info, error, etc.).
+   */
   const mostrarToast = useCallback(
-    (opciones: { severity: 'success' | 'info' | 'warn' | 'error'; summary: string; detail: string; life?: number }) => {
+    (opciones: {
+      severity: 'success' | 'info' | 'warn' | 'error';
+      summary: string;
+      detail: string;
+      life?: number;
+    }) => {
       toastRef.current?.show({
         severity: opciones.severity,
         summary: opciones.summary,
@@ -240,8 +277,12 @@ export default function PageUsuarios() {
   );
 
   // ======================================================
-  // Lógica de carga de datos (backend)
+  // Lógica de carga de datos
   // ======================================================
+
+  /**
+   * Carga usuarios desde el backend con paginación, búsqueda, ordenación y filtros.
+   */
   const cargarUsuarios = useCallback(
     async ({
       first = tablaPaginacion.first,
@@ -264,15 +305,18 @@ export default function PageUsuarios() {
         if (sortField) params.sortField = sortField;
         if (typeof sortOrder === 'number') params.sortOrder = sortOrder;
 
-        // Enviar filtros de columna al backend (normalizando S/N)
+        // Filtros de columna
         Object.entries(filters || {}).forEach(([key, value]) => {
           if (value === undefined || value === null || value === '') return;
+
           const lower = key.toLowerCase();
           const esBool = lower.includes('s') || lower.includes('si') || lower.includes('n') || lower.includes('no');
+
           if (esBool) {
-            params[key] = normalizarValorActivo(value); // S/N siempre
+            params[key] = normalizarValorActivo(value);
             return;
           }
+
           params[key] = value;
         });
 
@@ -290,9 +334,18 @@ export default function PageUsuarios() {
         setEstaCargando(false);
       }
     },
-    [tablaPaginacion.first, tablaPaginacion.rows, filtroBusquedaAplicado, ordenTabla.campo, ordenTabla.orden],
+    [
+      tablaPaginacion.first,
+      tablaPaginacion.rows,
+      filtroBusquedaAplicado,
+      ordenTabla.campo,
+      ordenTabla.orden,
+    ],
   );
 
+  /**
+   * Reaplica la carga de usuarios con los parámetros actuales.
+   */
   const recargarUsuarios = useCallback(async () => {
     await cargarUsuarios({
       first: tablaPaginacion.first,
@@ -301,11 +354,22 @@ export default function PageUsuarios() {
       sortField: ordenTabla.campo,
       sortOrder: ordenTabla.orden,
     });
-  }, [cargarUsuarios, tablaPaginacion.first, tablaPaginacion.rows, filtroBusquedaAplicado, ordenTabla.campo, ordenTabla.orden]);
+  }, [
+    cargarUsuarios,
+    tablaPaginacion.first,
+    tablaPaginacion.rows,
+    filtroBusquedaAplicado,
+    ordenTabla.campo,
+    ordenTabla.orden,
+  ]);
 
   // ======================================================
   // Manejadores de acciones
   // ======================================================
+
+  /**
+   * Aplica el filtro de búsqueda global y recarga desde primera página.
+   */
   const manejarBusqueda = () => {
     const criterio = filtroBusquedaTemporal.trim();
     setFiltroBusquedaAplicado(criterio);
@@ -319,6 +383,9 @@ export default function PageUsuarios() {
     });
   };
 
+  /**
+   * Limpia filtros y búsqueda y recarga la lista si ya se había buscado.
+   */
   const limpiarFiltros = () => {
     setFiltroBusquedaTemporal('');
     setFiltroBusquedaAplicado('');
@@ -335,11 +402,16 @@ export default function PageUsuarios() {
     }
   };
 
+  /**
+   * Elimina un usuario: primero intenta borrar credenciales, luego el usuario.
+   * Si no se puede por FK, lo desactiva (activoSn = 'N').
+   */
   const manejarEliminarUsuario = async (usuario: Usuario) => {
     try {
-      // 1) Eliminar credenciales del usuario (por si hay FK)
+      // 1) Eliminar credenciales asociadas (si las hay)
       try {
         const todas = await CredencialesAPI.findCredencialesUsuarios();
+
         const asociadas = Array.isArray(todas)
           ? todas.filter((c: any) => Number(c?.usuarioId) === Number(usuario.id))
           : [];
@@ -357,7 +429,7 @@ export default function PageUsuarios() {
         );
       }
 
-      // 2) Intentar eliminar el usuario
+      // 2) Eliminar el usuario
       await UsuariosAPI.deleteUsuarioById(usuario.id);
 
       mostrarToast({
@@ -371,7 +443,7 @@ export default function PageUsuarios() {
     } catch (e: any) {
       console.error(e);
 
-      // Fallback: desactivar el usuario si persisten dependencias (FK)
+      // 3) Fallback: desactivar usuario si no se puede eliminar
       try {
         await UsuariosAPI.updateUsuarioById(usuario.id, { activoSn: 'N' });
 
@@ -401,18 +473,21 @@ export default function PageUsuarios() {
     }
   };
 
+  /**
+   * Guarda un usuario (alta o edición), aplicando reglas de rol y limpieza de payload.
+   */
   const manejarGuardarUsuario = async (actualizado: any) => {
     try {
       const rolesAsignados = (actualizado as any)._assignedRoles || [];
       const payload: any = { ...actualizado };
       delete payload._assignedRoles;
 
-      // En edición el backend no acepta password en PATCH
+      // En edición no se envía password en PATCH
       if (payload && payload.id && Object.prototype.hasOwnProperty.call(payload, 'password')) {
         delete payload.password;
       }
 
-      // Aplicar cambio de rol solo si el usuario tiene permiso explícito
+      // Control de permisos sobre el rol
       const puedeEditarRol =
         tienePermiso('Usuarios', 'Rol') ||
         tienePermiso('Usuarios', 'EditarRol') ||
@@ -451,6 +526,7 @@ export default function PageUsuarios() {
   // ======================================================
   // Render
   // ======================================================
+
   return (
     <div className="usuarios-page">
       <Toast ref={toastRef} />
@@ -461,6 +537,7 @@ export default function PageUsuarios() {
       <div className="tabla-personalizada">
         {!modoPanel && (
           <>
+            {/* Toolbar superior (nuevo, buscar, exportar CSV...) */}
             <TableToolbar
               title="Usuarios"
               onNew={() => {
@@ -475,16 +552,19 @@ export default function PageUsuarios() {
               clearFilters={limpiarFiltros}
             />
 
+            {/* Placeholder inicial cuando aún no se ha buscado */}
             {!haBuscado && !estaCargando && (
               <div className="usuarios-page__placeholder">
                 <h4 className="usuarios-page__placeholder-title">Usuarios</h4>
               </div>
             )}
 
+            {/* Mensaje de carga inicial */}
             {estaCargando && !haBuscado && (
               <div className="usuarios-page__loading">Cargando usuarios...</div>
             )}
 
+            {/* Tabla de resultados una vez se ha lanzado una búsqueda */}
             {haBuscado && (
               <div className="usuarios-page__table-wrapper">
                 <DataTable
@@ -499,7 +579,9 @@ export default function PageUsuarios() {
                   onLazyLoad={({ first, rows, sortField, sortOrder, filters = {} }) => {
                     const campoOrden = sortField ?? ordenTabla.campo;
                     const orden = (typeof sortOrder === 'number' ? sortOrder : ordenTabla.orden) as 1 | -1;
+
                     setOrdenTabla({ campo: campoOrden, orden });
+
                     cargarUsuarios({
                       first,
                       rows,
@@ -584,7 +666,6 @@ export default function PageUsuarios() {
             onUploadSuccess={async (userId: number) => {
               try {
                 await recargarUsuarios();
-                // Forzar cache-bust local para el usuario recién actualizado
                 setUsuarios((anteriores) =>
                   anteriores.map((usuario) =>
                     usuario && Number(usuario.id) === Number(userId)

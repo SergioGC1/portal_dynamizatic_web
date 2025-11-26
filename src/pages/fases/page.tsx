@@ -1,16 +1,20 @@
-import React, { useCallback, useMemo, useRef, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import '../../styles/layout.scss';
 import '../../styles/_main.scss';
 import '../../styles/pages/RolesPage.scss';
 import GestorEditores from '../../components/ui/GestorEditores';
 import DataTable, { ColumnDef, DataTableHandle } from '../../components/data-table/DataTable';
+import TableToolbar from '../../components/ui/TableToolbar';
 import FasesAPI from '../../api-endpoints/fases/index';
 import TareasFasesAPI from '../../api-endpoints/tareas-fases/index';
-import TableToolbar from '../../components/ui/TableToolbar';
 import usePermisos from '../../hooks/usePermisos';
 import { Button } from 'primereact/button';
 import { ConfirmDialog, confirmDialog } from 'primereact/confirmdialog';
 import { Toast } from 'primereact/toast';
+
+// ======================================================
+// Tipos
+// ======================================================
 
 interface Fase {
   id?: number;
@@ -40,56 +44,117 @@ interface ParametrosCargaFases {
   filters?: Record<string, any>;
 }
 
-const normalizarRespuestaFases = (respuesta: any): { lista: Fase[]; total: number } => {
+interface RespuestaFasesNormalizada {
+  lista: Fase[];
+  total: number;
+}
+
+// ======================================================
+// Utilidades
+// ======================================================
+
+/**
+ * Normaliza la respuesta del backend a un formato común { lista, total }.
+ */
+const normalizarRespuestaFases = (respuesta: any): RespuestaFasesNormalizada => {
   if (respuesta && Array.isArray(respuesta.data)) {
     const total = typeof respuesta.total === 'number' ? respuesta.total : respuesta.data.length;
     return { lista: respuesta.data, total };
   }
-  if (Array.isArray(respuesta)) return { lista: respuesta, total: respuesta.length };
+
+  if (Array.isArray(respuesta)) {
+    return { lista: respuesta, total: respuesta.length };
+  }
+
   return { lista: [], total: 0 };
 };
 
+// ======================================================
+// Componente principal
+// ======================================================
+
 export default function PageFases() {
+  // --------------------------------------------------
+  // Refs
+  // --------------------------------------------------
   const referenciaTabla = useRef<DataTableHandle | null>(null);
   const toastRef = useRef<Toast | null>(null);
 
-  // Estado base de la tabla y paginación
+  // --------------------------------------------------
+  // Estado de datos y tabla
+  // --------------------------------------------------
   const [fases, setFases] = useState<Fase[]>([]);
   const [totalFases, setTotalFases] = useState(0);
   const [estaCargando, setEstaCargando] = useState(false);
   const [mensajeError, setMensajeError] = useState<string | null>(null);
   const [haBuscado, setHaBuscado] = useState(false);
 
-  const [tablaPaginacion, setTablaPaginacion] = useState<EstadoPaginacion>({ first: 0, rows: 10 });
+  const [tablaPaginacion, setTablaPaginacion] = useState<EstadoPaginacion>({
+    first: 0,
+    rows: 10,
+  });
+
   const [filtroBusquedaTemporal, setFiltroBusquedaTemporal] = useState('');
   const [filtroBusquedaAplicado, setFiltroBusquedaAplicado] = useState('');
-  // Controlamos el orden para enviarlo siempre al backend (DESC en la primera columna por defecto)
-  const [ordenTabla, setOrdenTabla] = useState<{ campo: string | null; orden: 1 | -1 }>({ campo: null, orden: -1 });
 
+  // Control de orden (campo y sentido) para enviarlo al backend
+  const [ordenTabla, setOrdenTabla] = useState<{ campo: string | null; orden: 1 | -1 }>({
+    campo: null,
+    orden: -1,
+  });
+
+  // Panel lateral (ver/editar fase)
   const [modoPanel, setModoPanel] = useState<'ver' | 'editar' | null>(null);
   const [registroPanel, setRegistroPanel] = useState<Fase | null>(null);
 
+  // --------------------------------------------------
+  // Permisos
+  // --------------------------------------------------
   const { hasPermission } = usePermisos();
 
-  const columnasDefinicion = useMemo<ColumnDef<Fase>[]>(() => [
-    { key: 'codigo', title: 'Código', sortable: true },
-    { key: 'nombre', title: 'Nombre', sortable: true },
-  ], []);
+  // ======================================================
+  // Columnas de la tabla
+  // ======================================================
 
-  const columnas = useMemo(
-    () => (columnasDefinicion.length ? columnasDefinicion : [{ key: 'id', title: 'ID' } as ColumnDef<Fase>]),
+  const columnasDefinicion = useMemo<ColumnDef<Fase>[]>(
+    () => [
+      { key: 'codigo', title: 'Código', sortable: true },
+      { key: 'nombre', title: 'Nombre', sortable: true },
+    ],
+    [],
+  );
+
+  const columnas = useMemo<ColumnDef<Fase>[]>(
+    () =>
+      columnasDefinicion.length
+        ? columnasDefinicion
+        : [{ key: 'id', title: 'ID' } as ColumnDef<Fase>],
     [columnasDefinicion],
   );
 
-  // Fijar la columna inicial de orden (primera columna) a DESC
-  React.useEffect(() => {
+  /**
+   * Fija la columna inicial de orden (primera columna) a DESC si aún no hay campo.
+   */
+  useEffect(() => {
     if (ordenTabla.campo === null && columnas.length) {
       setOrdenTabla({ campo: columnas[0].key, orden: -1 });
     }
   }, [columnas, ordenTabla.campo]);
 
+  // ======================================================
+  // Utilidades de UI
+  // ======================================================
+
+  /**
+   * Muestra mensajes tipo toast (éxito, error, info, etc.).
+   */
   const mostrarToast = useCallback(
-    (opciones: { severity: 'success' | 'info' | 'warn' | 'error'; summary: string; detail: string; life?: number }) => {
+    (opciones: {
+      severity: 'success' | 'info' | 'warn' | 'error';
+      summary: string;
+      detail: string;
+      life?: number;
+    }) => {
       toastRef.current?.show({
         severity: opciones.severity,
         summary: opciones.summary,
@@ -100,6 +165,17 @@ export default function PageFases() {
     [],
   );
 
+  // ======================================================
+  // Lógica de carga de datos
+  // ======================================================
+
+  /**
+   * Carga fases desde el backend con:
+   * - paginación (first, rows)
+   * - búsqueda global (search)
+   * - ordenación (sortField, sortOrder)
+   * - filtros de columna (filters)
+   */
   const cargarFases = useCallback(
     async ({
       first = tablaPaginacion.first,
@@ -111,15 +187,21 @@ export default function PageFases() {
     }: ParametrosCargaFases = {}) => {
       setEstaCargando(true);
       setMensajeError(null);
+
       try {
         const params: any = { limit: rows, offset: first };
+
         if (search) params.search = search;
         if (sortField) params.sortField = sortField;
         if (typeof sortOrder === 'number') params.sortOrder = sortOrder;
-        // Filtros de la tabla (ej: codigo, nombre si lo haces filterable)
+
+        // Filtros de la tabla (ej: código, nombre si se marcan como filterable)
         Object.entries(filters || {}).forEach(([key, value]) => {
           if (value === undefined || value === null || value === '') return;
-          const esBool = key.toLowerCase().includes('sn') || key.toLowerCase().includes('activo');
+
+          const lowerKey = key.toLowerCase();
+          const esBool = lowerKey.includes('sn') || lowerKey.includes('activo');
+
           params[key] = esBool ? String(value).toUpperCase() : value;
         });
 
@@ -146,6 +228,9 @@ export default function PageFases() {
     ],
   );
 
+  /**
+   * Reaplica la carga de fases con los parámetros actuales de tabla.
+   */
   const recargarFases = useCallback(async () => {
     await cargarFases({
       first: tablaPaginacion.first,
@@ -154,31 +239,71 @@ export default function PageFases() {
       sortField: ordenTabla.campo,
       sortOrder: ordenTabla.orden,
     });
-  }, [cargarFases, tablaPaginacion.first, tablaPaginacion.rows, filtroBusquedaAplicado, ordenTabla.campo, ordenTabla.orden]);
+  }, [
+    cargarFases,
+    tablaPaginacion.first,
+    tablaPaginacion.rows,
+    filtroBusquedaAplicado,
+    ordenTabla.campo,
+    ordenTabla.orden,
+  ]);
 
+  // ======================================================
+  // Manejadores de acciones
+  // ======================================================
+
+  /**
+   * Aplica el filtro de búsqueda global y recarga desde la primera página.
+   */
   const manejarBusqueda = () => {
     const criterio = filtroBusquedaTemporal.trim();
     setFiltroBusquedaAplicado(criterio);
-    cargarFases({ first: 0, rows: tablaPaginacion.rows, search: criterio, sortField: ordenTabla.campo, sortOrder: ordenTabla.orden });
+
+    cargarFases({
+      first: 0,
+      rows: tablaPaginacion.rows,
+      search: criterio,
+      sortField: ordenTabla.campo,
+      sortOrder: ordenTabla.orden,
+    });
   };
 
+  /**
+   * Limpia filtros de columna y búsqueda global, y recarga la lista.
+   */
   const limpiarFiltros = () => {
     setFiltroBusquedaTemporal('');
     setFiltroBusquedaAplicado('');
     referenciaTabla.current?.clearFilters();
+
     if (haBuscado) {
-      cargarFases({ first: 0, rows: tablaPaginacion.rows, search: '', sortField: ordenTabla.campo, sortOrder: ordenTabla.orden });
+      cargarFases({
+        first: 0,
+        rows: tablaPaginacion.rows,
+        search: '',
+        sortField: ordenTabla.campo,
+        sortOrder: ordenTabla.orden,
+      });
     }
   };
 
+  /**
+   * Elimina una fase comprobando antes si tiene tareas asociadas.
+   * Si tiene tareas, no permite eliminarla.
+   * Si no tiene, muestra un confirmDialog antes de borrar.
+   */
   const eliminarFaseConConfirmacion = async (row: Fase) => {
     let tareasAsociadas: TareaFase[] = [];
+
     try {
       const params = { filter: JSON.stringify({ where: { faseId: Number(row.id) } }) };
       const lista = await TareasFasesAPI.findTareasFases(params);
       tareasAsociadas = Array.isArray(lista) ? (lista as TareaFase[]) : [];
     } catch (e) {
-      console.warn('No se pudo comprobar tareas asociadas, continuando con borrado simple...', e);
+      console.warn(
+        'No se pudo comprobar tareas asociadas, continuando con borrado simple...',
+        e,
+      );
     }
 
     if ((tareasAsociadas || []).length > 0) {
@@ -200,21 +325,44 @@ export default function PageFases() {
       acceptClassName: 'p-button-danger',
       accept: async () => {
         try {
-          if (row?.id != null) await FasesAPI.deleteFaseById(row.id);
-          mostrarToast({ severity: 'success', summary: 'Eliminado', detail: 'Fase eliminada correctamente', life: 2200 });
+          if (row?.id != null) {
+            await FasesAPI.deleteFaseById(row.id);
+          }
+
+          mostrarToast({
+            severity: 'success',
+            summary: 'Eliminado',
+            detail: 'Fase eliminada correctamente',
+            life: 2200,
+          });
+
           await recargarFases();
         } catch (e) {
           console.error(e);
-          mostrarToast({ severity: 'error', summary: 'Error', detail: 'No se pudo eliminar la fase', life: 2800 });
+          mostrarToast({
+            severity: 'error',
+            summary: 'Error',
+            detail: 'No se pudo eliminar la fase',
+            life: 2800,
+          });
         }
       },
     });
   };
 
+  // ======================================================
+  // Render
+  // ======================================================
+
   return (
     <div style={{ padding: 16 }}>
+      {/* Toast para mensajes de estado */}
       <Toast ref={toastRef} />
+
+      {/* Diálogo global de confirmación */}
       <ConfirmDialog />
+
+      {/* Bloque de error superior, si hay mensajeError */}
       {mensajeError && (
         <div
           style={{
@@ -236,6 +384,7 @@ export default function PageFases() {
       )}
 
       <div className="tabla-personalizada">
+        {/* Toolbar superior (cuando no se está en modo panel) */}
         {!modoPanel && (
           <TableToolbar
             title="Fases"
@@ -252,6 +401,7 @@ export default function PageFases() {
           />
         )}
 
+        {/* Placeholder inicial cuando aún no se ha buscado */}
         {!haBuscado && !estaCargando && (
           <div
             style={{
@@ -266,12 +416,12 @@ export default function PageFases() {
           </div>
         )}
 
+        {/* Mensaje de carga genérico */}
         {estaCargando && (
-          <div style={{ textAlign: 'center', padding: 20 }}>
-            Cargando fases...
-          </div>
+          <div style={{ textAlign: 'center', padding: 20 }}>Cargando fases...</div>
         )}
 
+        {/* Tabla de fases (cuando ya se ha buscado y no estamos en modo panel) */}
         {haBuscado && !estaCargando && !modoPanel && (
           <div className="roles-page__table-wrapper">
             <DataTable
@@ -284,11 +434,23 @@ export default function PageFases() {
               sortOrder={ordenTabla.orden}
               lazy
               totalRecords={totalFases}
+              /**
+               * onLazyLoad se dispara al:
+               * - cambiar de página
+               * - cambiar tamaño de página
+               * - ordenar columnas
+               * - aplicar filtros de columna
+               * y vuelve a pedir datos al backend con esos parámetros.
+               */
               onLazyLoad={({ first, rows, sortField, sortOrder, filters = {} }) => {
                 const campoOrden = sortField ?? ordenTabla.campo;
-                const orden = (typeof sortOrder === 'number' ? sortOrder : ordenTabla.orden) as 1 | -1;
+                const orden = (typeof sortOrder === 'number' ? sortOrder : ordenTabla.orden) as
+                  | 1
+                  | -1;
+
                 setOrdenTabla({ campo: campoOrden, orden });
                 setTablaPaginacion({ first, rows });
+
                 cargarFases({
                   first,
                   rows,
@@ -320,6 +482,8 @@ export default function PageFases() {
                 borrar: hasPermission('Fases', 'Borrar'),
               }}
             />
+
+            {/* Capa de carga sobre la tabla si se vuelve a pedir información */}
             {estaCargando && (
               <div className="roles-page__table-overlay">
                 <div className="roles-page__table-overlay-box">Cargando...</div>
@@ -328,6 +492,7 @@ export default function PageFases() {
           </div>
         )}
 
+        {/* Panel lateral de edición / detalle */}
         {modoPanel && registroPanel && (
           <GestorEditores
             mode={modoPanel}
@@ -346,6 +511,7 @@ export default function PageFases() {
                 } else {
                   await FasesAPI.createFase(updated);
                 }
+
                 setModoPanel(null);
                 setRegistroPanel(null);
                 await recargarFases();
