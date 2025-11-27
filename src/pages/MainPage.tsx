@@ -1,95 +1,72 @@
-import React, { useMemo, useState, useEffect } from "react";
+﻿import React, { useEffect, useMemo, useState } from "react";
 import "../styles/layout.scss";
 import "../styles/_main.scss";
 import { useAuth } from "../contexts/AuthContext";
 import usePermisos from '../hooks/usePermisos';
 import Header from "../components/layout/Header";
 import Sidebar from "../components/layout/Sidebar";
-// Button import removed (no longer used here)
 import UsuariosPage from "./usuarios/page";
 import RolesPage from "./roles/page";
 import ProductosPage from "./productos/page";
 import FasesPage from "./fases/page";
 import PermisosPage from "./permisos/page";
-// Ajuste: la página de chat ahora se exporta sólo como 'page.tsx'
 import ChatPage from "./chat/page";
 
 export default function MainPage() {
+  // Usuario actual y logout
   const { user, logout } = useAuth();
-  // Estado para controlar si el sidebar está colapsado (modo hamburguesa)
+
+  // Estado sidebar
   const [sidebarCollapsed, setSidebarCollapsed] = useState<boolean>(false);
 
-  // Obtener helper para comprobar permisos del rol actual
-  const { hasPermission: tienePermiso } = usePermisos()
+  // Permisos del rol
+  const { hasPermission: tienePermiso } = usePermisos();
 
-  const [selected, setSelected] = useState<string>(""); // Sin selección inicial
+  // Página seleccionada
+  const [selected, setSelected] = useState<string>("");
+  // Forzar remount de Usuarios al abrir perfil
+  const [usuariosKey, setUsuariosKey] = useState<number>(0);
 
+  // Items del menú según permisos
   const menuItems = useMemo(() => {
     const paginasConPermisos = [] as Array<{ key: string; label: string }>;
-
-    // Solo mostrar páginas si el usuario tiene el permiso "Ver" correspondiente
-    if (tienePermiso('Usuarios', 'Ver')) {
-      paginasConPermisos.push({ key: "usuarios", label: "Usuarios" })
-    }
-
-    if (tienePermiso('Roles', 'Ver')) {
-      paginasConPermisos.push({ key: "roles", label: "Roles" })
-    }
-
-    if (tienePermiso('Productos', 'Ver')) {
-      paginasConPermisos.push({ key: "productos", label: "Productos" })
-    }
-
-    if (tienePermiso('Fases', 'Ver')) {
-      paginasConPermisos.push({ key: "fases", label: "Fases" })
-    }
-
-    // Mostrar opción "Permisos" solo si el usuario puede ver o actualizar permisos
-    if (tienePermiso('Permisos', 'Ver') || tienePermiso('Permisos', 'Actualizar')) {
-      paginasConPermisos.push({ key: 'permisos', label: 'Permisos' })
-    }
-
-    // Añadir Chat solo si el usuario tiene permiso para verlo
-    // Nota: el permiso actual se denomina "MensajesChat" en la configuración de permisos
-    if (tienePermiso('MensajesChat', 'Ver')) {
-      paginasConPermisos.push({ key: "chat", label: "Chat" })
-    }
-
+    if (tienePermiso('Usuarios', 'Ver')) paginasConPermisos.push({ key: "usuarios", label: "Usuarios" });
+    if (tienePermiso('Roles', 'Ver')) paginasConPermisos.push({ key: "roles", label: "Roles" });
+    if (tienePermiso('Productos', 'Ver')) paginasConPermisos.push({ key: "productos", label: "Productos" });
+    if (tienePermiso('Fases', 'Ver')) paginasConPermisos.push({ key: "fases", label: "Fases" });
+    if (tienePermiso('Permisos', 'Ver') || tienePermiso('Permisos', 'Actualizar')) paginasConPermisos.push({ key: 'permisos', label: 'Permisos' });
+    if (tienePermiso('MensajesChat', 'Ver')) paginasConPermisos.push({ key: "chat", label: "Chat" });
     return paginasConPermisos;
-  }, [tienePermiso])
+  }, [tienePermiso]);
 
-  // Establecer automáticamente la primera página disponible cuando se cargan los permisos
+  // Selección inicial según prioridad
   useEffect(() => {
     if (menuItems.length > 0) {
-      // Si no hay selección o la selección actual no está disponible
       if (!selected || !menuItems.some(item => item.key === selected)) {
-        // Buscar páginas en orden de prioridad, excluyendo Chat
         const prioridadPaginas = ['usuarios', 'roles', 'productos', 'fases', 'permisos'];
-        
-        // Encontrar la primera página disponible según prioridad
-        let paginaSeleccionada = ''; // fallback
+        let paginaSeleccionada = '';
         for (const pagina of prioridadPaginas) {
           if (menuItems.some(item => item.key === pagina)) {
             paginaSeleccionada = pagina;
             break;
           }
         }
-        
         setSelected(paginaSeleccionada);
       }
     }
   }, [menuItems, selected]);
+
+  // Contenido según selección
   const componentes: Record<string, React.ReactNode> = {
-    usuarios: tienePermiso('Usuarios', 'Ver') ? <UsuariosPage /> : null,
+    usuarios: tienePermiso('Usuarios', 'Ver') ? <UsuariosPage key={`usuarios-${usuariosKey}`} /> : null,
     roles: tienePermiso('Roles', 'Ver') ? <RolesPage /> : null,
     productos: tienePermiso('Productos', 'Ver') ? <ProductosPage /> : null,
     fases: tienePermiso('Fases', 'Ver') ? <FasesPage /> : null,
     permisos: (tienePermiso('Permisos', 'Ver') || tienePermiso('Permisos', 'Actualizar')) ? <PermisosPage /> : null,
-  chat: tienePermiso('MensajesChat', 'Ver') ? <ChatPage /> : null,
+    chat: tienePermiso('MensajesChat', 'Ver') ? <ChatPage /> : null,
   };
 
   const getContenido = () => {
-    // Si no hay páginas disponibles, mostrar mensaje de sin permisos
     if (menuItems.length === 0) {
       return (
         <section style={{ textAlign: 'center', padding: '2rem' }}>
@@ -100,7 +77,6 @@ export default function MainPage() {
       );
     }
 
-    // Si no hay selección, mostrar mensaje de seleccionar
     if (!selected) {
       return (
         <section style={{ textAlign: 'center', padding: '2rem' }}>
@@ -110,7 +86,6 @@ export default function MainPage() {
       );
     }
 
-    // Verificar si el usuario tiene permisos para la página seleccionada
     const componente = componentes[selected];
     if (componente === null) {
       return (
@@ -121,12 +96,8 @@ export default function MainPage() {
       );
     }
 
-    // Si el componente existe, mostrarlo
-    if (componente) {
-      return componente;
-    }
+    if (componente) return componente;
 
-    // Fallback para secciones en construcción
     return (
       <section>
         <h2>{menuItems.find((m) => m.key === selected)?.label}</h2>
@@ -137,9 +108,26 @@ export default function MainPage() {
 
   const contenido = getContenido();
 
-  function cerrarSesion() {
-    logout();
-  }
+  const cerrarSesion = () => logout();
+
+  // Permisos de usuario
+  const puedeVerUsuarios = tienePermiso('Usuarios', 'Ver');
+  const puedeEditarPerfil = tienePermiso('Usuarios', 'Actualizar') && puedeVerUsuarios;
+
+  // Ir a perfil: redirige a Usuarios y guarda email para que no se pierda referencia
+  const irAPerfil = () => {
+    if (!puedeEditarPerfil) return;
+    if (user?.email) {
+      sessionStorage.setItem('perfilEmailActivo', user.email);
+    }
+    setSelected('usuarios');
+    setUsuariosKey((k) => k + 1); // remount para disparar carga y panel
+  };
+
+  // Datos básicos para avatar/iniciales
+  const nombreMostrado = (user as any)?.nombreUsuario || (user as any)?.name || user?.email;
+  const avatarUrl = (user as any)?.imagen || (user as any)?.avatar;
+  const apellidos = (user as any)?.apellidos || (user as any)?.lastName || '';
 
   return (
     <div style={{ display: "flex", height: "100vh" }}>
@@ -149,9 +137,13 @@ export default function MainPage() {
       <div style={{ flex: 1, display: "flex", flexDirection: "column", minWidth: 0 }}>
         <Header
           title="Portal Dynamizatic"
-          userName={user?.email}
+          userName={nombreMostrado}
+          userLastName={apellidos}
+          userEmail={user?.email}
+          userAvatar={avatarUrl}
+          allowProfile={puedeEditarPerfil}
+          onProfile={irAPerfil}
           onLogout={cerrarSesion}
-          // Evitar usar abreviaturas en callbacks; usar nombre explícito
           onToggleSidebar={() => setSidebarCollapsed(prev => !prev)}
           sidebarCollapsed={sidebarCollapsed}
         />

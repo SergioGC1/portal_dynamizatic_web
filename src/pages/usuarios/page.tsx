@@ -130,6 +130,7 @@ export default function PageUsuarios() {
   const [estaCargando, setEstaCargando] = useState(false);
   const [mensajeError, setMensajeError] = useState<string | null>(null);
   const [haBuscado, setHaBuscado] = useState(false);
+  const [perfilEmailPendiente, setPerfilEmailPendiente] = useState<string | null>(null);
 
   const [tablaPaginacion, setTablaPaginacion] = useState<EstadoPaginacion>({
     first: 0,
@@ -362,6 +363,34 @@ export default function PageUsuarios() {
     ordenTabla.campo,
     ordenTabla.orden,
   ]);
+
+  // Detectar petición de ir al perfil desde otras pantallas
+  useEffect(() => {
+    try {
+      const emailPerfil = sessionStorage.getItem('perfilEmailActivo');
+      if (emailPerfil) {
+        setPerfilEmailPendiente(emailPerfil);
+        sessionStorage.removeItem('perfilEmailActivo');
+        cargarUsuarios({ first: 0, rows: tablaPaginacion.rows, search: emailPerfil });
+      }
+    } catch {
+      /* ignore */
+    }
+  }, [cargarUsuarios, tablaPaginacion.rows]);
+
+  // Abrir editor automáticamente cuando el email pendiente esté en la lista
+  useEffect(() => {
+    if (perfilEmailPendiente && usuarios && usuarios.length) {
+      const match = usuarios.find(
+        (u) => u && u.email && String(u.email).toLowerCase() === String(perfilEmailPendiente).toLowerCase(),
+      );
+      if (match) {
+        setModoPanel('editar');
+        setRegistroPanel(match);
+        setPerfilEmailPendiente(null);
+      }
+    }
+  }, [perfilEmailPendiente, usuarios]);
 
   // ======================================================
   // Manejadores de acciones
