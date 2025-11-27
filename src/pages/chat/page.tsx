@@ -203,7 +203,7 @@ export default function PaginaChat() {
   const construirSrc = useCallback((p?: string | null) => {
     if (!p) return null;
     const s = String(p);
-    const apiBase = (typeof window !== 'undefined' && (window as any).__API_BASE_URL__) || 'http://127.0.0.1:3000';
+    const apiBase = process.env.REACT_APP_API_BASE_URL;
     if (s.startsWith('http://') || s.startsWith('https://')) return s;
     if (s.startsWith('/')) return `${apiBase}${s}`;
     return `${apiBase}/${s}`;

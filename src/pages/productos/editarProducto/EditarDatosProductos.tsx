@@ -144,9 +144,7 @@ export default function Editar (props: Props) {
     setFormulario((formularioActual: any) => ({ ...formularioActual, [clave]: valor }))
 
   // Construcción de URL de imagen según base de API (fallback local)
-  const baseDeApi =
-    (typeof window !== 'undefined' && (window as any).__API_BASE_URL__) ||
-    'http://127.0.0.1:3000'
+  const baseDeApi = process.env.REACT_APP_API_BASE_URL
 
   const construirUrlDeImagen = (rutaImagen?: string) => {
     if (!rutaImagen) return ''

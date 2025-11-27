@@ -13,7 +13,7 @@ type Props = {
 
 // Selector de usuarios para iniciar una nueva conversación
 export default function Editar({ usuarios, idUsuarioActual, interlocutoresConConversacion, onSeleccionar, onCerrar }: Props) {
-  const apiBase = (typeof window !== 'undefined' && (window as any).__API_BASE_URL__) || 'http://127.0.0.1:3000';
+  const apiBase = process.env.NEXT_PUBLIC_API_BASE_URL;
   const construirSrc = useCallback((p?: string | null) => {
     if (!p) return null;
     const s = String(p);
