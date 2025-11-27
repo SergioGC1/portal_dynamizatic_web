@@ -364,6 +364,81 @@ export default function PageUsuarios() {
     ordenTabla.orden,
   ]);
 
+  // -------------------------------
+  // Apertura directa del perfil propio (sin recargar tabla)
+  // -------------------------------
+  const abrirPerfilPorEmail = useCallback(
+    async (emailPerfil: string) => {
+      const emailLower = String(emailPerfil || '').toLowerCase();
+      try {
+        let usuarioEncontrado: Usuario | null = null;
+
+        // 1) Si tenemos id de usuario autenticado, intentar por id
+        const userId = (usuarioAutenticado as any)?.id;
+        if (userId) {
+          try {
+            const u = await UsuariosAPI.getUsuarioById(userId);
+            if (u && u.email && String(u.email).toLowerCase() === emailLower) {
+              usuarioEncontrado = u as Usuario;
+            }
+          } catch {
+            /* ignore */
+          }
+        }
+
+        // 2) Fallback: buscar por email usando findUsuarios, pero sin tocar la tabla
+        if (!usuarioEncontrado) {
+          try {
+            const resp = await UsuariosAPI.findUsuarios({ search: emailPerfil, limit: 1, offset: 0 });
+            const normalizada = normalizarRespuestaUsuarios(resp);
+            usuarioEncontrado = (normalizada.lista && normalizada.lista[0]) || null;
+          } catch {
+            /* ignore */
+          }
+        }
+
+        if (usuarioEncontrado) {
+          setModoPanel('editar');
+          setRegistroPanel(usuarioEncontrado);
+          setPerfilEmailPendiente(null);
+          return;
+        }
+
+        // Si no se encontró, dejamos pendiente para que abra cuando la tabla lo cargue
+        setPerfilEmailPendiente(emailPerfil);
+      } catch (err) {
+        console.error('No se pudo abrir perfil por email', err);
+      }
+    },
+    [usuarioAutenticado],
+  );
+
+  // Detectar petición de perfil desde otras pantallas (sessionStorage)
+  useEffect(() => {
+    try {
+      const emailPerfil = sessionStorage.getItem('perfilEmailActivo');
+      if (emailPerfil) {
+        sessionStorage.removeItem('perfilEmailActivo');
+        abrirPerfilPorEmail(emailPerfil);
+      }
+    } catch {
+      /* ignore */
+    }
+  }, [abrirPerfilPorEmail]);
+
+  // Fallback: si hay pendiente y la tabla ya cargó, intentar abrir con los datos ya cargados
+  useEffect(() => {
+    if (perfilEmailPendiente && usuarios && usuarios.length) {
+      const emailLower = perfilEmailPendiente.toLowerCase();
+      const match = usuarios.find((u) => u && u.email && String(u.email).toLowerCase() === emailLower);
+      if (match) {
+        setModoPanel('editar');
+        setRegistroPanel(match);
+        setPerfilEmailPendiente(null);
+      }
+    }
+  }, [perfilEmailPendiente, usuarios]);
+
   // Detectar petición de ir al perfil desde otras pantallas
   useEffect(() => {
     try {
