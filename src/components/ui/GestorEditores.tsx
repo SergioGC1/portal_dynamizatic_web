@@ -2,7 +2,7 @@ import React from 'react'
 import { ColumnDef } from '../../components/data-table/DataTable'
 // Importar los paneles específicos
 import PanelUsuario from '../../pages/usuarios/editar'
-import PanelProducto from '../../pages/productos/editar'
+import PanelProducto from '../../pages/productos/editarProducto/editar'
 import PanelRol from '../../pages/roles/editar'
 import PanelFase from '../../pages/fases/editar'
 

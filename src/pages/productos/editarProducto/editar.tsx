@@ -1,19 +1,19 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react'
-import { ColumnDef } from '../../components/data-table/DataTable'
+import { ColumnDef } from '../../../components/data-table/DataTable'
 import { Calendar } from 'primereact/calendar'
 import { InputSwitch } from 'primereact/inputswitch'
 import EditarDatosProductos from './EditarDatosProductos'
-import ProductPhasesPanel from '../../components/product/ProductPhasesPanel'
-import usePermisos from '../../hooks/usePermisos'
-import { useAuth } from '../../contexts/AuthContext'
-import productosAPI from '../../api-endpoints/productos/index'
-import estadosAPI from '../../api-endpoints/estados/index'
-import fasesAPI from '../../api-endpoints/fases'
-import tareasFasesAPI from '../../api-endpoints/tareas-fases'
-import productosFasesTareasAPI from '../../api-endpoints/productos-fases-tareas'
-import RolesAPI from '../../api-endpoints/roles'
-import '../../styles/pages/ProductosEditar.scss'
+import usePermisos from '../../../hooks/usePermisos'
+import { useAuth } from '../../../contexts/AuthContext'
+import productosAPI from '../../../api-endpoints/productos/index'
+import estadosAPI from '../../../api-endpoints/estados/index'
+import fasesAPI from '../../../api-endpoints/fases'
+import tareasFasesAPI from '../../../api-endpoints/tareas-fases'
+import productosFasesTareasAPI from '../../../api-endpoints/productos-fases-tareas'
+import RolesAPI from '../../../api-endpoints/roles'
+import '../../../styles/pages/ProductosEditar.scss'
 import { confirmDialog } from 'primereact/confirmdialog'
+import FasesTareasProducto from '../fasesTareas/FasesTareasProducto'
 
 /* === Tipos === */
 interface Producto {
@@ -262,19 +262,6 @@ export default function Editar(props: Props) {
     return esSupervisor
   }
 
-  const mapEstadoAFase = (estado: any) => {
-    if (!estado) return null
-    const nombre = String(estado.nombre || estado.name || estado.title || '').toLowerCase()
-    const codigo = String(estado.codigo || estado.codigoEstado || '').toLowerCase()
-    const idStr = String(estado.id ?? '')
-    const match = fases.find((f: any) => {
-      const n = String(f.nombre || '').toLowerCase()
-      const c = String(f.codigo || '').toLowerCase()
-      return n === nombre || c === codigo || String(f.id) === idStr || n.includes(nombre) || c.includes(codigo)
-    })
-    return match || null
-  }
-
   const contarPendientesFase = async (faseId: number) => {
     const paramsT = { filter: JSON.stringify({ where: { faseId: Number(faseId) } }) }
     const resultadoT = await (tareasFasesAPI as any).findTareasFases(paramsT)
@@ -349,7 +336,7 @@ export default function Editar(props: Props) {
       if (confirmPendienteActiveRef.current) return
       confirmPendienteActiveRef.current = true
       confirmDialog({
-        message: `Te quedan ${pendientes.join(', ')}. ¿Seguro que quieres avanzar de estado?`,
+        message: `Te quedans ${pendientes.join(', ')}. ¿Seguro que quieres avanzar de estado?`,
         header: 'Confirmar avance',
         icon: 'pi pi-exclamation-triangle',
         acceptLabel: 'Sí, avanzar',
@@ -376,38 +363,89 @@ export default function Editar(props: Props) {
               onChange={async (e) => {
                 const nuevo = e.target.value
                 const anterior = (formulario as any)?.estadoId
+
                 try {
                   console.log('[Estado] cambio', { anterior, nuevo, esSupervisor })
+
                   if (nuevo && nuevo !== anterior) {
                     const targetId = Number(nuevo)
                     const prevId = Number(anterior)
+
+                    // --- AVANZAR de estado ---
                     if (!Number.isNaN(targetId) && !Number.isNaN(prevId) && targetId > prevId) {
-                      const listaFases = fasesOrdenadas.length ? fasesOrdenadas : (estados || []).map((e: any) => ({ id: e.id, nombre: e.nombre || e.name || e.title }))
+                      const listaFases = fasesOrdenadas.length
+                        ? fasesOrdenadas
+                        : (estados || []).map((e: any) => ({
+                          id: e.id,
+                          nombre: e.nombre || e.name || e.title,
+                        }))
+
                       const incompletas: string[] = []
                       for (const f of listaFases) {
                         if (Number(f.id) >= targetId) continue
                         const pendientes = await contarPendientesFase(Number(f.id))
                         console.log('[Estado] pendientes fase', { faseId: f.id, pendientes })
-                        if (pendientes > 0) incompletas.push(`${pendientes} pendientes en ${f.nombre || f.id}`)
+                        if (pendientes > 0) {
+                          incompletas.push(`${pendientes} pendientes en ${f.nombre || f.id}`)
+                        }
                       }
-                    if (incompletas.length) {
-                      if (!confirmPendientePromiseRef.current) {
-                        confirmPendientePromiseRef.current = confirmarAvanceConPendientes(incompletas)
+
+                      if (incompletas.length) {
+                        if (!confirmPendientePromiseRef.current) {
+                          confirmPendientePromiseRef.current =
+                            confirmarAvanceConPendientes(incompletas)
+                        }
+                        const ok = await confirmPendientePromiseRef.current
+                        confirmPendientePromiseRef.current = null
+                        if (!ok) return
                       }
-                      const ok = await confirmPendientePromiseRef.current
-                      confirmPendientePromiseRef.current = null
-                      if (!ok) return
+                    }
+
+                    // --- RETROCEDER de estado ---
+                    if (!Number.isNaN(targetId) && !Number.isNaN(prevId) && targetId <= prevId) {
+                      const nombreEstadoActual =
+                        estadosMap[String(anterior ?? '')] || String(anterior ?? '')
+                      const nombreEstadoNuevo =
+                        estadosMap[String(nuevo ?? '')] || String(nuevo ?? '')
+
+                      confirmDialog({
+                        message:
+                          `Vas a retroceder del estado "${nombreEstadoActual}" al estado "${nombreEstadoNuevo}".\n\n` +
+                          `Se reiniciarán las tareas y validaciones asociadas y los usuarios deberán volver a completar las tareas y ` +
+                          `enviar de nuevo los correos de validación.\n\n¿Deseas continuar?`,
+                        header: 'Confirmar retroceso de estado',
+                        icon: 'pi pi-exclamation-triangle',
+                        acceptLabel: 'Sí, retroceder',
+                        rejectLabel: 'Cancelar',
+                        acceptClassName: 'p-button-danger',
+                        rejectClassName: 'p-button-secondary',
+                        closeOnEscape: true,
+                        accept: async () => {
+                          try {
+                            await resetearTareas()               // completada/validada = 'N'
+                            await resetearValidacionesSupervisor() // por si acaso quedan restos
+                          } catch (errReset) {
+                            console.error(
+                              'Error reseteando tareas / validaciones al retroceder estado',
+                              errReset
+                            )
+                          }
+                          actualizarCampoDelFormulario('estadoId', nuevo)
+                        },
+                      })
+
+                      // No actualizamos aquí el campo; solo si el usuario acepta en el diálogo
+                      return
                     }
                   }
-                  if (!Number.isNaN(targetId) && !Number.isNaN(prevId) && targetId <= prevId) {
-                    await resetearValidacionesSupervisor()
-                  }
+                } catch (errConf) {
+                  console.error('Error validando cambio de estado', errConf)
                 }
-              } catch (errConf) {
-                console.error('Error validando cambio de estado', errConf)
-              }
+
+                // Casos normales (sin retroceso, o sin cambio real): actualizamos directamente
                 actualizarCampoDelFormulario('estadoId', nuevo)
               }}
+
               className={`record-panel__input ${errores[claveCampo] ? 'record-panel__input--error' : ''}`}
             >
               <option value="">Selecciona estado</option>
@@ -568,12 +606,17 @@ export default function Editar(props: Props) {
 
   const panelFases =
     esRegistroDeProducto && (formulario as any)?.id ? (
-      <ProductPhasesPanel
+      <FasesTareasProducto
         productId={(formulario as any).id}
         productName={(formulario as any)?.nombre}
         selectedEstadoId={(formulario as any)?.estadoId}
         readOnly={mode === 'ver'}
-        onEstadoChange={(nuevoNombre: string) => actualizarCampoDelFormulario('_estadoNombre', nuevoNombre)}
+        onEstadoChange={(nuevoNombre: string, nuevoId?: string | number) => {
+          actualizarCampoDelFormulario('_estadoNombre', nuevoNombre)
+          if (nuevoId !== undefined && nuevoId !== null) {
+            actualizarCampoDelFormulario('estadoId', nuevoId)
+          }
+        }}
       />
     ) : null
 

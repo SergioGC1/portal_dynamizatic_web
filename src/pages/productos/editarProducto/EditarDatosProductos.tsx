@@ -1,8 +1,8 @@
 import React from 'react'
-import Button from '../../components/ui/Button'
-import '../../components/ui/GestorEditores.css'
-import '../../styles/paneles/PanelProducto.scss'
-import '../../styles/pages/EditarDatosProductos.scss'
+import Button from '../../../components/ui/Button'
+import '../../../components/ui/GestorEditores.css'
+import '../../../styles/paneles/PanelProducto.scss'
+import '../../../styles/pages/EditarDatosProductos.scss'
 
 type Modo = 'ver' | 'editar'
 
