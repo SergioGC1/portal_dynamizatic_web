@@ -1,56 +1,60 @@
-import React from 'react';
-import { Button } from 'primereact/button';
-import { InputSwitch } from 'primereact/inputswitch';
-import { InputText } from 'primereact/inputtext';
-import '../../../components/ui/GestorEditores.css';
-import '../../../styles/paneles/PanelUsuario.scss';
-import '../../../styles/pages/EditarDatosUsuarios.scss';
+import React from 'react'
+import { Button } from 'primereact/button'
+import { InputSwitch } from 'primereact/inputswitch'
+import { InputText } from 'primereact/inputtext'
+import '../../../components/ui/GestorEditores.css'
+import '../../../styles/paneles/PanelUsuario.scss'
+import '../../../styles/pages/EditarDatosUsuarios.scss'
 
+// Estructura base del formulario de usuario que maneja la vista
 interface FormularioUsuario {
-    id?: number | string;
-    nombreUsuario?: string;
-    apellidos?: string;
-    email?: string;
-    activoSn?: string;
-    imagen?: string;
-    password?: string;
-    [clave: string]: any;
+    id?: number | string
+    nombreUsuario?: string
+    apellidos?: string
+    email?: string
+    activoSn?: string
+    imagen?: string
+    password?: string
+    [clave: string]: any
 }
 
+// Opción del selector de roles
 interface RolOption {
-    label: string;
-    value: string;
+    label: string
+    value: string
 }
 
+// Props que recibe la vista de edición / visualización de usuario
 type PropsVistaUsuario = {
-    modo: 'ver' | 'editar';
-    esPanel: boolean;
-    formulario: FormularioUsuario;
-    errores: Record<string, string>;
-    puedeEditarEstado: boolean;
-    puedeEditarRol: boolean;
-    mostrarImagen: boolean;
-    urlImagen: string;
-    urlVistaPrevia: string | null;
-    estaActivo: boolean;
-    estaSubiendoImagen: boolean;
-    rolSeleccionado: string | null;
-    opcionesRol: RolOption[];
-    mostrarPasswordCrear: boolean;
-    mostrarPasswordEditar: boolean;
-    fileInputRef: React.RefObject<HTMLInputElement>;
-    onCampoChange: (campo: string, valor: any) => void;
-    onGuardarClick: () => void;
-    onCerrarClick?: () => void;
-    onEstadoActivoChange: (valor: boolean) => void;
-    onRolChange: (rolId: string | null) => void;
-    onSeleccionarArchivo: (archivo?: File) => void;
-    onEliminarImagenClick: () => void;
-    onSubirImagenClick: () => void;
-    onTogglePasswordCrear: () => void;
-    onTogglePasswordEditar: () => void;
-};
+    modo: 'ver' | 'editar'
+    esPanel: boolean
+    formulario: FormularioUsuario
+    errores: Record<string, string>
+    puedeEditarEstado: boolean
+    puedeEditarRol: boolean
+    mostrarImagen: boolean
+    urlImagen: string
+    urlVistaPrevia: string | null
+    estaActivo: boolean
+    estaSubiendoImagen: boolean
+    rolSeleccionado: string | null
+    opcionesRol: RolOption[]
+    mostrarPasswordCrear: boolean
+    mostrarPasswordEditar: boolean
+    fileInputRef: React.RefObject<HTMLInputElement>
+    onCampoChange: (campo: string, valor: any) => void
+    onGuardarClick: () => void
+    onCerrarClick?: () => void
+    onEstadoActivoChange: (valor: boolean) => void
+    onRolChange: (rolId: string | null) => void
+    onSeleccionarArchivo: (archivo?: File) => void
+    onEliminarImagenClick: () => void
+    onSubirImagenClick: () => void
+    onTogglePasswordCrear: () => void
+    onTogglePasswordEditar: () => void
+}
 
+// Vista “tonta” de edición/ver usuario: solo se encarga de pintar y disparar callbacks
 export default function EditarDatosUsuariosVista({
     modo,
     esPanel,
@@ -77,11 +81,12 @@ export default function EditarDatosUsuariosVista({
     onEliminarImagenClick,
     onSubirImagenClick,
     onTogglePasswordCrear,
-    onTogglePasswordEditar,
+    onTogglePasswordEditar
 }: PropsVistaUsuario) {
-    const esNuevo = !formulario?.id;
-    const titulo = modo === 'ver' ? 'Ver usuario' : 'Editar usuario';
-    const debeMostrarBloqueImagen = mostrarImagen || modo === 'ver';
+    const esNuevo = !formulario?.id
+    const titulo = modo === 'ver' ? 'Ver usuario' : 'Editar usuario'
+    // Si hay imagen o estamos en modo ver, mostramos el bloque de foto / estado
+    const debeMostrarBloqueImagen = mostrarImagen || modo === 'ver'
 
     return (
         <div className="record-panel">
@@ -95,7 +100,13 @@ export default function EditarDatosUsuariosVista({
                             className="usuarios-editar-datos__guardar-btn"
                         />
                     )}
-                    {onCerrarClick && <Button label="Cerrar" onClick={onCerrarClick} className="p-button-secondary" />}
+                    {onCerrarClick && (
+                        <Button
+                            label="Cerrar"
+                            onClick={onCerrarClick}
+                            className="p-button-secondary"
+                        />
+                    )}
                 </div>
             </div>
 
@@ -108,110 +119,165 @@ export default function EditarDatosUsuariosVista({
             <div className="record-panel__top usuarios-editar-datos__top">
                 {debeMostrarBloqueImagen && (
                     <div className="usuarios-editar-datos__image-wrapper">
+                        {/* Badge de estado Activo / Inactivo sobre la imagen */}
                         <div className="usuarios-editar-datos__badge-container">
-                            <span className={`badge-estado ${estaActivo ? 'badge-activo' : 'badge-inactivo'}`}>
+                            <span
+                                className={`badge-estado ${estaActivo ? 'badge-activo' : 'badge-inactivo'
+                                    }`}
+                            >
                                 {estaActivo ? 'Activo' : 'Inactivo'}
                             </span>
                         </div>
+
+                        {/* Contenedor de la imagen del usuario */}
                         <div className="record-panel__image-box--static usuarios-editar-datos__image-box">
                             {urlVistaPrevia ? (
+                                // Vista previa local (imagen recién seleccionada)
                                 <img
                                     src={urlVistaPrevia}
                                     alt="Vista previa"
                                     className="record-panel__thumbnail usuarios-editar-datos__image usuarios-editar-datos__image--contain"
                                 />
                             ) : urlImagen ? (
+                                // Imagen ya guardada en servidor
                                 <img
                                     src={urlImagen}
                                     alt="Imagen del usuario"
                                     className="record-panel__thumbnail usuarios-editar-datos__image usuarios-editar-datos__image--cover"
                                 />
                             ) : (
+                                // Estado sin imagen
                                 <div className="record-panel__no-image usuarios-editar-datos__no-image">
                                     Sin imagen
                                 </div>
                             )}
+
+                            {/* Botón de borrar imagen si estamos en modo edición */}
                             {modo === 'editar' && (urlVistaPrevia || urlImagen) && (
                                 <div className="record-panel__image-delete">
                                     <Button
                                         icon="pi pi-trash"
                                         className="p-button-sm p-button-rounded p-button-danger"
                                         onClick={onEliminarImagenClick}
-                                        title={urlVistaPrevia ? 'Quitar imagen seleccionada' : 'Eliminar imagen actual'}
+                                        title={
+                                            urlVistaPrevia
+                                                ? 'Quitar imagen seleccionada'
+                                                : 'Eliminar imagen actual'
+                                        }
                                     />
                                 </div>
                             )}
                         </div>
 
-                        {modo === 'editar' && (
-                            // El botón de seleccionar archivo se muestra en la parte derecha (debajo de la contraseña)
-                            // para mantener la imagen limpia a la izquierda.
-                            <></>
-                        )}
+                        {/* El botón de seleccionar archivo se muestra a la derecha, junto al bloque de contraseña */}
+                        {modo === 'editar' && <></>}
                     </div>
                 )}
 
-                <div className={`record-panel__main-title ${debeMostrarBloqueImagen ? '' : 'record-panel__main-title--full'}`}>
+                {/* Columna principal con nombre de usuario, password y subida de imagen */}
+                <div
+                    className={`record-panel__main-title ${debeMostrarBloqueImagen ? '' : 'record-panel__main-title--full'
+                        }`}
+                >
                     <label className="record-panel__label">Nombre de usuario</label>
                     <input
                         value={formulario?.nombreUsuario ?? ''}
-                        onChange={(evento) => onCampoChange('nombreUsuario', evento.target.value)}
-                        className={`record-panel__input ${errores.nombreUsuario ? 'record-panel__input--error' : ''}`}
+                        onChange={(evento) =>
+                            onCampoChange('nombreUsuario', evento.target.value)
+                        }
+                        className={`record-panel__input ${errores.nombreUsuario ? 'record-panel__input--error' : ''
+                            }`}
                         disabled={modo === 'ver'}
                     />
-                    {errores.nombreUsuario && <div className="record-panel__error">{errores.nombreUsuario}</div>}
+                    {errores.nombreUsuario && (
+                        <div className="record-panel__error">
+                            {errores.nombreUsuario}
+                        </div>
+                    )}
 
                     {modo === 'editar' && (
                         <div className="usuarios-editar-datos__password-section">
+                            {/* Bloque de contraseña: cambia si es usuario nuevo o existente */}
                             {esNuevo ? (
                                 <div className="record-panel__field">
-                                    <label className="record-panel__label">Contraseña (máximo 8 caracteres)</label>
+                                    <label className="record-panel__label">
+                                        Contraseña (mínimo 8 caracteres)
+                                    </label>
                                     <span className="p-input-icon-right usuarios-editar-datos__input-icon-wrapper">
                                         <i
-                                            className={`${mostrarPasswordCrear ? 'pi pi-eye-slash' : 'pi pi-eye'} usuarios-editar-datos__icon-toggle`}
+                                            className={`${mostrarPasswordCrear ? 'pi pi-eye-slash' : 'pi pi-eye'
+                                                } usuarios-editar-datos__icon-toggle`}
                                             onClick={onTogglePasswordCrear}
                                         />
                                         <InputText
                                             type={mostrarPasswordCrear ? 'text' : 'password'}
                                             value={(formulario as any)?.password || ''}
-                                            onChange={(evento: React.ChangeEvent<HTMLInputElement>) => onCampoChange('password', evento.target.value)}
-                                            className={`record-panel__input usuarios-editar-datos__text-input ${errores.password ? 'record-panel__input--error' : ''}`}
+                                            onChange={(
+                                                evento: React.ChangeEvent<HTMLInputElement>
+                                            ) =>
+                                                onCampoChange('password', evento.target.value)
+                                            }
+                                            className={`record-panel__input usuarios-editar-datos__text-input ${errores.password ? 'record-panel__input--error' : ''
+                                                }`}
                                             placeholder="Introduce una contraseña segura"
                                         />
                                     </span>
-                                    {errores.password && <div className="record-panel__error">{errores.password}</div>}
+                                    {errores.password && (
+                                        <div className="record-panel__error">
+                                            {errores.password}
+                                        </div>
+                                    )}
                                 </div>
                             ) : (
                                 <div className="record-panel__field">
-                                    <label className="record-panel__label">Nueva contraseña (opcional)</label>
+                                    <label className="record-panel__label">
+                                        Nueva contraseña (opcional)
+                                    </label>
                                     <span className="p-input-icon-right usuarios-editar-datos__input-icon-wrapper">
                                         <i
-                                            className={`${mostrarPasswordEditar ? 'pi pi-eye-slash' : 'pi pi-eye'} usuarios-editar-datos__icon-toggle`}
+                                            className={`${mostrarPasswordEditar ? 'pi pi-eye-slash' : 'pi pi-eye'
+                                                } usuarios-editar-datos__icon-toggle`}
                                             onClick={onTogglePasswordEditar}
                                         />
                                         <InputText
                                             type={mostrarPasswordEditar ? 'text' : 'password'}
                                             value={(formulario as any)?.password || ''}
-                                            onChange={(evento: React.ChangeEvent<HTMLInputElement>) => onCampoChange('password', evento.target.value)}
-                                            className={`record-panel__input usuarios-editar-datos__text-input ${errores.password ? 'record-panel__input--error' : ''}`}
+                                            onChange={(
+                                                evento: React.ChangeEvent<HTMLInputElement>
+                                            ) =>
+                                                onCampoChange('password', evento.target.value)
+                                            }
+                                            className={`record-panel__input usuarios-editar-datos__text-input ${errores.password ? 'record-panel__input--error' : ''
+                                                }`}
                                             placeholder="Deja vacío para mantener la actual"
                                         />
                                     </span>
-                                    {errores.password && <div className="record-panel__error">{errores.password}</div>}
+                                    {errores.password && (
+                                        <div className="record-panel__error">
+                                            {errores.password}
+                                        </div>
+                                    )}
                                     <div className="usuarios-editar-datos__helper-text">
-                                        Por seguridad no mostramos la contraseña actual. Solo escribe algo si deseas cambiarla.
+                                        Por seguridad no mostramos la contraseña actual. Solo
+                                        escribe algo si deseas cambiarla.
                                     </div>
                                 </div>
                             )}
 
-                            {/* Botón de seleccionar imagen + nombre de archivo: colocado debajo de la contraseña según petición */}
+                            {/* Subida de imagen: input de fichero + botón + nombre de archivo seleccionado */}
                             <div className="usuarios-editar-datos__upload-row">
                                 <input
                                     ref={fileInputRef}
                                     type="file"
                                     accept="image/*"
                                     className="usuarios-editar-datos__file-input"
-                                    onChange={(evento) => onSeleccionarArchivo(evento.target.files ? evento.target.files[0] : undefined)}
+                                    onChange={(evento) =>
+                                        onSeleccionarArchivo(
+                                            evento.target.files
+                                                ? evento.target.files[0]
+                                                : undefined
+                                        )
+                                    }
                                 />
                                 <Button
                                     icon="pi pi-upload"
@@ -219,19 +285,35 @@ export default function EditarDatosUsuariosVista({
                                     className="p-button-outlined"
                                     onClick={() => fileInputRef.current?.click()}
                                 />
-                                {/* Mostrar nombre de archivo de forma segura (con fondo gris y comportamiento responsive) */}
+                                {/* Nombre del archivo seleccionado, con badge y manejo defensivo */}
                                 {(() => {
                                     const fichero = (formulario as any)?._imagenFile
-                                    if (!fichero) return <span className="usuarios-editar-datos__file-placeholder">Ningún archivo seleccionado</span>
-                                    try {
-                                        const nombre = typeof fichero === 'object' && 'name' in fichero ? String((fichero as File).name) : String(fichero)
+                                    if (!fichero) {
                                         return (
-                                            <span className="usuarios-editar-datos__file-badge" title={nombre}>
+                                            <span className="usuarios-editar-datos__file-placeholder">
+                                                Ningún archivo seleccionado
+                                            </span>
+                                        )
+                                    }
+                                    try {
+                                        const nombre =
+                                            typeof fichero === 'object' && 'name' in fichero
+                                                ? String((fichero as File).name)
+                                                : String(fichero)
+                                        return (
+                                            <span
+                                                className="usuarios-editar-datos__file-badge"
+                                                title={nombre}
+                                            >
                                                 {nombre}
                                             </span>
                                         )
                                     } catch (e) {
-                                        return <span className="usuarios-editar-datos__file-placeholder">Nombre no disponible</span>
+                                        return (
+                                            <span className="usuarios-editar-datos__file-placeholder">
+                                                Nombre no disponible
+                                            </span>
+                                        )
                                     }
                                 })()}
                             </div>
@@ -240,16 +322,22 @@ export default function EditarDatosUsuariosVista({
                 </div>
             </div>
 
+            {/* Grid principal de datos personales + estado */}
             <div className="record-panel__grid">
                 <div className="record-panel__field">
                     <label className="record-panel__label">Apellidos</label>
                     <input
                         value={formulario?.apellidos ?? ''}
-                        onChange={(evento) => onCampoChange('apellidos', evento.target.value)}
-                        className={`record-panel__input ${errores.apellidos ? 'record-panel__input--error' : ''}`}
+                        onChange={(evento) =>
+                            onCampoChange('apellidos', evento.target.value)
+                        }
+                        className={`record-panel__input ${errores.apellidos ? 'record-panel__input--error' : ''
+                            }`}
                         disabled={modo === 'ver'}
                     />
-                    {errores.apellidos && <div className="record-panel__error">{errores.apellidos}</div>}
+                    {errores.apellidos && (
+                        <div className="record-panel__error">{errores.apellidos}</div>
+                    )}
                 </div>
 
                 <div className="record-panel__field">
@@ -258,10 +346,13 @@ export default function EditarDatosUsuariosVista({
                         type="email"
                         value={formulario?.email ?? ''}
                         onChange={(evento) => onCampoChange('email', evento.target.value)}
-                        className={`record-panel__input ${errores.email ? 'record-panel__input--error' : ''}`}
+                        className={`record-panel__input ${errores.email ? 'record-panel__input--error' : ''
+                            }`}
                         disabled={modo === 'ver'}
                     />
-                    {errores.email && <div className="record-panel__error">{errores.email}</div>}
+                    {errores.email && (
+                        <div className="record-panel__error">{errores.email}</div>
+                    )}
                 </div>
 
                 <div className="record-panel__field record-panel__field--switch">
@@ -269,13 +360,16 @@ export default function EditarDatosUsuariosVista({
                     <div className="usuarios-editar-datos__switch-row">
                         <InputSwitch
                             checked={estaActivo}
-                            onChange={(evento: any) => onEstadoActivoChange(!!evento.value)}
+                            onChange={(evento: any) =>
+                                onEstadoActivoChange(!!evento.value)
+                            }
                             disabled={modo === 'ver' || !puedeEditarEstado}
                         />
                     </div>
                 </div>
             </div>
 
+            {/* Selector de rol */}
             <div className="record-panel__grid">
                 <div className="record-panel__field usuarios-editar-datos__field-margin">
                     <label className="record-panel__label">Rol</label>
@@ -283,7 +377,8 @@ export default function EditarDatosUsuariosVista({
                         value={rolSeleccionado || ''}
                         onChange={(evento) => onRolChange(evento.target.value || null)}
                         disabled={modo === 'ver' || !puedeEditarRol}
-                        className={`record-panel__input ${errores.rolId ? 'record-panel__input--error' : ''}`}
+                        className={`record-panel__input ${errores.rolId ? 'record-panel__input--error' : ''
+                            }`}
                     >
                         <option value="">-- Selecciona un rol --</option>
                         {opcionesRol.map((opcion) => (
@@ -292,12 +387,11 @@ export default function EditarDatosUsuariosVista({
                             </option>
                         ))}
                     </select>
-                    {errores.rolId && <div className="record-panel__error">{errores.rolId}</div>}
+                    {errores.rolId && (
+                        <div className="record-panel__error">{errores.rolId}</div>
+                    )}
                 </div>
             </div>
         </div>
-    );
+    )
 }
-
-
-
