@@ -2,9 +2,9 @@ import React from 'react';
 import { Button } from 'primereact/button';
 import { InputSwitch } from 'primereact/inputswitch';
 import { InputText } from 'primereact/inputtext';
-import '../../components/ui/GestorEditores.css';
-import '../../styles/paneles/PanelUsuario.scss';
-import '../../styles/pages/EditarDatosUsuarios.scss';
+import '../../../components/ui/GestorEditores.css';
+import '../../../styles/paneles/PanelUsuario.scss';
+import '../../../styles/pages/EditarDatosUsuarios.scss';
 
 interface FormularioUsuario {
     id?: number | string;

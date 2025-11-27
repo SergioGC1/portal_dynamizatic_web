@@ -2,8 +2,8 @@ import React from 'react';
 import { Button } from 'primereact/button';
 import { Dialog } from 'primereact/dialog';
 import { Toast } from 'primereact/toast';
-import '../../components/ui/GestorEditores.css';
-import '../../styles/paneles/PanelFase.scss';
+import '../../../components/ui/GestorEditores.css';
+import '../../../styles/paneles/PanelFase.scss';
 
 interface FaseFormulario {
   id?: number;

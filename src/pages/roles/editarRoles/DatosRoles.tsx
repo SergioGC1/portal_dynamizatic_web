@@ -1,8 +1,8 @@
 import React from 'react';
 import { Button } from 'primereact/button';
 import { InputSwitch } from 'primereact/inputswitch';
-import '../../styles/paneles/PanelRol.scss';
-import '../../styles/pages/EditarDatosRoles.scss';
+import '../../../styles/paneles/PanelRol.scss';
+import '../../../styles/pages/EditarDatosRoles.scss';
 
 interface FormularioRol {
   id?: number | string;

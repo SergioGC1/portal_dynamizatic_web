@@ -1,12 +1,12 @@
 import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { confirmDialog } from 'primereact/confirmdialog';
 import { Toast } from 'primereact/toast';
-import EditarDatosFasesVista from './EditarDatosFases';
-import usePermisos from '../../hooks/usePermisos';
-import { useAuth } from '../../contexts/AuthContext';
-import RolesAPI from '../../api-endpoints/roles/index';
-import FasesAPI from '../../api-endpoints/fases/index';
-import TareasFasesAPI from '../../api-endpoints/tareas-fases/index';
+import EditarDatosFasesVista from './DatosFases';
+import usePermisos from '../../../hooks/usePermisos';
+import { useAuth } from '../../../contexts/AuthContext';
+import RolesAPI from '../../../api-endpoints/roles/index';
+import FasesAPI from '../../../api-endpoints/fases/index';
+import TareasFasesAPI from '../../../api-endpoints/tareas-fases/index';
 
 interface Fase {
   id?: number;

@@ -1,10 +1,10 @@
 import React, { useEffect, useRef, useState } from 'react';
-import { ColumnDef } from '../../components/data-table/DataTable';
+import { ColumnDef } from '../../../components/data-table/DataTable';
 import { confirmDialog } from 'primereact/confirmdialog';
-import EditarDatosUsuariosVista from './EditarDatosUsuarios';
-import usePermisos from '../../hooks/usePermisos';
-import UsuariosAPI from '../../api-endpoints/usuarios/index';
-import RolesAPI from '../../api-endpoints/roles/index';
+import EditarDatosUsuariosVista from './DatosUsuarios';
+import usePermisos from '../../../hooks/usePermisos';
+import UsuariosAPI from '../../../api-endpoints/usuarios/index';
+import RolesAPI from '../../../api-endpoints/roles/index';
 const normalizarRoles = (respuesta: any) => (Array.isArray(respuesta?.data) ? respuesta.data : Array.isArray(respuesta) ? respuesta : []);
 
 interface Usuario {

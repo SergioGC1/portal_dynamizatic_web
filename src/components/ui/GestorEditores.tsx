@@ -1,10 +1,10 @@
 import React from 'react'
 import { ColumnDef } from '../../components/data-table/DataTable'
 // Importar los paneles específicos
-import PanelUsuario from '../../pages/usuarios/editar'
-import PanelProducto from '../../pages/productos/editarProducto/editar'
-import PanelRol from '../../pages/roles/editar'
-import PanelFase from '../../pages/fases/editar'
+import PanelUsuario from '../../pages/usuarios/editarUsuarios/EditarDatosUsuarios'
+import PanelProducto from '../../pages/productos/editarProducto/EditarDatosProductos'
+import PanelRol from '../../pages/roles/editarRoles/EditarDatosRoles'
+import PanelFase from '../../pages/fases/editarFases/EditarDatosFases'
 
 type ModoDeOperacionDelPanel = 'ver' | 'editar'
 

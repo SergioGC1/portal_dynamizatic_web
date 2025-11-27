@@ -1,9 +1,9 @@
 import React, { useEffect, useState } from 'react';
-import { ColumnDef } from '../../components/data-table/DataTable';
+import { ColumnDef } from '../../../components/data-table/DataTable';
 import { confirmDialog } from 'primereact/confirmdialog';
-import EditarDatosRolesVista from './EditarDatosRoles';
-import UsuariosAPI from '../../api-endpoints/usuarios/index';
-import RolesAPI from '../../api-endpoints/roles/index';
+import EditarDatosRolesVista from './DatosRoles';
+import UsuariosAPI from '../../../api-endpoints/usuarios/index';
+import RolesAPI from '../../../api-endpoints/roles/index';
 
 interface Rol {
   id?: number | string;
