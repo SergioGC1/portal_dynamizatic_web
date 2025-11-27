@@ -450,10 +450,13 @@ export function EditarFaseTareasProducto({
       return
     }
 
-    // Movimiento hacia atrás: permitido para cualquiera que pueda ver
+    // Movimiento hacia atrás: bloqueado (solo se permite en Editar Producto por supervisor)
     if (indiceActual !== -1 && indiceDestino < indiceActual) {
-      setMensajeDeError(null)
-      setFaseActivaId(idFaseDestino)
+      setMensajeDeError(
+        esSupervisor
+          ? 'No retrocedas fases aquí. Hazlo desde "Editar datos del producto" para mantener la consistencia.'
+          : 'No puedes retroceder fases. Solicítalo a un supervisor desde "Editar datos del producto".'
+      )
       return
     }
 
@@ -462,7 +465,9 @@ export function EditarFaseTareasProducto({
       const correoEnviado = faseActivaId ? correosEnviadosPorFase[faseActivaId] === true : false
       if (!correoEnviado) {
         setMensajeDeError(
-          'No puedes avanzar de fase. Si has completado las tareas, envía el correo a supervisores.'
+          esSupervisor
+            ? 'No puedes avanzar de fase aquí. Envía el correo y cambia el estado desde "Editar datos del producto".'
+            : 'No puedes avanzar de fase. Envía el correo a supervisores y pide a un supervisor que cambie el estado.'
         )
         return
       }
