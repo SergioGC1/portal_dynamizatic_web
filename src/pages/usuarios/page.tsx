@@ -131,6 +131,7 @@ export default function PageUsuarios() {
   const [mensajeError, setMensajeError] = useState<string | null>(null);
   const [haBuscado, setHaBuscado] = useState(false);
   const [perfilEmailPendiente, setPerfilEmailPendiente] = useState<string | null>(null);
+  const [evitarRecargaTabla, setEvitarRecargaTabla] = useState(false);
 
   const [tablaPaginacion, setTablaPaginacion] = useState<EstadoPaginacion>({
     first: 0,
@@ -348,6 +349,7 @@ export default function PageUsuarios() {
    * Reaplica la carga de usuarios con los parámetros actuales.
    */
   const recargarUsuarios = useCallback(async () => {
+    if (evitarRecargaTabla) return;
     await cargarUsuarios({
       first: tablaPaginacion.first,
       rows: tablaPaginacion.rows,
@@ -362,6 +364,7 @@ export default function PageUsuarios() {
     filtroBusquedaAplicado,
     ordenTabla.campo,
     ordenTabla.orden,
+    evitarRecargaTabla,
   ]);
 
   // -------------------------------
@@ -401,6 +404,7 @@ export default function PageUsuarios() {
           setModoPanel('editar');
           setRegistroPanel(usuarioEncontrado);
           setPerfilEmailPendiente(null);
+          setEvitarRecargaTabla(true);
           return;
         }
 
@@ -413,45 +417,19 @@ export default function PageUsuarios() {
     [usuarioAutenticado],
   );
 
-  // Detectar petición de perfil desde otras pantallas (sessionStorage)
+  // Detectar petición de ir al perfil desde otras pantallas
   useEffect(() => {
     try {
       const emailPerfil = sessionStorage.getItem('perfilEmailActivo');
       if (emailPerfil) {
         sessionStorage.removeItem('perfilEmailActivo');
+        setEvitarRecargaTabla(true);
         abrirPerfilPorEmail(emailPerfil);
       }
     } catch {
       /* ignore */
     }
   }, [abrirPerfilPorEmail]);
-
-  // Fallback: si hay pendiente y la tabla ya cargó, intentar abrir con los datos ya cargados
-  useEffect(() => {
-    if (perfilEmailPendiente && usuarios && usuarios.length) {
-      const emailLower = perfilEmailPendiente.toLowerCase();
-      const match = usuarios.find((u) => u && u.email && String(u.email).toLowerCase() === emailLower);
-      if (match) {
-        setModoPanel('editar');
-        setRegistroPanel(match);
-        setPerfilEmailPendiente(null);
-      }
-    }
-  }, [perfilEmailPendiente, usuarios]);
-
-  // Detectar petición de ir al perfil desde otras pantallas
-  useEffect(() => {
-    try {
-      const emailPerfil = sessionStorage.getItem('perfilEmailActivo');
-      if (emailPerfil) {
-        setPerfilEmailPendiente(emailPerfil);
-        sessionStorage.removeItem('perfilEmailActivo');
-        cargarUsuarios({ first: 0, rows: tablaPaginacion.rows, search: emailPerfil });
-      }
-    } catch {
-      /* ignore */
-    }
-  }, [cargarUsuarios, tablaPaginacion.rows]);
 
   // Abrir editor automáticamente cuando el email pendiente esté en la lista
   useEffect(() => {
@@ -463,6 +441,7 @@ export default function PageUsuarios() {
         setModoPanel('editar');
         setRegistroPanel(match);
         setPerfilEmailPendiente(null);
+        setEvitarRecargaTabla(true);
       }
     }
   }, [perfilEmailPendiente, usuarios]);
@@ -618,7 +597,10 @@ export default function PageUsuarios() {
 
       setModoPanel(null);
       setRegistroPanel(null);
-      await recargarUsuarios();
+      setEvitarRecargaTabla(false);
+      if (!evitarRecargaTabla) {
+        await recargarUsuarios();
+      }
 
       return resultado;
     } catch (e) {
@@ -784,7 +766,10 @@ export default function PageUsuarios() {
             onClose={async () => {
               setModoPanel(null);
               setRegistroPanel(null);
-              await recargarUsuarios();
+              setEvitarRecargaTabla(false);
+              if (!evitarRecargaTabla) {
+                await recargarUsuarios();
+              }
             }}
             onSave={manejarGuardarUsuario}
           />
