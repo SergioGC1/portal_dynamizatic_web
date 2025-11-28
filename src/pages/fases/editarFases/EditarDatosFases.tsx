@@ -293,7 +293,26 @@ export default function Editar(props: Props) {
     if (datosLimpios._cb !== undefined) delete datosLimpios._cb
 
     if (onSave) {
-      await onSave(datosLimpios as Fase)
+      try {
+        await onSave(datosLimpios as Fase)
+      } catch (err: any) {
+        const msg = String(err?.message || '')
+        const nuevos: Record<string, string> = {}
+        if (msg === 'DUPLICADO_FASE') {
+          // Permitimos que onSave lance un objeto con info de duplicados parcial
+          const duplicados = (err as any)?.duplicates || {}
+          if (duplicados.nombre) nuevos.nombre = 'Este nombre de fase ya está en uso'
+          if (duplicados.codigo) nuevos.codigo = 'Este código de fase ya está en uso'
+          // Si no viene detalle, marcamos ambos como precaución
+          if (!duplicados.nombre && !duplicados.codigo) {
+            nuevos.nombre = 'Este nombre de fase ya está en uso'
+            nuevos.codigo = 'Este código de fase ya está en uso'
+          }
+          setErrores(nuevos)
+          return
+        }
+        throw err
+      }
     }
   }
 

@@ -489,20 +489,41 @@ export default function PageFases() {
               await recargarFases()
             }}
             onSave={async (updated: any) => {
-              try {
-                if (updated.id) {
-                  await FasesAPI.updateFaseById(updated.id, updated)
-                } else {
-                  await FasesAPI.createFase(updated)
-                }
+              // Validación local para evitar duplicados por nombre o código
+              const nombre = String(updated?.nombre || '').trim()
+              const codigo = String(updated?.codigo || '').trim()
+              const idActual = updated?.id
 
-                setModoPanel(null)
-                setRegistroPanel(null)
-                await recargarFases()
-              } catch (e: any) {
-                console.error(e)
-                setMensajeError(e?.message || 'Error guardando fase')
+              const existeDuplicado = fases.find((f) => {
+                if (idActual && f.id && Number(f.id) === Number(idActual)) return false
+                const fNombre = String(f.nombre || '').trim().toLowerCase()
+                const fCodigo = String(f.codigo || '').trim().toLowerCase()
+                return fNombre === nombre.toLowerCase() || fCodigo === codigo.toLowerCase()
+              })
+              if (existeDuplicado) {
+                const duplicados: any = {}
+                if (existeDuplicado.nombre && String(existeDuplicado.nombre).trim().toLowerCase() === nombre.toLowerCase()) {
+                  duplicados.nombre = true
+                }
+                if (existeDuplicado.codigo && String(existeDuplicado.codigo).trim().toLowerCase() === codigo.toLowerCase()) {
+                  duplicados.codigo = true
+                }
+                const err: any = new Error('DUPLICADO_FASE')
+                err.duplicates = duplicados
+                throw err
               }
+
+              const payload = { ...updated, nombre, codigo }
+
+              if (updated.id) {
+                await FasesAPI.updateFaseById(updated.id, payload)
+              } else {
+                await FasesAPI.createFase(payload)
+              }
+
+              setModoPanel(null)
+              setRegistroPanel(null)
+              await recargarFases()
             }}
           />
         )}
