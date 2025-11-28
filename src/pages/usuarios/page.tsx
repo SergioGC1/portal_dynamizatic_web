@@ -562,7 +562,11 @@ export default function PageUsuarios() {
   const manejarGuardarUsuario = async (actualizado: any) => {
     try {
       const rolesAsignados = (actualizado as any)._assignedRoles || [];
+
+      // Clonamos el objeto que nos manda el editor
       const payload: any = { ...actualizado };
+
+      // Campos auxiliares que NO queremos mandar al backend
       delete payload._assignedRoles;
 
       // En edición no se envía password en PATCH
@@ -570,7 +574,25 @@ export default function PageUsuarios() {
         delete payload.password;
       }
 
-      // Control de permisos sobre el rol
+      // =====================================================
+      // 1) NORMALIZAR ACTIVO SN (solo usamos payload.activoSn)
+      // =====================================================
+
+      // Si por lo que sea viene vacío, por defecto 'S'
+      const valorActivoCrudo =
+        payload.activoSn === undefined ||
+          payload.activoSn === null ||
+          payload.activoSn === ''
+          ? 'S'
+          : payload.activoSn;
+
+      // Lo pasamos por normalizarValorActivo -> 'S' o 'N'
+      payload.activoSn = normalizarValorActivo(valorActivoCrudo);
+
+      // =====================================================
+      // 2) NORMALIZAR ROL
+      // =====================================================
+
       const puedeEditarRol =
         tienePermiso('Usuarios', 'Rol') ||
         tienePermiso('Usuarios', 'EditarRol') ||
@@ -587,14 +609,36 @@ export default function PageUsuarios() {
 
       let resultado: any;
 
-      if (actualizado.id) {
-        await UsuariosAPI.updateUsuarioById(actualizado.id, payload);
-        resultado = { id: actualizado.id };
+      // =====================================================
+      // 3) EDICIÓN
+      // =====================================================
+      if (payload.id) {
+        await UsuariosAPI.updateUsuarioById(payload.id, payload);
+        resultado = { id: payload.id };
       } else {
+        // =====================================================
+        // 4) CREACIÓN
+        // =====================================================
+
+        // 1) Alta con register (puede ignorar activoSn/rolId)
         const creado = await UsuariosAPI.register(payload);
         resultado = creado;
+
+        // 2) En cuanto tenemos id, parcheamos activoSn y rolId
+        if (creado && creado.id) {
+          const patch: any = {
+            activoSn: payload.activoSn, // aquí ya viene S/N seguro
+          };
+
+          if (puedeEditarRol && payload.rolId !== undefined) {
+            patch.rolId = payload.rolId;
+          }
+
+          await UsuariosAPI.updateUsuarioById(creado.id, patch);
+        }
       }
 
+      // Cerrar panel y recargar tabla
       setModoPanel(null);
       setRegistroPanel(null);
       setEvitarRecargaTabla(false);
@@ -604,7 +648,7 @@ export default function PageUsuarios() {
 
       return resultado;
     } catch (e) {
-      console.error(e);
+      console.error('Error en manejarGuardarUsuario:', e);
       throw e;
     }
   };

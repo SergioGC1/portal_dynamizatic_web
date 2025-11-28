@@ -12,8 +12,8 @@ const normalizarRoles = (respuesta: any) =>
   Array.isArray(respuesta?.data)
     ? respuesta.data
     : Array.isArray(respuesta)
-    ? respuesta
-    : []
+      ? respuesta
+      : []
 
 
 //Representa un usuario en el formulario.
@@ -345,7 +345,7 @@ export default function Editar(props: PropsEditarUsuario) {
   // Helpers de imagen: construcción de URL
   // --------------------------------------------------
 
-  const baseApi =process.env.REACT_APP_API_BASE_URL 
+  const baseApi = process.env.REACT_APP_API_BASE_URL
 
   const construirUrlDeImagen = (ruta?: string) => {
     if (!ruta) return ''
@@ -540,6 +540,16 @@ export default function Editar(props: PropsEditarUsuario) {
 
     const archivoPendiente: File | undefined = (formulario as any)?._imagenFile
     const payload: any = { ...(formulario as any) }
+
+    // 🔹 Aseguramos que activoSn exista y esté sincronizado con el switch (estaActivo)
+    if (
+      payload.activoSn === undefined ||
+      payload.activoSn === null ||
+      payload.activoSn === ''
+    ) {
+      // si el switch está encendido -> 'S', si está apagado -> 'N'
+      payload.activoSn = estaActivo ? 'S' : 'N'
+    }
 
     delete payload._imagenFile
     delete payload._imagenPreview
