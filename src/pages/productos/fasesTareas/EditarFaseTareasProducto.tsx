@@ -55,22 +55,6 @@ const emailSupervisorEnv = process.env.REACT_APP_SUPERVISOR_EMAIL
 // Helpers puros
 // ------------------------------------------------------
 
-/**
- * normalizarListaFases
- * Adapta distintas formas de respuesta del backend a un array plano.
- */
-const normalizarListaFases = (entrada: any): any[] => {
-  if (Array.isArray(entrada)) return entrada
-  if (!entrada) return []
-  if (Array.isArray(entrada.data)) return entrada.data
-  if (entrada.data && Array.isArray(entrada.data.data)) return entrada.data.data
-  if (Array.isArray(entrada.rows)) return entrada.rows
-  if (Array.isArray(entrada.items)) return entrada.items
-  if (Array.isArray(entrada.result)) return entrada.result
-  if (Array.isArray(entrada.results)) return entrada.results
-  return []
-}
-
 // ------------------------------------------------------
 // Hook principal
 // ------------------------------------------------------
@@ -276,7 +260,11 @@ export function EditarFaseTareasProducto({
         }
 
         const respuestaRemota: any = await invocarFindFases().catch(() => [])
-        const listaNormalizada = normalizarListaFases(respuestaRemota)
+        const listaNormalizada: any[] = Array.isArray(respuestaRemota?.data)
+          ? respuestaRemota.data
+          : Array.isArray(respuestaRemota)
+          ? respuestaRemota
+          : []
         if (!montado) return
 
         const listaInvertida = Array.isArray(listaNormalizada)
@@ -488,33 +476,46 @@ export function EditarFaseTareasProducto({
   // --------------------------------------------------
 
   function abrirMailto(
-    destinatario: string,
+    destinatariosInput: string | string[],
     fase: Fase,
     siguiente: Fase | undefined,
     completadas: string[]
   ) {
+    const listaDestinatarios = Array.isArray(destinatariosInput)
+      ? destinatariosInput
+      : String(destinatariosInput)
+          .split(/[;,]/)
+          .map((correo) => correo.trim())
+          .filter(Boolean)
+    if (!listaDestinatarios.length) {
+      mostrarToast('warn', 'Aviso', 'No hay destinatarios para enviar el correo.', 4000)
+      return false
+    }
+
     const asunto = siguiente
       ? `Producto ${productName?.toString()} - Fase completada: ${fase.nombre || fase.id}`
-      : `Producto ${productName?.toString()} - Última fase completada: ${fase.nombre || fase.id}`
+      : `Producto ${productName?.toString()} - ultima fase completada: ${fase.nombre || fase.id}`
 
     const cuerpoLineas = [
       `Producto: ${productName}`,
       `Fase completada: ${fase.nombre}`,
       `Tareas completadas: ${completadas.join(', ') || 'N/A'}`,
-      siguiente ? `Próxima fase: ${siguiente.nombre || siguiente.id}` : 'No hay fase siguiente',
-      `Fecha de notificación: ${new Date().toLocaleString()}`
+      siguiente ? `Proxima fase: ${siguiente.nombre || siguiente.id}` : 'No hay fase siguiente',
+      `Fecha de notificacion: ${new Date().toLocaleString()}`
     ]
 
-    const mailto = `mailto:${encodeURIComponent(destinatario)}?subject=${encodeURIComponent(
-      asunto
-    )}&body=${encodeURIComponent(cuerpoLineas.join('\n'))}`
+    const mailto = `mailto:${listaDestinatarios
+      .map((correo) => encodeURIComponent(correo))
+      .join(',')}?subject=${encodeURIComponent(asunto)}&body=${encodeURIComponent(
+      cuerpoLineas.join('\n')
+    )}`
 
     try {
       window.location.href = mailto
       mostrarToast(
         'success',
         'Correo preparado',
-        `Se abrió el cliente de correo para: ${destinatario}`,
+        `Se abrio el cliente de correo para: ${listaDestinatarios.join(', ')}`,
         4000
       )
       return true
@@ -531,14 +532,14 @@ export function EditarFaseTareasProducto({
   }
 
   async function continuarEnvioCorreo(
-    destinatario: string,
+    destinatarios: string | string[],
     datos?: { fase: Fase; siguiente: Fase; completadas: string[]; matchEstado: any }
   ) {
     const info = datos || envioEstadoPendiente
     if (!info) return
 
     const { fase, siguiente, completadas, matchEstado } = info
-    const okCorreo = abrirMailto(destinatario, fase, siguiente, completadas)
+    const okCorreo = abrirMailto(destinatarios, fase, siguiente, completadas)
     if (!okCorreo) return
 
     try {
@@ -661,10 +662,10 @@ export function EditarFaseTareasProducto({
         'Esta es la última fase; no hay fase siguiente para mapear a un estado.',
         5000
       )
-      console.log(
+      /*console.log(
         `Notificación a supervisores: fase completada ${fase.nombre || fase.id
         }. Tareas completadas: ${JSON.stringify(listaTareasCompletadas)}. No hay siguiente fase.`
-      )
+      )*/
       return
     }
 

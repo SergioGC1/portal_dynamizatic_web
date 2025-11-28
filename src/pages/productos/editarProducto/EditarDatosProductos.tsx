@@ -1028,7 +1028,7 @@ export default function Editar (props: Props) {
             }
           }
           actualizarCampoDelFormulario('imagen', '')
-          console.log('Imagen eliminada correctamente')
+          //console.log('Imagen eliminada correctamente')
         } catch (error) {
           console.error('Error al eliminar la imagen:', error)
           alert('Error al eliminar la imagen. Inténtalo de nuevo.')

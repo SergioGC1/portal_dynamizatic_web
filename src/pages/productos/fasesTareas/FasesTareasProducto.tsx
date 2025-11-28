@@ -34,6 +34,22 @@ const FasesTareasProducto: React.FC<EditarFaseTareasProductoParams> = (props) =>
     continuarEnvioCorreo,
     detectCompletadaKey
   } = EditarFaseTareasProducto(props)
+  const [destinatarioSeleccionado, setDestinatarioSeleccionado] = React.useState<string>('')
+  const [destinatariosElegidos, setDestinatariosElegidos] = React.useState<string[]>([])
+
+  React.useEffect(() => {
+    if (emailPicker.visible && emailPicker.destinatarios.length) {
+      setDestinatarioSeleccionado((prev) =>
+        prev && emailPicker.destinatarios.includes(prev)
+          ? prev
+          : emailPicker.destinatarios[0]
+      )
+      setDestinatariosElegidos([])
+    } else {
+      setDestinatarioSeleccionado('')
+      setDestinatariosElegidos([])
+    }
+  }, [emailPicker.destinatarios, emailPicker.visible])
 
   // Si no hay productId, no pintamos nada (no tiene sentido el componente)
   if (!props.productId) return null
@@ -296,28 +312,129 @@ const FasesTareasProducto: React.FC<EditarFaseTareasProductoParams> = (props) =>
                         </button>
                       </div>
 
-                      {/* Listado de correos posibles + botón de cancelar */}
-                      <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
-                        {emailPicker.destinatarios.map((destinatario) => (
+                      {/* Listado de correos posibles + bot?n de cancelar */}
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+                          <label style={{ fontWeight: 600, color: '#0f172a' }}>Destinatario</label>
+                          <div style={{ display: 'flex', gap: 8 }}>
+                            <select
+                              value={destinatarioSeleccionado}
+                              onChange={(e) => setDestinatarioSeleccionado(e.target.value)}
+                              style={{
+                                padding: '10px 12px',
+                                borderRadius: 10,
+                                border: '1px solid #d1d5db',
+                                background: '#f8fafc',
+                                flex: 1
+                              }}
+                            >
+                              {emailPicker.destinatarios.map((destinatario) => (
+                                <option key={destinatario} value={destinatario}>
+                                  {destinatario}
+                                </option>
+                              ))}
+                            </select>
+                            <button
+                              onClick={() => {
+                                if (!destinatarioSeleccionado) return
+                                setDestinatariosElegidos((prev) =>
+                                  prev.includes(destinatarioSeleccionado)
+                                    ? prev
+                                    : [...prev, destinatarioSeleccionado]
+                                )
+                              }}
+                              style={{
+                                padding: '10px 12px',
+                                borderRadius: 10,
+                                border: '1px solid #16a34a',
+                                background: '#ecfdf3',
+                                color: '#065f46',
+                                cursor: 'pointer',
+                                fontWeight: 700,
+                                whiteSpace: 'nowrap'
+                              }}
+                            >
+                              Anadir
+                            </button>
+                          </div>
+                        </div>
+
+                        {destinatariosElegidos.length > 0 && (
+                          <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
+                            {destinatariosElegidos.map((dest) => (
+                              <div
+                                key={dest}
+                                style={{
+                                  display: 'flex',
+                                  alignItems: 'center',
+                                  gap: 6,
+                                  padding: '6px 10px',
+                                  borderRadius: 12,
+                                  background: '#f3f4f6',
+                                  border: '1px solid #e5e7eb'
+                                }}
+                              >
+                                <span style={{ fontWeight: 600 }}>{dest}</span>
+                                <button
+                                  onClick={() =>
+                                    setDestinatariosElegidos((prev) =>
+                                      prev.filter((correo) => correo !== dest)
+                                    )
+                                  }
+                                  style={{
+                                    border: 'none',
+                                    background: 'transparent',
+                                    cursor: 'pointer',
+                                    color: '#ef4444',
+                                    fontWeight: 700
+                                  }}
+                                  aria-label={`Quitar ${dest}`}
+                                >
+                                  X
+                                </button>
+                              </div>
+                            ))}
+                          </div>
+                        )}
+
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
                           <button
-                            key={destinatario}
+                            onClick={() => {
+                              if (!emailPicker.fase || destinatariosElegidos.length === 0) return
+                              continuarEnvioCorreo(destinatariosElegidos)
+                            }}
+                            disabled={destinatariosElegidos.length === 0}
+                            style={{
+                              padding: '12px 14px',
+                              borderRadius: 10,
+                              border: 'none',
+                              background:
+                                destinatariosElegidos.length === 0 ? '#9ca3af' : '#16a34a',
+                              color: '#fff',
+                              cursor: destinatariosElegidos.length === 0 ? 'not-allowed' : 'pointer',
+                              fontWeight: 700
+                            }}
+                          >
+                            Enviar seleccionados
+                          </button>
+                          <button
                             onClick={() => {
                               if (!emailPicker.fase) return
-                              continuarEnvioCorreo(destinatario)
+                              continuarEnvioCorreo(emailPicker.destinatarios)
                             }}
                             style={{
                               padding: '12px 14px',
                               borderRadius: 10,
-                              border: '1px solid #d1d5db',
-                              background: '#f8fafc',
+                              border: '1px solid #10b981',
+                              background: '#ecfdf3',
+                              color: '#065f46',
                               cursor: 'pointer',
-                              textAlign: 'left',
-                              fontWeight: 600
+                              fontWeight: 700
                             }}
                           >
-                            {destinatario}
+                            Enviar a todos
                           </button>
-                        ))}
+                        </div>
 
                         <button
                           onClick={() =>

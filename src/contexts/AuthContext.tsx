@@ -42,8 +42,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     }
   }, []);
 
-  console.log('AuthProvider inicializado (AuthContext)');
-
   // Guarda tokens y, si viene, la información de usuario en localStorage
   const persistirTokensDesdeData = (data: any) => {
     try {

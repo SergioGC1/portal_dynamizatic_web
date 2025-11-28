@@ -15,8 +15,6 @@ import App from './App';
 import reportWebVitals from './reportWebVitals';
 import { AuthProvider } from './contexts/AuthContext';
 
-console.log('index.tsx: iniciando aplicación (dev)');
-
 const root = ReactDOM.createRoot(
   document.getElementById('root') as HTMLElement
 );
