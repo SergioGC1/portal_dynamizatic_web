@@ -5,6 +5,7 @@ import {
   EditarFaseTareasProducto,
   EditarFaseTareasProductoParams
 } from './EditarFaseTareasProducto'
+import '../../../styles/pages/FasesTareasProducto.scss'
 
 /**
  * Componente de presentación para las fases y tareas de un producto.
@@ -55,24 +56,16 @@ const FasesTareasProducto: React.FC<EditarFaseTareasProductoParams> = (props) =>
   if (!props.productId) return null
 
   return (
-    <div style={{ marginTop: 18, borderTop: '1px solid #eee', paddingTop: 12 }}>
-      {/* Toast global para mensajes del hook (éxito/errores/info) */}
+    <div className="ft-container">
+      {/* Toast global para mensajes del hook (exito/errores/info) */}
       <Toast ref={toastRef as React.RefObject<Toast>} />
 
       {/* Indicadores de carga y errores generales */}
       {estaCargando && <div>Cargando...</div>}
-      {mensajeDeError && <div style={{ color: 'red' }}>{mensajeDeError}</div>}
+      {mensajeDeError && <div className="ft-error-text">{mensajeDeError}</div>}
 
       {/* Cabecera de fases (tabs sencillos de texto clicable) */}
-      <div
-        style={{
-          display: 'flex',
-          alignItems: 'center',
-          gap: 12,
-          marginBottom: 12,
-          flexWrap: 'wrap'
-        }}
-      >
+      <div className="ft-tabs">
         {listaDeFases.map((fase, indice) => {
           const estaActiva = faseActivaId === fase.id
 
@@ -84,15 +77,9 @@ const FasesTareasProducto: React.FC<EditarFaseTareasProductoParams> = (props) =>
                   if (props.readOnly) return
                   cambiarAFase(fase.id)
                 }}
-                style={{
-                  cursor: props.readOnly ? 'default' : 'pointer',
-                  fontWeight: estaActiva ? 700 : 600,
-                  color: estaActiva ? '#0f172a' : '#374151',
-                  padding: '6px 8px',
-                  background: 'transparent',
-                  borderRadius: 4,
-                  opacity: props.readOnly && !estaActiva ? 0.7 : 1
-                }}
+                className={`ft-tab ${estaActiva ? 'ft-tab--active' : ''} ${
+                  props.readOnly ? 'ft-tab--readonly' : ''
+                }`}
                 aria-current={estaActiva}
               >
                 {fase.nombre || `Fase ${fase.id}`}
@@ -100,16 +87,7 @@ const FasesTareasProducto: React.FC<EditarFaseTareasProductoParams> = (props) =>
 
               {/* Separador visual entre fases */}
               {indice < listaDeFases.length - 1 && (
-                <span
-                  style={{
-                    width: 1,
-                    height: 18,
-                    background: '#e6e6e6',
-                    display: 'inline-block',
-                    marginLeft: 6,
-                    marginRight: 6
-                  }}
-                />
+                <span className="ft-tab-separator" />
               )}
             </React.Fragment>
           )
@@ -118,12 +96,10 @@ const FasesTareasProducto: React.FC<EditarFaseTareasProductoParams> = (props) =>
 
       {/* Contenido de la fase activa: lista de tareas + checkbox */}
       <div>
-        <ul style={{ listStyle: 'none', padding: 0 }}>
-          {/* Si no tiene permiso o el rol está inactivo, mensaje de acceso restringido */}
+        <ul className="ft-tareas-list">
+          {/* Si no tiene permiso o el rol esta inactivo, mensaje de acceso restringido */}
           {!canViewTasks || rolActivo === false ? (
-            <div style={{ padding: 12, color: '#6c757d' }}>
-              No tienes permiso para ver las tareas de este producto.
-            </div>
+            <div className="ft-access-msg">No tienes permiso para ver las tareas de este producto.</div>
           ) : faseActivaId ? (
             // Listado de tareas de la fase seleccionada
             tareasFaseActiva.map((tarea, indice) => {
@@ -135,42 +111,15 @@ const FasesTareasProducto: React.FC<EditarFaseTareasProductoParams> = (props) =>
               const updating = updatingTareas[tarea.id] === true
 
               return (
-                <li
-                  key={tarea.id}
-                  style={{
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'space-between',
-                    gap: 12,
-                    padding: '10px 0',
-                    borderBottom: '1px solid #f3f4f6'
-                  }}
-                >
-                  {/* Número de orden + nombre de la tarea */}
-                  <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-                    <div
-                      style={{
-                        minWidth: 30,
-                        height: 30,
-                        display: 'flex',
-                        alignItems: 'center',
-                        justifyContent: 'center',
-                        backgroundColor: '#007bff',
-                        color: 'white',
-                        borderRadius: '50%',
-                        fontSize: '0.9em',
-                        fontWeight: 'bold'
-                      }}
-                    >
-                      {indice + 1}
-                    </div>
-                    <div style={{ fontWeight: 600 }}>
-                      {tarea.nombre || `Tarea ${tarea.id}`}
-                    </div>
+                <li key={tarea.id} className="ft-tarea-item">
+                  {/* Numero de orden + nombre de la tarea */}
+                  <div className="ft-tarea-info">
+                    <div className="ft-tarea-index">{indice + 1}</div>
+                    <div className="ft-tarea-nombre">{tarea.nombre || `Tarea ${tarea.id}`}</div>
                   </div>
 
                   {/* Checkbox de completada / no completada */}
-                  <div>
+                  <div className="ft-tarea-check">
                     <input
                       type="checkbox"
                       checked={checked}
@@ -212,33 +161,14 @@ const FasesTareasProducto: React.FC<EditarFaseTareasProductoParams> = (props) =>
               allCheckedActive && canUpdateTasks && !correosEnviados[faseActivaId]
 
             return (
-              <div
-                style={{
-                  marginTop: 12,
-                  display: 'flex',
-                  flexDirection: 'column',
-                  alignItems: 'center',
-                  gap: 10
-                }}
-              >
+              <div className="ft-correo">
                 <button
                   onClick={() => {
                     if (!canUpdateTasks) return
                     if (faseActiva) sendToSupervisors(faseActiva)
                   }}
                   disabled={!puedeEnviarCorreo}
-                  style={{
-                    padding: '8px 14px',
-                    borderRadius: 8,
-                    background: puedeEnviarCorreo ? '#16a34a' : '#9ca3af',
-                    color: 'white',
-                    border: 'none',
-                    boxShadow: puedeEnviarCorreo
-                      ? '0 4px 12px rgba(16,185,129,0.2)'
-                      : 'none',
-                    cursor: puedeEnviarCorreo ? 'pointer' : 'not-allowed',
-                    opacity: canUpdateTasks ? 1 : 0.8
-                  }}
+                  className={`ft-correo-btn ${puedeEnviarCorreo ? 'is-enabled' : 'is-disabled'}`}
                 >
                   {correosEnviados[faseActivaId]
                     ? 'Correo enviado'
@@ -247,48 +177,11 @@ const FasesTareasProducto: React.FC<EditarFaseTareasProductoParams> = (props) =>
 
                 {/* Modal para elegir destinatario cuando hay varios correos de supervisores */}
                 {emailPicker.visible && emailPicker.destinatarios.length > 1 && (
-                  <div
-                    style={{
-                      position: 'fixed',
-                      top: 0,
-                      left: 0,
-                      right: 0,
-                      bottom: 0,
-                      background: 'rgba(0,0,0,0.35)',
-                      display: 'flex',
-                      alignItems: 'center',
-                      justifyContent: 'center',
-                      zIndex: 9999
-                    }}
-                  >
-                    <div
-                      style={{
-                        background: '#fff',
-                        borderRadius: 12,
-                        padding: 18,
-                        width: '90%',
-                        maxWidth: 420,
-                        boxShadow: '0 12px 32px rgba(0,0,0,0.22)'
-                      }}
-                    >
+                  <div className="ft-modal-backdrop">
+                    <div className="ft-modal">
                       {/* Cabecera del modal */}
-                      <div
-                        style={{
-                          display: 'flex',
-                          justifyContent: 'space-between',
-                          alignItems: 'center',
-                          marginBottom: 12
-                        }}
-                      >
-                        <div
-                          style={{
-                            fontWeight: 700,
-                            fontSize: 17,
-                            color: '#0f172a'
-                          }}
-                        >
-                          Elige destinatario
-                        </div>
+                      <div className="ft-modal__header">
+                        <div className="ft-modal__title">Elige destinatario</div>
                         <button
                           onClick={() =>
                             setEmailPicker({
@@ -299,13 +192,7 @@ const FasesTareasProducto: React.FC<EditarFaseTareasProductoParams> = (props) =>
                               completadas: []
                             })
                           }
-                          style={{
-                            border: 'none',
-                            background: 'transparent',
-                            cursor: 'pointer',
-                            fontSize: 18,
-                            lineHeight: '18px'
-                          }}
+                          className="ft-modal__close"
                           aria-label="Cerrar selector de email"
                         >
                           X
@@ -313,20 +200,14 @@ const FasesTareasProducto: React.FC<EditarFaseTareasProductoParams> = (props) =>
                       </div>
 
                       {/* Listado de correos posibles + bot?n de cancelar */}
-                      <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
-                        <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
-                          <label style={{ fontWeight: 600, color: '#0f172a' }}>Destinatario</label>
-                          <div style={{ display: 'flex', gap: 8 }}>
+                      <div className="ft-modal__content">
+                        <div className="ft-modal__field">
+                          <label className="ft-modal__label">Destinatario</label>
+                          <div className="ft-modal__select-row">
                             <select
                               value={destinatarioSeleccionado}
                               onChange={(e) => setDestinatarioSeleccionado(e.target.value)}
-                              style={{
-                                padding: '10px 12px',
-                                borderRadius: 10,
-                                border: '1px solid #d1d5db',
-                                background: '#f8fafc',
-                                flex: 1
-                              }}
+                              className="ft-modal__select"
                             >
                               {emailPicker.destinatarios.map((destinatario) => (
                                 <option key={destinatario} value={destinatario}>
@@ -343,16 +224,7 @@ const FasesTareasProducto: React.FC<EditarFaseTareasProductoParams> = (props) =>
                                     : [...prev, destinatarioSeleccionado]
                                 )
                               }}
-                              style={{
-                                padding: '10px 12px',
-                                borderRadius: 10,
-                                border: '1px solid #16a34a',
-                                background: '#ecfdf3',
-                                color: '#065f46',
-                                cursor: 'pointer',
-                                fontWeight: 700,
-                                whiteSpace: 'nowrap'
-                              }}
+                              className="ft-modal__add-btn"
                             >
                               Anadir
                             </button>
@@ -360,34 +232,17 @@ const FasesTareasProducto: React.FC<EditarFaseTareasProductoParams> = (props) =>
                         </div>
 
                         {destinatariosElegidos.length > 0 && (
-                          <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
+                          <div className="ft-modal__chips">
                             {destinatariosElegidos.map((dest) => (
-                              <div
-                                key={dest}
-                                style={{
-                                  display: 'flex',
-                                  alignItems: 'center',
-                                  gap: 6,
-                                  padding: '6px 10px',
-                                  borderRadius: 12,
-                                  background: '#f3f4f6',
-                                  border: '1px solid #e5e7eb'
-                                }}
-                              >
-                                <span style={{ fontWeight: 600 }}>{dest}</span>
+                              <div key={dest} className="ft-modal__chip">
+                                <span className="ft-modal__chip-label">{dest}</span>
                                 <button
                                   onClick={() =>
                                     setDestinatariosElegidos((prev) =>
                                       prev.filter((correo) => correo !== dest)
                                     )
                                   }
-                                  style={{
-                                    border: 'none',
-                                    background: 'transparent',
-                                    cursor: 'pointer',
-                                    color: '#ef4444',
-                                    fontWeight: 700
-                                  }}
+                                  className="ft-modal__chip-remove"
                                   aria-label={`Quitar ${dest}`}
                                 >
                                   X
@@ -397,23 +252,16 @@ const FasesTareasProducto: React.FC<EditarFaseTareasProductoParams> = (props) =>
                           </div>
                         )}
 
-                        <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+                        <div className="ft-modal__actions">
                           <button
                             onClick={() => {
                               if (!emailPicker.fase || destinatariosElegidos.length === 0) return
                               continuarEnvioCorreo(destinatariosElegidos)
                             }}
                             disabled={destinatariosElegidos.length === 0}
-                            style={{
-                              padding: '12px 14px',
-                              borderRadius: 10,
-                              border: 'none',
-                              background:
-                                destinatariosElegidos.length === 0 ? '#9ca3af' : '#16a34a',
-                              color: '#fff',
-                              cursor: destinatariosElegidos.length === 0 ? 'not-allowed' : 'pointer',
-                              fontWeight: 700
-                            }}
+                            className={`ft-modal__btn ft-modal__btn--primary ${
+                              destinatariosElegidos.length === 0 ? 'is-disabled' : ''
+                            }`}
                           >
                             Enviar seleccionados
                           </button>
@@ -422,15 +270,7 @@ const FasesTareasProducto: React.FC<EditarFaseTareasProductoParams> = (props) =>
                               if (!emailPicker.fase) return
                               continuarEnvioCorreo(emailPicker.destinatarios)
                             }}
-                            style={{
-                              padding: '12px 14px',
-                              borderRadius: 10,
-                              border: '1px solid #10b981',
-                              background: '#ecfdf3',
-                              color: '#065f46',
-                              cursor: 'pointer',
-                              fontWeight: 700
-                            }}
+                            className="ft-modal__btn ft-modal__btn--outline"
                           >
                             Enviar a todos
                           </button>
@@ -446,14 +286,7 @@ const FasesTareasProducto: React.FC<EditarFaseTareasProductoParams> = (props) =>
                               completadas: []
                             })
                           }
-                          style={{
-                            padding: '10px 12px',
-                            borderRadius: 10,
-                            border: 'none',
-                            background: '#e5e7eb',
-                            cursor: 'pointer',
-                            fontWeight: 600
-                          }}
+                          className="ft-modal__cancel"
                         >
                           Cancelar
                         </button>

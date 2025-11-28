@@ -1,0 +1,71 @@
+/* Página de gestión de Fases */
+
+.fases-page {
+  padding: 16px;
+}
+
+/* Contenedor principal de contenido (tabla + panel lateral) */
+.fases-page__content {
+  position: relative;
+}
+
+/* Banner de error superior */
+.fases-page__error-banner {
+  color: #b91c1c;
+  padding: 12px;
+  background-color: #fee2e2;
+  border-radius: 4px;
+  margin-bottom: 16px;
+  position: relative;
+  font-size: 0.95rem;
+}
+
+.fases-page__error-close {
+  float: right;
+  margin-top: -4px;
+}
+
+/* Placeholder inicial cuando todavía no se ha buscado */
+.fases-page__placeholder {
+  text-align: center;
+  padding: 40px;
+  background: #f8f9fa;
+  border-radius: 8px;
+  margin: 20px 0;
+}
+
+.fases-page__placeholder-title {
+  color: #666;
+  margin-bottom: 16px;
+}
+
+/* Mensaje de carga genérico */
+.fases-page__loading {
+  text-align: center;
+  padding: 20px;
+}
+
+/* Wrapper de la tabla */
+.fases-page__table-wrapper {
+  position: relative;
+  margin-top: 8px;
+}
+
+/* Overlay de carga sobre la tabla */
+.fases-page__table-overlay {
+  position: absolute;
+  inset: 0;
+  background: rgba(255, 255, 255, 0.6);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 2;
+}
+
+.fases-page__table-overlay-box {
+  padding: 10px 16px;
+  border-radius: 6px;
+  background: #ffffff;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.12);
+  font-size: 0.95rem;
+}

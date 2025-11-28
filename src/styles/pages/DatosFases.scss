@@ -1,0 +1,152 @@
+/* Estilos específicos de DatosFases */
+
+.panel-fase {
+  /* wrapper opcional por si quieres ajustar padding/margins extra */
+}
+
+/* Botón guardar en cabecera */
+.panel-fase__guardar-btn {
+  margin-right: 8px;
+}
+
+/* Campo que ocupa todo el grid */
+.panel-fase__field--full {
+  grid-column: 1 / -1;
+}
+
+/* Grid donde va la gestión de tareas */
+.panel-fase__tareas-grid {
+  margin-top: 20px;
+  grid-column: 1 / -1;
+  width: 100%;
+}
+
+/* Contenedor de la sección de tareas */
+.panel-fase__gestion-tareas {
+  grid-column: 1 / -1;
+}
+
+/* Cabecera de tareas: título + botón */
+.panel-fase__encabezado-tareas {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 16px;
+}
+
+.panel-fase__titulo-tareas {
+  margin: 0;
+}
+
+/* Mensaje cuando no se pueden ver tareas */
+.panel-fase__mensaje-sin-permisos {
+  padding: 12px;
+  color: #6c757d;
+}
+
+/* Bloque "sin tareas" */
+.panel-fase__sin-tareas {
+  text-align: center;
+  padding: 20px;
+  background-color: #f8f9fa;
+  border-radius: 6px;
+}
+
+.panel-fase__sin-tareas-icon {
+  font-size: 2em;
+  color: #6c757d;
+  margin-bottom: 8px;
+}
+
+.panel-fase__sin-tareas-text {
+  margin: 0;
+  color: #6c757d;
+}
+
+.panel-fase__sin-tareas-hint {
+  color: #6c757d;
+}
+
+/* Lista de tareas */
+.panel-fase__lista-tareas {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+/* Item de tarea */
+.panel-fase__item-tarea {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 12px;
+  background-color: #f8f9fa;
+  border-radius: 6px;
+  border: 1px solid #dee2e6;
+}
+
+/* Número circular de la tarea */
+.panel-fase__numero-tarea {
+  min-width: 30px;
+  height: 30px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background-color: #007bff;
+  color: #ffffff;
+  border-radius: 50%;
+  font-size: 0.9em;
+  font-weight: bold;
+}
+
+/* Contenido de la tarea */
+.panel-fase__contenido-tarea {
+  flex: 1;
+}
+
+.panel-fase__nombre-tarea {
+  font-weight: 500;
+}
+
+/* Acciones (editar / eliminar) */
+.panel-fase__acciones-tarea {
+  display: flex;
+  gap: 4px;
+}
+
+/* Diálogo de crear/editar tarea */
+.panel-fase__dialogo {
+  width: 400px;
+  max-width: 95vw;
+}
+
+/* Contenido interno del diálogo */
+.panel-fase__dialogo-tarea {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+/* Label del diálogo */
+.panel-fase__dialogo-label {
+  display: block;
+  margin-bottom: 8px;
+  font-weight: 500;
+}
+
+/* Input del diálogo */
+.panel-fase__dialogo-input {
+  width: 100%;
+  padding: 8px 12px;
+  border: 1px solid #ced4da;
+  border-radius: 4px;
+  font-size: 1em;
+}
+
+/* Botones del diálogo */
+.panel-fase__botones-dialogo {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+  margin-top: 16px;
+}

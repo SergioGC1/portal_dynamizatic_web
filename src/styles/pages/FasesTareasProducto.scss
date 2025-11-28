@@ -1,0 +1,273 @@
+.ft-container {
+  margin-top: 18px;
+  border-top: 1px solid #eee;
+  padding-top: 12px;
+}
+
+.ft-error-text {
+  color: red;
+}
+
+.ft-tabs {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 12px;
+  flex-wrap: wrap;
+}
+
+.ft-tab {
+  cursor: pointer;
+  font-weight: 600;
+  color: #374151;
+  padding: 6px 8px;
+  background: transparent;
+  border-radius: 4px;
+}
+
+.ft-tab--active {
+  font-weight: 700;
+  color: #0f172a;
+}
+
+.ft-tab--readonly {
+  cursor: default;
+  opacity: 0.7;
+}
+
+.ft-tab-separator {
+  width: 1px;
+  height: 18px;
+  background: #e6e6e6;
+  display: inline-block;
+  margin: 0 6px;
+}
+
+.ft-tareas-list {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+}
+
+.ft-access-msg {
+  padding: 12px;
+  color: #6c757d;
+}
+
+.ft-tarea-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 10px 0;
+  border-bottom: 1px solid #f3f4f6;
+}
+
+.ft-tarea-info {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.ft-tarea-index {
+  min-width: 30px;
+  height: 30px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: #007bff;
+  color: #fff;
+  border-radius: 50%;
+  font-size: 0.9em;
+  font-weight: bold;
+}
+
+.ft-tarea-nombre {
+  font-weight: 600;
+}
+
+.ft-tarea-check input {
+  cursor: pointer;
+}
+
+.ft-correo {
+  margin-top: 12px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 10px;
+}
+
+.ft-correo-btn {
+  padding: 8px 14px;
+  border-radius: 8px;
+  color: #fff;
+  border: none;
+  box-shadow: none;
+  cursor: not-allowed;
+  opacity: 0.8;
+}
+
+.ft-correo-btn.is-enabled {
+  background: #16a34a;
+  cursor: pointer;
+  box-shadow: 0 4px 12px rgba(16, 185, 129, 0.2);
+  opacity: 1;
+}
+
+.ft-correo-btn.is-disabled {
+  background: #9ca3af;
+}
+
+.ft-modal-backdrop {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.35);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 9999;
+}
+
+.ft-modal {
+  background: #fff;
+  border-radius: 12px;
+  padding: 18px;
+  width: 90%;
+  max-width: 420px;
+  box-shadow: 0 12px 32px rgba(0, 0, 0, 0.22);
+}
+
+.ft-modal__header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 12px;
+}
+
+.ft-modal__title {
+  font-weight: 700;
+  font-size: 17px;
+  color: #0f172a;
+}
+
+.ft-modal__close {
+  border: none;
+  background: transparent;
+  cursor: pointer;
+  font-size: 18px;
+  line-height: 18px;
+}
+
+.ft-modal__content {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.ft-modal__field {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.ft-modal__label {
+  font-weight: 600;
+  color: #0f172a;
+}
+
+.ft-modal__select-row {
+  display: flex;
+  gap: 8px;
+}
+
+.ft-modal__select {
+  padding: 10px 12px;
+  border-radius: 10px;
+  border: 1px solid #d1d5db;
+  background: #f8fafc;
+  flex: 1;
+}
+
+.ft-modal__add-btn {
+  padding: 10px 12px;
+  border-radius: 10px;
+  border: 1px solid #16a34a;
+  background: #ecfdf3;
+  color: #065f46;
+  cursor: pointer;
+  font-weight: 700;
+  white-space: nowrap;
+}
+
+.ft-modal__chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.ft-modal__chip {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 10px;
+  border-radius: 12px;
+  background: #f3f4f6;
+  border: 1px solid #e5e7eb;
+}
+
+.ft-modal__chip-label {
+  font-weight: 600;
+}
+
+.ft-modal__chip-remove {
+  border: none;
+  background: transparent;
+  cursor: pointer;
+  color: #ef4444;
+  font-weight: 700;
+}
+
+.ft-modal__actions {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.ft-modal__btn {
+  padding: 12px 14px;
+  border-radius: 10px;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.ft-modal__btn--primary {
+  border: none;
+  background: #16a34a;
+  color: #fff;
+}
+
+.ft-modal__btn--primary.is-disabled {
+  background: #9ca3af;
+  cursor: not-allowed;
+}
+
+.ft-modal__btn--outline {
+  border: 1px solid #10b981;
+  background: #ecfdf3;
+  color: #065f46;
+}
+
+.ft-modal__cancel {
+  padding: 10px 12px;
+  border-radius: 10px;
+  border: none;
+  background: #e5e7eb;
+  cursor: pointer;
+  font-weight: 600;
+  width: 100%;
+  text-align: center;
+}

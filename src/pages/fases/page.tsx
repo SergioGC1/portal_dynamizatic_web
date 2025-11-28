@@ -2,6 +2,7 @@ import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import '../../styles/layout.scss';
 import '../../styles/_main.scss';
 import '../../styles/pages/RolesPage.scss';
+import '../../styles/pages/pageFases.scss';
 import GestorEditores from '../../components/ui/GestorEditores';
 import DataTable, { ColumnDef, DataTableHandle } from '../../components/data-table/DataTable';
 import TableToolbar from '../../components/ui/TableToolbar';
@@ -17,36 +18,36 @@ import { Toast } from 'primereact/toast';
 // ======================================================
 
 interface Fase {
-  id?: number;
-  nombre: string;
-  codigo?: string;
-  descripcion?: string;
-  [key: string]: any;
+  id?: number
+  nombre: string
+  codigo?: string
+  descripcion?: string
+  [key: string]: any
 }
 
 interface TareaFase {
-  id?: number;
-  faseId: number;
-  nombre: string;
+  id?: number
+  faseId: number
+  nombre: string
 }
 
 interface EstadoPaginacion {
-  first: number;
-  rows: number;
+  first: number
+  rows: number
 }
 
 interface ParametrosCargaFases {
-  first?: number;
-  rows?: number;
-  search?: string;
-  sortField?: string | null;
-  sortOrder?: number | null;
-  filters?: Record<string, any>;
+  first?: number
+  rows?: number
+  search?: string
+  sortField?: string | null
+  sortOrder?: number | null
+  filters?: Record<string, any>
 }
 
 interface RespuestaFasesNormalizada {
-  lista: Fase[];
-  total: number;
+  lista: Fase[]
+  total: number
 }
 
 // ======================================================
@@ -58,16 +59,16 @@ interface RespuestaFasesNormalizada {
  */
 const normalizarRespuestaFases = (respuesta: any): RespuestaFasesNormalizada => {
   if (respuesta && Array.isArray(respuesta.data)) {
-    const total = typeof respuesta.total === 'number' ? respuesta.total : respuesta.data.length;
-    return { lista: respuesta.data, total };
+    const total = typeof respuesta.total === 'number' ? respuesta.total : respuesta.data.length
+    return { lista: respuesta.data, total }
   }
 
   if (Array.isArray(respuesta)) {
-    return { lista: respuesta, total: respuesta.length };
+    return { lista: respuesta, total: respuesta.length }
   }
 
-  return { lista: [], total: 0 };
-};
+  return { lista: [], total: 0 }
+}
 
 // ======================================================
 // Componente principal
@@ -77,40 +78,40 @@ export default function PageFases() {
   // --------------------------------------------------
   // Refs
   // --------------------------------------------------
-  const referenciaTabla = useRef<DataTableHandle | null>(null);
-  const toastRef = useRef<Toast | null>(null);
+  const referenciaTabla = useRef<DataTableHandle | null>(null)
+  const toastRef = useRef<Toast | null>(null)
 
   // --------------------------------------------------
   // Estado de datos y tabla
   // --------------------------------------------------
-  const [fases, setFases] = useState<Fase[]>([]);
-  const [totalFases, setTotalFases] = useState(0);
-  const [estaCargando, setEstaCargando] = useState(false);
-  const [mensajeError, setMensajeError] = useState<string | null>(null);
-  const [haBuscado, setHaBuscado] = useState(false);
+  const [fases, setFases] = useState<Fase[]>([])
+  const [totalFases, setTotalFases] = useState(0)
+  const [estaCargando, setEstaCargando] = useState(false)
+  const [mensajeError, setMensajeError] = useState<string | null>(null)
+  const [haBuscado, setHaBuscado] = useState(false)
 
   const [tablaPaginacion, setTablaPaginacion] = useState<EstadoPaginacion>({
     first: 0,
     rows: 10,
-  });
+  })
 
-  const [filtroBusquedaTemporal, setFiltroBusquedaTemporal] = useState('');
-  const [filtroBusquedaAplicado, setFiltroBusquedaAplicado] = useState('');
+  const [filtroBusquedaTemporal, setFiltroBusquedaTemporal] = useState('')
+  const [filtroBusquedaAplicado, setFiltroBusquedaAplicado] = useState('')
 
   // Control de orden (campo y sentido) para enviarlo al backend
   const [ordenTabla, setOrdenTabla] = useState<{ campo: string | null; orden: 1 | -1 }>({
     campo: null,
     orden: -1,
-  });
+  })
 
   // Panel lateral (ver/editar fase)
-  const [modoPanel, setModoPanel] = useState<'ver' | 'editar' | null>(null);
-  const [registroPanel, setRegistroPanel] = useState<Fase | null>(null);
+  const [modoPanel, setModoPanel] = useState<'ver' | 'editar' | null>(null)
+  const [registroPanel, setRegistroPanel] = useState<Fase | null>(null)
 
   // --------------------------------------------------
   // Permisos
   // --------------------------------------------------
-  const { hasPermission } = usePermisos();
+  const { hasPermission } = usePermisos()
 
   // ======================================================
   // Columnas de la tabla
@@ -122,7 +123,7 @@ export default function PageFases() {
       { key: 'nombre', title: 'Nombre', sortable: true },
     ],
     [],
-  );
+  )
 
   const columnas = useMemo<ColumnDef<Fase>[]>(
     () =>
@@ -130,16 +131,16 @@ export default function PageFases() {
         ? columnasDefinicion
         : [{ key: 'id', title: 'ID' } as ColumnDef<Fase>],
     [columnasDefinicion],
-  );
+  )
 
   /**
    * Fija la columna inicial de orden (primera columna) a DESC si aún no hay campo.
    */
   useEffect(() => {
     if (ordenTabla.campo === null && columnas.length) {
-      setOrdenTabla({ campo: columnas[0].key, orden: -1 });
+      setOrdenTabla({ campo: columnas[0].key, orden: -1 })
     }
-  }, [columnas, ordenTabla.campo]);
+  }, [columnas, ordenTabla.campo])
 
   // ======================================================
   // Utilidades de UI
@@ -150,20 +151,20 @@ export default function PageFases() {
    */
   const mostrarToast = useCallback(
     (opciones: {
-      severity: 'success' | 'info' | 'warn' | 'error';
-      summary: string;
-      detail: string;
-      life?: number;
+      severity: 'success' | 'info' | 'warn' | 'error'
+      summary: string
+      detail: string
+      life?: number
     }) => {
       toastRef.current?.show({
         severity: opciones.severity,
         summary: opciones.summary,
         detail: opciones.detail,
         life: opciones.life ?? 3000,
-      });
+      })
     },
     [],
-  );
+  )
 
   // ======================================================
   // Lógica de carga de datos
@@ -185,38 +186,38 @@ export default function PageFases() {
       sortOrder = ordenTabla.orden,
       filters = {},
     }: ParametrosCargaFases = {}) => {
-      setEstaCargando(true);
-      setMensajeError(null);
+      setEstaCargando(true)
+      setMensajeError(null)
 
       try {
-        const params: any = { limit: rows, offset: first };
+        const params: any = { limit: rows, offset: first }
 
-        if (search) params.search = search;
-        if (sortField) params.sortField = sortField;
-        if (typeof sortOrder === 'number') params.sortOrder = sortOrder;
+        if (search) params.search = search
+        if (sortField) params.sortField = sortField
+        if (typeof sortOrder === 'number') params.sortOrder = sortOrder
 
         // Filtros de la tabla (ej: código, nombre si se marcan como filterable)
         Object.entries(filters || {}).forEach(([key, value]) => {
-          if (value === undefined || value === null || value === '') return;
+          if (value === undefined || value === null || value === '') return
 
-          const lowerKey = key.toLowerCase();
-          const esBool = lowerKey.includes('sn') || lowerKey.includes('activo');
+          const lowerKey = key.toLowerCase()
+          const esBool = lowerKey.includes('sn') || lowerKey.includes('activo')
 
-          params[key] = esBool ? String(value).toUpperCase() : value;
-        });
+          params[key] = esBool ? String(value).toUpperCase() : value
+        })
 
-        const respuesta = await FasesAPI.findFases(params);
-        const { lista, total } = normalizarRespuestaFases(respuesta);
+        const respuesta = await FasesAPI.findFases(params)
+        const { lista, total } = normalizarRespuestaFases(respuesta)
 
-        setFases(lista || []);
-        setTotalFases(total);
-        setTablaPaginacion({ first, rows });
-        setHaBuscado(true);
+        setFases(lista || [])
+        setTotalFases(total)
+        setTablaPaginacion({ first, rows })
+        setHaBuscado(true)
       } catch (error: any) {
-        console.error(error);
-        setMensajeError(error?.message || 'Error cargando fases');
+        console.error(error)
+        setMensajeError(error?.message || 'Error cargando fases')
       } finally {
-        setEstaCargando(false);
+        setEstaCargando(false)
       }
     },
     [
@@ -226,7 +227,7 @@ export default function PageFases() {
       ordenTabla.campo,
       ordenTabla.orden,
     ],
-  );
+  )
 
   /**
    * Reaplica la carga de fases con los parámetros actuales de tabla.
@@ -238,7 +239,7 @@ export default function PageFases() {
       search: filtroBusquedaAplicado,
       sortField: ordenTabla.campo,
       sortOrder: ordenTabla.orden,
-    });
+    })
   }, [
     cargarFases,
     tablaPaginacion.first,
@@ -246,7 +247,7 @@ export default function PageFases() {
     filtroBusquedaAplicado,
     ordenTabla.campo,
     ordenTabla.orden,
-  ]);
+  ])
 
   // ======================================================
   // Manejadores de acciones
@@ -256,8 +257,8 @@ export default function PageFases() {
    * Aplica el filtro de búsqueda global y recarga desde la primera página.
    */
   const manejarBusqueda = () => {
-    const criterio = filtroBusquedaTemporal.trim();
-    setFiltroBusquedaAplicado(criterio);
+    const criterio = filtroBusquedaTemporal.trim()
+    setFiltroBusquedaAplicado(criterio)
 
     cargarFases({
       first: 0,
@@ -265,16 +266,16 @@ export default function PageFases() {
       search: criterio,
       sortField: ordenTabla.campo,
       sortOrder: ordenTabla.orden,
-    });
-  };
+    })
+  }
 
   /**
    * Limpia filtros de columna y búsqueda global, y recarga la lista.
    */
   const limpiarFiltros = () => {
-    setFiltroBusquedaTemporal('');
-    setFiltroBusquedaAplicado('');
-    referenciaTabla.current?.clearFilters();
+    setFiltroBusquedaTemporal('')
+    setFiltroBusquedaAplicado('')
+    referenciaTabla.current?.clearFilters()
 
     if (haBuscado) {
       cargarFases({
@@ -283,9 +284,9 @@ export default function PageFases() {
         search: '',
         sortField: ordenTabla.campo,
         sortOrder: ordenTabla.orden,
-      });
+      })
     }
-  };
+  }
 
   /**
    * Elimina una fase comprobando antes si tiene tareas asociadas.
@@ -293,17 +294,17 @@ export default function PageFases() {
    * Si no tiene, muestra un confirmDialog antes de borrar.
    */
   const eliminarFaseConConfirmacion = async (row: Fase) => {
-    let tareasAsociadas: TareaFase[] = [];
+    let tareasAsociadas: TareaFase[] = []
 
     try {
-      const params = { filter: JSON.stringify({ where: { faseId: Number(row.id) } }) };
-      const lista = await TareasFasesAPI.findTareasFases(params);
-      tareasAsociadas = Array.isArray(lista) ? (lista as TareaFase[]) : [];
+      const params = { filter: JSON.stringify({ where: { faseId: Number(row.id) } }) }
+      const lista = await TareasFasesAPI.findTareasFases(params)
+      tareasAsociadas = Array.isArray(lista) ? (lista as TareaFase[]) : []
     } catch (e) {
       console.warn(
         'No se pudo comprobar tareas asociadas, continuando con borrado simple...',
         e,
-      );
+      )
     }
 
     if ((tareasAsociadas || []).length > 0) {
@@ -312,8 +313,8 @@ export default function PageFases() {
         summary: 'No permitido',
         detail: 'No se puede eliminar porque tiene tareas asociadas',
         life: 3500,
-      });
-      return;
+      })
+      return
     }
 
     confirmDialog({
@@ -326,7 +327,7 @@ export default function PageFases() {
       accept: async () => {
         try {
           if (row?.id != null) {
-            await FasesAPI.deleteFaseById(row.id);
+            await FasesAPI.deleteFaseById(row.id)
           }
 
           mostrarToast({
@@ -334,28 +335,28 @@ export default function PageFases() {
             summary: 'Eliminado',
             detail: 'Fase eliminada correctamente',
             life: 2200,
-          });
+          })
 
-          await recargarFases();
+          await recargarFases()
         } catch (e) {
-          console.error(e);
+          console.error(e)
           mostrarToast({
             severity: 'error',
             summary: 'Error',
             detail: 'No se pudo eliminar la fase',
             life: 2800,
-          });
+          })
         }
       },
-    });
-  };
+    })
+  }
 
   // ======================================================
   // Render
   // ======================================================
 
   return (
-    <div style={{ padding: 16 }}>
+    <div className="fases-page">
       {/* Toast para mensajes de estado */}
       <Toast ref={toastRef} />
 
@@ -364,33 +365,24 @@ export default function PageFases() {
 
       {/* Bloque de error superior, si hay mensajeError */}
       {mensajeError && (
-        <div
-          style={{
-            color: 'red',
-            padding: 12,
-            backgroundColor: '#fee',
-            borderRadius: 4,
-            marginBottom: 16,
-          }}
-        >
+        <div className="fases-page__error-banner">
           {mensajeError}
           <Button
             icon="pi pi-times"
-            className="p-button-text p-button-sm"
+            className="p-button-text p-button-sm fases-page__error-close"
             onClick={() => setMensajeError(null)}
-            style={{ float: 'right', marginTop: -4 }}
           />
         </div>
       )}
 
-      <div className="tabla-personalizada">
+      <div className="fases-page__content tabla-personalizada">
         {/* Toolbar superior (cuando no se está en modo panel) */}
         {!modoPanel && (
           <TableToolbar
             title="Fases"
             onNew={() => {
-              setModoPanel('editar');
-              setRegistroPanel({ nombre: '' });
+              setModoPanel('editar')
+              setRegistroPanel({ nombre: '' })
             }}
             puede={{ nuevo: hasPermission('Fases', 'Nuevo') }}
             onDownloadCSV={() => referenciaTabla.current?.downloadCSV()}
@@ -403,27 +395,19 @@ export default function PageFases() {
 
         {/* Placeholder inicial cuando aún no se ha buscado */}
         {!haBuscado && !estaCargando && (
-          <div
-            style={{
-              textAlign: 'center',
-              padding: 40,
-              background: '#f8f9fa',
-              borderRadius: 8,
-              margin: '20px 0',
-            }}
-          >
-            <h4 style={{ color: '#666', marginBottom: 16 }}>Fases</h4>
+          <div className="fases-page__placeholder">
+            <h4 className="fases-page__placeholder-title">Fases</h4>
           </div>
         )}
 
         {/* Mensaje de carga genérico */}
         {estaCargando && (
-          <div style={{ textAlign: 'center', padding: 20 }}>Cargando fases...</div>
+          <div className="fases-page__loading">Cargando fases...</div>
         )}
 
         {/* Tabla de fases (cuando ya se ha buscado y no estamos en modo panel) */}
         {haBuscado && !estaCargando && !modoPanel && (
-          <div className="roles-page__table-wrapper">
+          <div className="fases-page__table-wrapper">
             <DataTable
               ref={referenciaTabla}
               columns={columnas}
@@ -443,13 +427,13 @@ export default function PageFases() {
                * y vuelve a pedir datos al backend con esos parámetros.
                */
               onLazyLoad={({ first, rows, sortField, sortOrder, filters = {} }) => {
-                const campoOrden = sortField ?? ordenTabla.campo;
+                const campoOrden = sortField ?? ordenTabla.campo
                 const orden = (typeof sortOrder === 'number' ? sortOrder : ordenTabla.orden) as
                   | 1
-                  | -1;
+                  | -1
 
-                setOrdenTabla({ campo: campoOrden, orden });
-                setTablaPaginacion({ first, rows });
+                setOrdenTabla({ campo: campoOrden, orden })
+                setTablaPaginacion({ first, rows })
 
                 cargarFases({
                   first,
@@ -458,23 +442,23 @@ export default function PageFases() {
                   sortField: campoOrden,
                   sortOrder: orden,
                   filters,
-                });
+                })
               }}
               onNew={() => {
-                setModoPanel('editar');
-                setRegistroPanel({ nombre: '' });
+                setModoPanel('editar')
+                setRegistroPanel({ nombre: '' })
               }}
               onView={(registro) => {
-                setModoPanel('ver');
-                setRegistroPanel(registro);
+                setModoPanel('ver')
+                setRegistroPanel(registro)
               }}
               onEdit={(registro) => {
-                setModoPanel('editar');
-                setRegistroPanel(registro);
+                setModoPanel('editar')
+                setRegistroPanel(registro)
               }}
               onDelete={(registro) => {
-                if (!registro) return;
-                eliminarFaseConConfirmacion(registro);
+                if (!registro) return
+                eliminarFaseConConfirmacion(registro)
               }}
               puede={{
                 ver: hasPermission('Fases', 'Ver'),
@@ -485,8 +469,8 @@ export default function PageFases() {
 
             {/* Capa de carga sobre la tabla si se vuelve a pedir información */}
             {estaCargando && (
-              <div className="roles-page__table-overlay">
-                <div className="roles-page__table-overlay-box">Cargando...</div>
+              <div className="fases-page__table-overlay">
+                <div className="fases-page__table-overlay-box">Cargando...</div>
               </div>
             )}
           </div>
@@ -500,29 +484,29 @@ export default function PageFases() {
             entityType="fase"
             columns={columnas}
             onClose={async () => {
-              setModoPanel(null);
-              setRegistroPanel(null);
-              await recargarFases();
+              setModoPanel(null)
+              setRegistroPanel(null)
+              await recargarFases()
             }}
             onSave={async (updated: any) => {
               try {
                 if (updated.id) {
-                  await FasesAPI.updateFaseById(updated.id, updated);
+                  await FasesAPI.updateFaseById(updated.id, updated)
                 } else {
-                  await FasesAPI.createFase(updated);
+                  await FasesAPI.createFase(updated)
                 }
 
-                setModoPanel(null);
-                setRegistroPanel(null);
-                await recargarFases();
+                setModoPanel(null)
+                setRegistroPanel(null)
+                await recargarFases()
               } catch (e: any) {
-                console.error(e);
-                setMensajeError(e?.message || 'Error guardando fase');
+                console.error(e)
+                setMensajeError(e?.message || 'Error guardando fase')
               }
             }}
           />
         )}
       </div>
     </div>
-  );
+  )
 }
