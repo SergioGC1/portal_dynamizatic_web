@@ -486,6 +486,18 @@ export default function PageRoles() {
             }}
             onSave={async (updated: any) => {
               try {
+                const nombre = String(updated?.nombre || '').trim();
+                const idActual = updated?.id;
+                const existeDuplicado = roles.find((r) => {
+                  if (idActual && r.id && Number(r.id) === Number(idActual)) return false;
+                  return String(r.nombre || '').trim().toLowerCase() === nombre.toLowerCase();
+                });
+                if (existeDuplicado) {
+                  const err: any = new Error('DUPLICADO_ROL');
+                  err.duplicates = { nombre: true };
+                  throw err;
+                }
+
                 if (updated && (updated.id || registroPanel?.id)) {
                   await RolesAPI.updateRoleById(
                     updated.id || (registroPanel as any).id,
@@ -508,12 +520,6 @@ export default function PageRoles() {
                 await recargarRoles();
               } catch (e) {
                 console.error(e);
-                toastRef.current?.show({
-                  severity: 'error',
-                  summary: 'Error',
-                  detail: 'Error guardando rol',
-                  life: 2500,
-                });
                 throw e;
               }
             }}

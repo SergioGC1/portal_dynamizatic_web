@@ -93,7 +93,7 @@ export default function EditarDatosRolesVista({
             disabled={cargando || estaEnModoVer}
           />
           {errores.nombre && (
-            <div className="roles-editar__field-error">{errores.nombre}</div>
+            <div className="record-panel__error">{errores.nombre}</div>
           )}
         </div>
       </div>

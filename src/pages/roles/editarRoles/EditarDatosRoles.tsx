@@ -180,7 +180,6 @@ export default function Editar (props: Props) {
   const guardarRol = async () => {
     setErrores({})
 
-    // Validación sencilla del nombre
     const nombreLimpio = String(formulario?.nombre || '').trim()
     if (nombreLimpio.length < 3) {
       setErrores({
@@ -198,19 +197,19 @@ export default function Editar (props: Props) {
       if (esPanel && onSave) {
         await onSave(payload)
       } else if (payload.id) {
-        // Edición en página
         await RolesAPI.updateRoleById(payload.id, payload)
-        alert('Rol actualizado correctamente.')
       } else {
-        // Creación en página
         await RolesAPI.createRole(payload)
-        alert('Rol creado correctamente.')
       }
     } catch (error: any) {
-      console.error('Error al guardar el rol:', error)
-      setErrores({
-        general: error?.message || 'Ocurrió un error al guardar.'
-      })
+      const msg = String(error?.message || '')
+      if (msg === 'DUPLICADO_ROL') {
+        setErrores({ nombre: 'Este nombre de rol ya esta en uso' })
+      } else {
+        setErrores({
+          general: error?.message || 'Ocurrio un error al guardar.'
+        })
+      }
     } finally {
       setCargando(false)
     }
